@@ -3,27 +3,29 @@
 
 #include <cstddef>
 
-#include "GameState.h"
 #include "raylib.h"
+
+struct GameState;
 
 typedef struct VertexData {
 	Vector2 position;
 };
 
-typedef struct Player {
-	Vector2 centerPosition;
-	Color color;
+typedef struct Entity {
+	bool isPlayer = false;
+	Vector2 centerPosition = {-100, -100};
+	Color color = {255, 255, 255, 255};
 	VertexData* vertexData;
 	VertexData* vertexDataEnd;
-	unsigned int* triangulationIndices;
-	unsigned int* triangulationIndicesEnd;
+	unsigned int* triangulationIndices = nullptr;
+	unsigned int* triangulationIndicesEnd = nullptr;
 };
 
 // Initializes the player memory using the custom arena/push allocator
-Player* PushAndInitializePlayer(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd);
+Entity* PushAndInitializePlayer(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd);
 
 // Renders the player based on the triangulated mesh
-void DrawPlayer(Player* player);
+void DrawPlayer(Entity* player);
 
 // Triangulates a set of 2D points (exposed if you need to use it outside of player initialization)
 void Triangulate2DPoints(VertexData* begin, std::size_t numOfPoints, GameState* gameState, unsigned int** indices, unsigned int** indicesEnd);

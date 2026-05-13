@@ -5,11 +5,17 @@
 
 
 int main() {
-	void* rawMemory = new uint8_t[15 * 1024];
+	void* rawMemory = new uint8_t[150 * 1024];
+	memset(rawMemory, 0, 150 * 1024);
 	GameState* gameState = (GameState*)rawMemory;
-	gameState->arena.base = (uint8_t*)rawMemory + sizeof(GameState);
-	gameState->arena.used = 0;
-	gameState->arena.capacity = 5 * 1024 - sizeof(GameState);
+	if (gameState->isInitialized == false) {
+		gameState->arena.base = (uint8_t*)rawMemory + sizeof(GameState);
+		gameState->arena.used = 0;
+		gameState->arena.capacity = 150 * 1024 - sizeof(GameState);
+		gameState->entitiesCapacity = 100;
+		gameState->goalFps = 60;
+		gameState->isInitialized = true;
+	}
 
 	VertexData* vertexData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
 	VertexData* vertexDataEnd = vertexData;
@@ -18,8 +24,10 @@ int main() {
 	*(vertexDataEnd++) = VertexData{ -50, -50 };
 	*(vertexDataEnd++) = VertexData{ -50, 50 };
 
-	Player* player = PushAndInitializePlayer(gameState, vertexData, vertexDataEnd);
+	Entity* player = PushAndInitializePlayer(gameState, vertexData, vertexDataEnd);
 	player->centerPosition = { 100, 200 };
+	Entity* player2 = PushAndInitializePlayer(gameState, vertexData, vertexDataEnd);
+	player2->centerPosition = { 300, 200 };
 	for (int i = 0; i < 4; i++) {
 		std::cout << player->vertexData[i].position.x << player->vertexData[i].position.y << std::endl;
 	}
@@ -29,7 +37,10 @@ int main() {
 	while (!WindowShouldClose()) {
 		BeginDrawing();
 			ClearBackground(RAYWHITE);
-			DrawPlayer(player);
+			Color color = { 255, 255, 0, 255 };
+			for (int i = 0; i < gameState->addedEntities; i++) {
+				DrawPlayer((gameState->entities + i));
+			}
 			DrawText("Congrats! You created your first window!", 190, 200, 20, color);
 		EndDrawing();
 	}

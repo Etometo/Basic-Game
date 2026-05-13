@@ -11,12 +11,13 @@
 #include <raylib.h>
 #include "GameState.h"
 
-Player* PushAndInitializePlayer(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd) {
+Entity* PushAndInitializePlayer(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd) {
 	if (vertexDataEnd - vertexData < 3) {
 		throw std::runtime_error("At least 3 vertices for the player");
 	}
-	Player* returnPointer = (Player*)PushSize(gameState, sizeof(Player));
+	Entity* returnPointer = (Entity*)PushEntity(gameState);
 
+    std::cout << gameState->addedEntities;
 	returnPointer->vertexData = vertexData;
     returnPointer->vertexDataEnd = vertexDataEnd;
 	unsigned int* indices;
@@ -24,6 +25,8 @@ Player* PushAndInitializePlayer(GameState* gameState, VertexData* vertexData, Ve
 	Triangulate2DPoints(returnPointer->vertexData, vertexDataEnd - vertexData, gameState, &indices, &indicesEnd);
 	returnPointer->triangulationIndices = indices;
 	returnPointer->triangulationIndicesEnd = indicesEnd;
+    returnPointer->isPlayer = true;
+    returnPointer->color = { 255, 0, 0, 255 };
 
 	return returnPointer;
 }
@@ -32,31 +35,16 @@ void PrintVector(Vector2 vec) {
     std::cout << "(X: " << vec.x << " ,Y: " << vec.y << " )" ;
 }
 
-void DrawPlayer(Player* player) {
-    std::cout << "Number of triangulated indices: " << player->triangulationIndicesEnd - player->triangulationIndices << std::endl;
-    int numOfTrianglesDrawn = 0;
+void DrawPlayer(Entity* player) {
 	for (int i = 0; i < player->triangulationIndicesEnd - player->triangulationIndices; i += 3) {
         Vector2 v1 = AddVectors((*(player->vertexData + player->triangulationIndices[i])).position, player->centerPosition);
         Vector2 v2 = AddVectors((*(player->vertexData + player->triangulationIndices[i+1])).position, player->centerPosition);
         Vector2 v3 = AddVectors((*(player->vertexData + player->triangulationIndices[i+2])).position, player->centerPosition);
-        std::cout << "Vector positions: " << std::endl;
-        PrintVector(v1);
-        std::cout << std::endl;
-        PrintVector(v2);
-        std::cout << std::endl;
-        PrintVector(v3);
-        std::cout << std::endl;
         if (IsCounterClockwise(v1, v2, v3)) {
-            std::cout << "Counter clockwise";
             DrawTriangle(v1, v2, v3, player->color);
         }
         else{
-            std::cout << "Clockwise";
             DrawTriangle(v1, v3, v2, player->color);
-        }
-        numOfTrianglesDrawn++;
-        if (numOfTrianglesDrawn > 1) {
-			//throw new std::runtime_error("as");
         }
 	}
 }
