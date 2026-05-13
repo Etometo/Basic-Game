@@ -17,25 +17,20 @@ int main() {
 	*(vertexDataEnd++) = VertexData{ 50, -50 };
 	*(vertexDataEnd++) = VertexData{ -50, -50 };
 	*(vertexDataEnd++) = VertexData{ -50, 50 };
+
 	Player* player = PushAndInitializePlayer(gameState, vertexData, vertexDataEnd);
 	player->centerPosition = { 100, 200 };
 	for (int i = 0; i < 4; i++) {
 		std::cout << player->vertexData[i].position.x << player->vertexData[i].position.y << std::endl;
 	}
-	throw new std::runtime_error("as");
 
 	InitWindow(800, 800, "nigga");
 	SetTargetFPS(60);
 	while (!WindowShouldClose()) {
 		BeginDrawing();
 			ClearBackground(RAYWHITE);
-			Vector2 vec1 = { 450, 450 };
-			Vector2 vec2 = { 300, 200 };
-			Vector2 vec3 = { 150, 450 };
-			Color color = { 255, 255, 0, 255 };
-			DrawTriangle(vec1,vec2,vec3,color);
+			DrawPlayer(player);
 			DrawText("Congrats! You created your first window!", 190, 200, 20, color);
-			DrawText("window!", 190, 200, 20, color);
 		EndDrawing();
 	}
 	CloseWindow();
