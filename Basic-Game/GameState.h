@@ -18,5 +18,7 @@ typedef struct GameState {
 
 void* PushSize(GameState* state, size_t sizeInBytes);
 
+void RetractSize(GameState* state, size_t sizeInBytes);
+
 Entity* PushEntity(GameState* state);
 

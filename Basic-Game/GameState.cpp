@@ -7,9 +7,13 @@ void* PushSize(GameState* state, size_t sizeInBytes) {
 
 	state->arena.used += sizeInBytes;
 	return state->arena.base + state->arena.used - sizeInBytes;
-}
+} 
 
 Entity* PushEntity(GameState* state) {
 	return (state->entities + state->addedEntities++);
+}
+
+void RetractSize(GameState* state, size_t sizeInBytes) {
+	state->arena.used -= sizeInBytes;
 }
 

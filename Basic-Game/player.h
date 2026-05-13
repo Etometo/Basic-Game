@@ -32,6 +32,12 @@ void Triangulate2DPoints(VertexData* begin, std::size_t numOfPoints, GameState* 
 
 bool IsCounterClockwise(Vector2 v1, Vector2 v2, Vector2 v3);
 
-Vector2 AddVectors(Vector2 v1, Vector2 v2);
+Vector2 AddVectors(Vector2& v1, Vector2& v2);
+
+void MovePlayer(Entity* player, Vector2 movement);
+
+int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** relevanEntities);
+
+void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2);
 
 #endif

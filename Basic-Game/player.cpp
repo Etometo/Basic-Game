@@ -55,9 +55,191 @@ bool IsCounterClockwise(Vector2 v1, Vector2 v2, Vector2 v3) {
     return crossProduct < 0.0f;
 }
 
-Vector2 AddVectors(Vector2 v1, Vector2 v2) {
+Vector2 AddVectors(Vector2& v1, Vector2& v2) {
     Vector2 newVector = { v1.x + v2.x, v1.y + v2.y };
     return newVector;
+}
+
+void MovePlayer(Entity* player, Vector2 mov) {
+    player->centerPosition.x += mov.x;
+    player->centerPosition.y += mov.y;
+}
+
+float square(float f1) {
+    return f1 * f1;
+}
+
+float distance(Vector2 v1, Vector2 v2) {
+    return sqrtf(square(v1.x - v2.x) + square(v1.y - v2.y));
+}
+
+int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** relevanEntities) {
+    Entity* entities = gameState->entities;
+    Entity** relevantEntitiesEnd = relevanEntities;
+
+    for (int i = 0; i < gameState->addedEntities; i++) {
+        if (distance(entities[i].centerPosition, entity->centerPosition) < 300 && distance(entities[i].centerPosition, entity->centerPosition) != 0) {
+            *(relevantEntitiesEnd++) = entities + i;
+        }
+    }
+    return relevantEntitiesEnd - relevanEntities;
+}
+
+void CrossProduct(Vector3& vec1, Vector3& vec2, Vector3& crossProduct) {
+    crossProduct.x = vec1.y * vec2.z - vec1.z * vec2.y;
+    crossProduct.y = vec1.z * vec2.x - vec1.x * vec2.z;
+    crossProduct.z = vec1.x * vec2.y - vec1.y * vec2.x;
+}
+
+void NormalVector(Vector3& vector, Vector3& normalVector) {
+    Vector3 vector2;
+    vector2.x = 0;
+    vector2.y = 0;
+    vector2.z = 1;
+
+    CrossProduct(vector, vector2, normalVector);
+}
+
+double DotProduct(Vector3& vec1, Vector3& vec2) {
+    return vec1.x * vec2.x + vec1.y * vec2.y + vec1.z * vec2.z;
+}
+
+void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
+    double minOverlap = DBL_MAX;
+    Vector3 overlapLine;
+
+    int e1NumOfVertices = e1->vertexDataEnd - e1->vertexData;
+    int e2NumOfVertices = e2->vertexDataEnd - e2->vertexData;
+    for (int i = 0; i < e1NumOfVertices + (e2NumOfVertices) - 2; i++) {
+        double player1Down = DBL_MAX, player1Up = -DBL_MAX;
+        double player2Down = DBL_MAX, player2Up = -DBL_MAX;
+
+        Vector3 vectorOfTwoVertices;
+        Vector2 vertex1;
+        Vector2 vertex2;
+        if (i < e1NumOfVertices - 1) {
+            vertex1 = AddVectors(e1->vertexData[i].position, e1->centerPosition);
+            vertex2 = AddVectors(e1->vertexData[i + 1].position, e1->centerPosition);
+        }
+        else {
+            int a = i - (e1NumOfVertices - 1);
+            vertex1 = AddVectors(e2->vertexData[a].position, e1->centerPosition);
+            vertex2 = AddVectors(e2->vertexData[a + 1].position, e1->centerPosition);
+        }
+
+        vectorOfTwoVertices.x = vertex2.x - vertex1.x;
+        vectorOfTwoVertices.y = vertex2.y - vertex1.y;
+        vectorOfTwoVertices.z = 0;
+
+        Vector3 normal;
+        NormalVector(vectorOfTwoVertices, normal);
+        double normalLength = sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+
+        for (int j = 0; j < e1NumOfVertices; j++) {
+            Vector3 posVector;
+            //because we are taking the position relative to the center of e1 and vertex positions are relative to it
+            //we dont subtract
+            posVector.x = e1->vertexData[j].position.x;
+            posVector.y = e1->vertexData[j].position.y;
+            posVector.z = 0;
+
+            double projectedLen = DotProduct(posVector, normal) / normalLength;
+
+            if (projectedLen > player1Up) {
+                player1Up = projectedLen;
+            }
+            else if (projectedLen < player1Down) {
+                player1Down = projectedLen;
+            }
+        }
+
+        for (int j = 0; j < e2NumOfVertices; j++) {
+            Vector3 posVector;
+            posVector.x = e2->vertexData[j].position.x + e2->centerPosition.x - e1->centerPosition.x;
+            posVector.y = e2->vertexData[j].position.y + e2->centerPosition.y - e1->centerPosition.y;
+            posVector.z = 0;
+
+            double projectedLen = DotProduct(posVector, normal) / normalLength;
+            if (projectedLen > player2Up) {
+                player2Up = projectedLen;
+            }
+            else if (projectedLen < player2Down) {
+                player2Down = projectedLen;
+            }
+        }
+        /*
+        std::cout << std::endl << "Normal: ";
+        PrintVector3(normal);
+        std::cout << "Players up and downs: " << std::endl;
+        std::cout << "Player1Up: " << player1Up << " player1Down: " << player1Down << std::endl;
+        std::cout << "Player2Up: " << player2Up << " player2Down: " << player2Down << std::endl;*/
+
+        if (player1Up <= player2Down || player2Up <= player1Down) {
+            minOverlap = 0;
+        }
+        else {
+            double overlap = 0;
+            if (player1Up <= player2Up) {
+                if (player1Down >= player2Down) {
+                    overlap = player1Up - player1Down;
+                    if (overlap < minOverlap) {
+                        minOverlap = overlap;
+                        overlapLine.x = normal.x;
+                        overlapLine.y = normal.y;
+                        overlapLine.z = normal.z;
+                    }
+                }
+                else {
+                    overlap = player1Up - player2Down;
+                    if (overlap < minOverlap) {
+                        minOverlap = overlap;
+                        overlapLine.x = normal.x;
+                        overlapLine.y = normal.y;
+                        overlapLine.z = normal.z;
+                    }
+                }
+            }
+            else {
+                if (player1Down >= player2Down) {
+                    overlap = player2Up - player1Down;
+                    if (overlap < minOverlap) {
+                        minOverlap = overlap;
+                        overlapLine.x = normal.x;
+                        overlapLine.y = normal.y;
+                        overlapLine.z = normal.z;
+                    }
+                }
+                else {
+                    overlap = player2Up - player2Down;
+                    if (overlap < minOverlap) {
+                        minOverlap = overlap;
+                        overlapLine.x = normal.x;
+                        overlapLine.y = normal.y;
+                        overlapLine.z = normal.z;
+                    }
+                }
+            }
+        }
+    }
+    if (minOverlap == DBL_MAX || minOverlap == 0) {
+    }
+    else {
+        Vector3 otherPos = { e2->centerPosition.x, e2->centerPosition.y, 0 };
+        Vector3 diffOfPositions;
+        diffOfPositions.x = e1->centerPosition.x - otherPos.x;
+        diffOfPositions.y = e1->centerPosition.y - otherPos.y;
+        diffOfPositions.z = 0;
+
+        if (DotProduct(diffOfPositions, overlapLine) < 0) {
+            minOverlap *= -1;
+        }
+
+        float sin = overlapLine.y / sqrt(overlapLine.x * overlapLine.x + overlapLine.y * overlapLine.y);
+        float cos = overlapLine.x / sqrt(overlapLine.x * overlapLine.x + overlapLine.y * overlapLine.y);
+
+        MovePlayer(e1, { cos * (float)minOverlap, sin * (float)minOverlap });
+    }
+    
 }
 
 namespace delaunator {
