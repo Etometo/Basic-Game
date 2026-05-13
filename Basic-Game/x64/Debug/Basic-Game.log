@@ -1,0 +1,61 @@
+﻿  GameState.cpp
+D:\C++\Basic-Game\Basic-Game\GameState.cpp(6,2): warning C4018: '>': signed/unsigned mismatch
+  main.cpp
+D:\C++\Basic-Game\Basic-Game\player.h(5,16): warning C4091: 'typedef ': ignored on left of 'VertexData' when no variable is declared
+  (compiling source file 'main.cpp')
+  
+D:\C++\Basic-Game\Basic-Game\player.h(9,16): warning C4091: 'typedef ': ignored on left of 'Player' when no variable is declared
+  (compiling source file 'main.cpp')
+  
+  player.cpp
+D:\C++\Basic-Game\Basic-Game\player.h(5,16): warning C4091: 'typedef ': ignored on left of 'VertexData' when no variable is declared
+  (compiling source file 'player.cpp')
+  
+D:\C++\Basic-Game\Basic-Game\player.h(9,16): warning C4091: 'typedef ': ignored on left of 'Player' when no variable is declared
+  (compiling source file 'player.cpp')
+  
+D:\C++\Basic-Game\Basic-Game\delaunator.hpp(510,28): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+  (compiling source file 'player.cpp')
+  
+D:\C++\Basic-Game\Basic-Game\delaunator.hpp(511,28): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+  (compiling source file 'player.cpp')
+  
+D:\C++\Basic-Game\Basic-Game\delaunator.hpp(567,23): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+  (compiling source file 'player.cpp')
+  
+D:\C++\Basic-Game\Basic-Game\delaunator.hpp(569,23): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+  (compiling source file 'player.cpp')
+  
+D:\C++\Basic-Game\Basic-Game\delaunator.hpp(571,23): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+  (compiling source file 'player.cpp')
+  
+  Triangulation.cpp
+D:\C++\Basic-Game\Basic-Game\player.h(5,16): warning C4091: 'typedef ': ignored on left of 'VertexData' when no variable is declared
+  (compiling source file 'Triangulation.cpp')
+  
+D:\C++\Basic-Game\Basic-Game\player.h(9,16): warning C4091: 'typedef ': ignored on left of 'Player' when no variable is declared
+  (compiling source file 'Triangulation.cpp')
+  
+D:\C++\Basic-Game\Basic-Game\delaunator.hpp(510,28): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+  (compiling source file 'Triangulation.cpp')
+  
+D:\C++\Basic-Game\Basic-Game\delaunator.hpp(511,28): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+  (compiling source file 'Triangulation.cpp')
+  
+D:\C++\Basic-Game\Basic-Game\delaunator.hpp(567,23): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+  (compiling source file 'Triangulation.cpp')
+  
+D:\C++\Basic-Game\Basic-Game\delaunator.hpp(569,23): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+  (compiling source file 'Triangulation.cpp')
+  
+D:\C++\Basic-Game\Basic-Game\delaunator.hpp(571,23): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+  (compiling source file 'Triangulation.cpp')
+  
+  Generating Code...
+Triangulation.obj : error LNK2005: "public: __cdecl delaunator::Delaunator::Delaunator(struct VertexData const *,unsigned __int64,struct GameState *)" (??0Delaunator@delaunator@@QEAA@PEBUVertexData@@_KPEAUGameState@@@Z) already defined in player.obj
+Triangulation.obj : error LNK2005: "private: unsigned __int64 __cdecl delaunator::Delaunator::add_triangle(unsigned __int64,unsigned __int64,unsigned __int64,unsigned __int64,unsigned __int64,unsigned __int64)" (?add_triangle@Delaunator@delaunator@@AEAA_K_K00000@Z) already defined in player.obj
+Triangulation.obj : error LNK2005: "public: double __cdecl delaunator::Delaunator::get_hull_area(void)" (?get_hull_area@Delaunator@delaunator@@QEAANXZ) already defined in player.obj
+Triangulation.obj : error LNK2005: "private: unsigned __int64 __cdecl delaunator::Delaunator::legalize(unsigned __int64)" (?legalize@Delaunator@delaunator@@AEAA_K_K@Z) already defined in player.obj
+Triangulation.obj : error LNK2005: "private: void __cdecl delaunator::Delaunator::link(unsigned __int64,unsigned __int64)" (?link@Delaunator@delaunator@@AEAAX_K0@Z) already defined in player.obj
+LINK : warning LNK4098: defaultlib 'MSVCRT' conflicts with use of other libs; use /NODEFAULTLIB:library
+D:\C++\Basic-Game\x64\Debug\Basic-Game.exe : fatal error LNK1169: one or more multiply defined symbols found

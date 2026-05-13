@@ -1,0 +1,160 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\C\u002B\u002B\\Basic-Game\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{5DDB2407-A69E-4FE3-98C0-39973041C003}|Basic-Game\\Basic-Game.vcxproj|D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\GameState.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{5DDB2407-A69E-4FE3-98C0-39973041C003}|Basic-Game\\Basic-Game.vcxproj|solutionrelative:Basic-Game\\GameState.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5DDB2407-A69E-4FE3-98C0-39973041C003}|Basic-Game\\Basic-Game.vcxproj|D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\GameState.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{5DDB2407-A69E-4FE3-98C0-39973041C003}|Basic-Game\\Basic-Game.vcxproj|solutionrelative:Basic-Game\\GameState.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5DDB2407-A69E-4FE3-98C0-39973041C003}|Basic-Game\\Basic-Game.vcxproj|D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\player.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{5DDB2407-A69E-4FE3-98C0-39973041C003}|Basic-Game\\Basic-Game.vcxproj|solutionrelative:Basic-Game\\player.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5DDB2407-A69E-4FE3-98C0-39973041C003}|Basic-Game\\Basic-Game.vcxproj|D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{5DDB2407-A69E-4FE3-98C0-39973041C003}|Basic-Game\\Basic-Game.vcxproj|solutionrelative:Basic-Game\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5DDB2407-A69E-4FE3-98C0-39973041C003}|Basic-Game\\Basic-Game.vcxproj|D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\player.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{5DDB2407-A69E-4FE3-98C0-39973041C003}|Basic-Game\\Basic-Game.vcxproj|solutionrelative:Basic-Game\\player.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5DDB2407-A69E-4FE3-98C0-39973041C003}|Basic-Game\\Basic-Game.vcxproj|D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\delaunator.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{5DDB2407-A69E-4FE3-98C0-39973041C003}|Basic-Game\\Basic-Game.vcxproj|solutionrelative:Basic-Game\\delaunator.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5DDB2407-A69E-4FE3-98C0-39973041C003}|Basic-Game\\Basic-Game.vcxproj|D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\Triangulation.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{5DDB2407-A69E-4FE3-98C0-39973041C003}|Basic-Game\\Basic-Game.vcxproj|solutionrelative:Basic-Game\\Triangulation.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5DDB2407-A69E-4FE3-98C0-39973041C003}|Basic-Game\\Basic-Game.vcxproj|D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\Triangulation.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{5DDB2407-A69E-4FE3-98C0-39973041C003}|Basic-Game\\Basic-Game.vcxproj|solutionrelative:Basic-Game\\Triangulation.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 2,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "GameState.cpp",
+              "DocumentMoniker": "D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\GameState.cpp",
+              "RelativeDocumentMoniker": "Basic-Game\\GameState.cpp",
+              "ToolTip": "D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\GameState.cpp",
+              "RelativeToolTip": "Basic-Game\\GameState.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAVAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-05-11T15:19:59.946Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "GameState.h",
+              "DocumentMoniker": "D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\GameState.h",
+              "RelativeDocumentMoniker": "Basic-Game\\GameState.h",
+              "ToolTip": "D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\GameState.h",
+              "RelativeToolTip": "Basic-Game\\GameState.h",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-05-11T15:15:25.403Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "Triangulation.cpp",
+              "DocumentMoniker": "D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\Triangulation.cpp",
+              "RelativeDocumentMoniker": "Basic-Game\\Triangulation.cpp",
+              "ToolTip": "D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\Triangulation.cpp",
+              "RelativeToolTip": "Basic-Game\\Triangulation.cpp",
+              "ViewState": "AgIAAAUAAAAAAAAAAAAkwA8AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-05-11T15:09:29.254Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "Triangulation.h",
+              "DocumentMoniker": "D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\Triangulation.h",
+              "RelativeDocumentMoniker": "Basic-Game\\Triangulation.h",
+              "ToolTip": "D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\Triangulation.h",
+              "RelativeToolTip": "Basic-Game\\Triangulation.h",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAAQAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-05-11T15:08:57.865Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "player.cpp",
+              "DocumentMoniker": "D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\player.cpp",
+              "RelativeDocumentMoniker": "Basic-Game\\player.cpp",
+              "ToolTip": "D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\player.cpp",
+              "RelativeToolTip": "Basic-Game\\player.cpp",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAUwBgAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-05-11T14:18:21.927Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "delaunator.hpp",
+              "DocumentMoniker": "D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\delaunator.hpp",
+              "RelativeDocumentMoniker": "Basic-Game\\delaunator.hpp",
+              "ToolTip": "D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\delaunator.hpp",
+              "RelativeToolTip": "Basic-Game\\delaunator.hpp",
+              "ViewState": "AgIAAE0BAAAAAAAAAAAzwFkBAAAoAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-05-11T14:13:10.422Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "player.h",
+              "DocumentMoniker": "D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\player.h",
+              "RelativeDocumentMoniker": "Basic-Game\\player.h",
+              "ToolTip": "D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\player.h",
+              "RelativeToolTip": "Basic-Game\\player.h",
+              "ViewState": "AgIAAAUAAAAAAAAAAAAzwBAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-05-11T13:47:19.93Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "main.cpp",
+              "DocumentMoniker": "D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\main.cpp",
+              "RelativeDocumentMoniker": "Basic-Game\\main.cpp",
+              "ToolTip": "D:\\C\u002B\u002B\\Basic-Game\\Basic-Game\\main.cpp",
+              "RelativeToolTip": "Basic-Game\\main.cpp",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAABYAAABgAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-05-11T13:10:19.301Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
