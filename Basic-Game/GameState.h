@@ -14,6 +14,7 @@ typedef struct GameState {
 	Entity entities[100];
 	unsigned int addedEntities = 0;
 	unsigned int entitiesCapacity = 100;
+	float gravityConstant = 0.098;
 };
 
 void* PushSize(GameState* state, size_t sizeInBytes);

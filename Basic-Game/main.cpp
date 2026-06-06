@@ -2,6 +2,7 @@
 #include <iostream>
 #include "player.h"
 #include "GameState.h"
+#include <iostream>
 
 
 int main() {
@@ -15,28 +16,45 @@ int main() {
 		gameState->entitiesCapacity = 100;
 		gameState->goalFps = 60;
 		gameState->isInitialized = true;
+		gameState->gravityConstant = 9.8;
 	}
 
-	VertexData* vertexData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
-	VertexData* vertexDataEnd = vertexData;
-	*(vertexDataEnd++) = VertexData{ 50, 50 };
-	*(vertexDataEnd++) = VertexData{ 50, -50 };
-	*(vertexDataEnd++) = VertexData{ -50, -50 };
-	*(vertexDataEnd++) = VertexData{ -50, 50 };
+	VertexData* rectData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
+	VertexData* rectDataEnd = rectData;
+	*(rectDataEnd++) = VertexData{ 50, 50 };
+	*(rectDataEnd++) = VertexData{ 50, -50 };
+	*(rectDataEnd++) = VertexData{ -50, -50 };
+	*(rectDataEnd++) = VertexData{ -50, 50 };
 
-	Entity* player = PushAndInitializePlayer(gameState, vertexData, vertexDataEnd);
-	player->centerPosition = { 100, 200 };
-	Entity* player2 = PushAndInitializePlayer(gameState, vertexData, vertexDataEnd);
+	VertexData* floorRectData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
+	VertexData* floorRectDataEnd = floorRectData;
+	*(floorRectDataEnd++) = VertexData{ 150, 50 };
+	*(floorRectDataEnd++) = VertexData{ 150, -50 };
+	*(floorRectDataEnd++) = VertexData{ -150, -50 };
+	*(floorRectDataEnd++) = VertexData{ -150, 50 };
+
+	VertexData* triData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 3);
+	VertexData* triDataEnd = triData;
+	*(triDataEnd++) = VertexData{ 50, 50 };
+	*(triDataEnd++) = VertexData{ 50, -50 };
+	*(triDataEnd++) = VertexData{ -50, -50 };
+
+	uint32_t playerFlags = GRAVITY_FLAG | PLAYER_FLAG;
+	Entity* player = PushAndInitializePlayer(gameState, rectData, rectDataEnd, 0.1, playerFlags);
+	player->centerPosition = { 100, 400 };
+	Entity* player2 = PushAndInitializePlayer(gameState, rectData, rectDataEnd, 0.1, GRAVITY_FLAG);
 	player2->centerPosition = { 300, 200 };
-	for (int i = 0; i < 4; i++) {
-		std::cout << player->vertexData[i].position.x << player->vertexData[i].position.y << std::endl;
-	}
+	
+	Entity* floor = PushAndInitializePlayer(gameState, floorRectData, floorRectDataEnd, 0.1, 0x2);
+	floor->centerPosition = { 400, 600 };
 
 	InitWindow(800, 800, "asd");
 	SetTargetFPS(60);
 	Entity** relevantEntities = (Entity**)PushSize(gameState, sizeof(Entity*) * 20);
 	int numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, player, relevantEntities);
 	std::cout << numOfRelevantEntities << " is the number of importants first importants ";
+
+	
 	while (!WindowShouldClose()) {
 		BeginDrawing();
 			ClearBackground(RAYWHITE);
@@ -52,17 +70,26 @@ int main() {
 			if (IsKeyDown(KEY_D)) {
 				MovePlayer(player, { 2, 0 });
 			}
-			numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, player, relevantEntities);
+				
 			if (numOfRelevantEntities == 0) {
 				std::cout << "no relevant entities" << std::endl;
 			}
-			for (int i = 0; i < numOfRelevantEntities; i++) {
-				CalculateAndApplyCollisionWithEntity(player, player2);
-			}
+
 			for (int i = 0; i < gameState->addedEntities; i++) {
-				DrawPlayer((gameState->entities + i));
+				numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, gameState->entities + i, relevantEntities);
+			
+				for (int j = 0; j < numOfRelevantEntities; j++) {
+					CalculateAndApplyCollisionWithEntity(gameState->entities + i, relevantEntities[j]);
+				}
+				ApplyGravityAndMovement(gameState, gameState->entities + i);
+				DrawEntity((gameState->entities + i));
+			}
+
+			for (int i = 0; i < gameState->addedEntities; i++) {
+
 			}
 		EndDrawing();
+		//throw std::runtime_error("asd");
 	}
 	RetractSize(gameState, sizeof(Entity*) * 20);
 	CloseWindow();

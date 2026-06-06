@@ -11,7 +11,7 @@
 #include <raylib.h>
 #include "GameState.h"
 
-Entity* PushAndInitializePlayer(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd) {
+Entity* PushAndInitializePlayer(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags) {
 	if (vertexDataEnd - vertexData < 3) {
 		throw std::runtime_error("At least 3 vertices for the player");
 	}
@@ -27,6 +27,8 @@ Entity* PushAndInitializePlayer(GameState* gameState, VertexData* vertexData, Ve
 	returnPointer->triangulationIndicesEnd = indicesEnd;
     returnPointer->isPlayer = true;
     returnPointer->color = { 255, 0, 0, 255 };
+    returnPointer->mass = mass;
+    returnPointer->flags |= flags;
 
 	return returnPointer;
 }
@@ -35,7 +37,13 @@ void PrintVector(Vector2 vec) {
     std::cout << "(X: " << vec.x << " ,Y: " << vec.y << " )" ;
 }
 
-void DrawPlayer(Entity* player) {
+void PrintVector(Vector3 vec) {
+    std::cout << "(X: " << vec.x << " ,Y: " << vec.y << " ,Z: " << vec.z << " )" ;
+    if (sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z) < 1) {
+        throw std::runtime_error("asd");
+    }
+}
+void DrawEntity(Entity* player) {
 	for (int i = 0; i < player->triangulationIndicesEnd - player->triangulationIndices; i += 3) {
         Vector2 v1 = AddVectors((*(player->vertexData + player->triangulationIndices[i])).position, player->centerPosition);
         Vector2 v2 = AddVectors((*(player->vertexData + player->triangulationIndices[i+1])).position, player->centerPosition);
@@ -60,9 +68,14 @@ Vector2 AddVectors(Vector2& v1, Vector2& v2) {
     return newVector;
 }
 
+void MovePlayer(Entity* player) {
+    player->centerPosition.x += player->instantMovement.x;
+    player->centerPosition.y += player->instantMovement.y;
+}
+
 void MovePlayer(Entity* player, Vector2 mov) {
-    player->centerPosition.x += mov.x;
-    player->centerPosition.y += mov.y;
+    player->instantMovement.x += mov.x;
+    player->instantMovement.y += mov.y;
 }
 
 float square(float f1) {
@@ -105,26 +118,41 @@ double DotProduct(Vector3& vec1, Vector3& vec2) {
 }
 
 void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
+    
+    //stupid comment change later
+    //because we go over every pair twice if we skip this other calculation will be done anyways
+    if ((e1->flags & NON_MOVING_FLAG) > 0) { 
+        return; }
     double minOverlap = DBL_MAX;
     Vector3 overlapLine;
 
     int e1NumOfVertices = e1->vertexDataEnd - e1->vertexData;
     int e2NumOfVertices = e2->vertexDataEnd - e2->vertexData;
-    for (int i = 0; i < e1NumOfVertices + (e2NumOfVertices) - 2; i++) {
+    for (int i = 0; i < e1NumOfVertices + (e2NumOfVertices); i++) {
         double player1Down = DBL_MAX, player1Up = -DBL_MAX;
         double player2Down = DBL_MAX, player2Up = -DBL_MAX;
 
         Vector3 vectorOfTwoVertices;
         Vector2 vertex1;
         Vector2 vertex2;
-        if (i < e1NumOfVertices - 1) {
+        if (i < e1NumOfVertices) {
             vertex1 = AddVectors(e1->vertexData[i].position, e1->centerPosition);
-            vertex2 = AddVectors(e1->vertexData[i + 1].position, e1->centerPosition);
+            if (i + 1 >= e1NumOfVertices) {
+                vertex2 = AddVectors(e1->vertexData[0].position, e1->centerPosition);
+            }
+            else {
+                vertex2 = AddVectors(e1->vertexData[i + 1].position, e1->centerPosition);
+            }
         }
         else {
-            int a = i - (e1NumOfVertices - 1);
-            vertex1 = AddVectors(e2->vertexData[a].position, e1->centerPosition);
-            vertex2 = AddVectors(e2->vertexData[a + 1].position, e1->centerPosition);
+            int a = i - (e1NumOfVertices);
+            vertex1 = AddVectors(e2->vertexData[a].position, e2->centerPosition);
+            if (a + 1 >= e2NumOfVertices) { 
+                vertex2 = AddVectors(e2->vertexData[0].position, e2->centerPosition);
+            }
+            else {
+                vertex2 = AddVectors(e2->vertexData[a + 1].position, e2->centerPosition);
+            }
         }
 
         vectorOfTwoVertices.x = vertex2.x - vertex1.x;
@@ -167,9 +195,9 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
                 player2Down = projectedLen;
             }
         }
-        /*
-        std::cout << std::endl << "Normal: ";
-        PrintVector3(normal);
+        
+        /*std::cout << std::endl << "Normal: ";
+        PrintVector(normal);
         std::cout << "Players up and downs: " << std::endl;
         std::cout << "Player1Up: " << player1Up << " player1Down: " << player1Down << std::endl;
         std::cout << "Player2Up: " << player2Up << " player2Down: " << player2Down << std::endl;*/
@@ -222,6 +250,7 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
         }
     }
     if (minOverlap == DBL_MAX || minOverlap == 0) {
+
     }
     else {
         Vector3 otherPos = { e2->centerPosition.x, e2->centerPosition.y, 0 };
@@ -832,6 +861,8 @@ void Delaunator::link(const std::size_t a, const std::size_t b) {
 void Triangulate2DPoints(VertexData* begin, size_t numOfPoints, GameState* gameState, unsigned int** indices, unsigned int** indicesEnd) {
 
 	if (numOfPoints <= 3) {
+        *indices = (unsigned int*)PushSize(gameState, sizeof(unsigned int) * numOfPoints);
+        *indicesEnd = *indices;
 		for (int i = 0; i < numOfPoints; i++) {
 			**indicesEnd = i;
 			(*indicesEnd)++;
@@ -852,3 +883,11 @@ void Triangulate2DPoints(VertexData* begin, size_t numOfPoints, GameState* gameS
 		std::cout << std::endl;
 	}*/
 };
+
+void ApplyGravityAndMovement(GameState* gameState, Entity* entity) {
+    if(entity->flags & GRAVITY_FLAG > 0){
+        entity->instantMovement.y += gameState->gravityConstant * entity->mass;
+    }
+    MovePlayer(entity);
+    entity->instantMovement = { 0, 0 };
+}
