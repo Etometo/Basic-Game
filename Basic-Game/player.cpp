@@ -69,13 +69,16 @@ Vector2 AddVectors(Vector2& v1, Vector2& v2) {
 }
 
 void MovePlayer(Entity* player) {
-    player->centerPosition.x += player->instantMovement.x;
-    player->centerPosition.y += player->instantMovement.y;
+    if ((player->flags & PLAYER_FLAG) > 0) {
+        std::cout << "PLAYERS INSTANT VELOCITY : (" << player->speed.x << ", " << player->speed.y << ")" << std::endl;
+    }
+    player->centerPosition.x += player->speed.x;
+    player->centerPosition.y += player->speed.y;
 }
 
 void MovePlayer(Entity* player, Vector2 mov) {
-    player->instantMovement.x += mov.x;
-    player->instantMovement.y += mov.y;
+    player->speed.x += mov.x;
+    player->speed.y += mov.y;
 }
 
 float square(float f1) {
@@ -886,8 +889,8 @@ void Triangulate2DPoints(VertexData* begin, size_t numOfPoints, GameState* gameS
 
 void ApplyGravityAndMovement(GameState* gameState, Entity* entity) {
     if(entity->flags & GRAVITY_FLAG > 0){
-        entity->instantMovement.y += gameState->gravityConstant * entity->mass;
+        entity->speed.y += gameState->gravityConstant * entity->mass;
     }
     MovePlayer(entity);
-    entity->instantMovement = { 0, 0 };
+    entity->speed = { 0, 0 };
 }

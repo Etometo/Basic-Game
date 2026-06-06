@@ -14,7 +14,7 @@ typedef struct VertexData {
 enum {
 	GRAVITY_FLAG = 0x1,
 	NON_MOVING_FLAG = 0x2,
-	PLAYER_FLAG = 0x3;
+	PLAYER_FLAG = 0x4,
 };
 
 typedef struct Entity {
@@ -27,7 +27,9 @@ typedef struct Entity {
 	unsigned int* triangulationIndicesEnd = nullptr;
 
 	uint32_t flags = 0;
-	Vector2 instantMovement = {0, 0};
+	Vector2 netForce = { 0, 0 };
+	Vector2 acceleration = { 0, 0 };
+	Vector2 speed = {0, 0};
 	float mass = 0;
 };
 

@@ -59,7 +59,7 @@ int main() {
 		BeginDrawing();
 			ClearBackground(RAYWHITE);
 			if (IsKeyDown(KEY_W)) {
-				MovePlayer(player, { 0, -2 });
+				MovePlayer(player, { 0, -1 });
 			}
 			if (IsKeyDown(KEY_S)) {
 				MovePlayer(player, { 0, 2 });
@@ -77,7 +77,6 @@ int main() {
 
 			for (int i = 0; i < gameState->addedEntities; i++) {
 				numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, gameState->entities + i, relevantEntities);
-			
 				for (int j = 0; j < numOfRelevantEntities; j++) {
 					CalculateAndApplyCollisionWithEntity(gameState->entities + i, relevantEntities[j]);
 				}
