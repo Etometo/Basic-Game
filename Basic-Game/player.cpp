@@ -68,17 +68,17 @@ Vector2 AddVectors(Vector2& v1, Vector2& v2) {
     return newVector;
 }
 
-void MovePlayer(Entity* player) {
-    if ((player->flags & PLAYER_FLAG) > 0) {
-        std::cout << "PLAYERS INSTANT VELOCITY : (" << player->speed.x << ", " << player->speed.y << ")" << std::endl;
+void MoveEntity(Entity* player) {
+    if ((player->flags & NON_MOVING_FLAG) > 0) {
+        return;
     }
-    player->centerPosition.x += player->speed.x;
-    player->centerPosition.y += player->speed.y;
+    player->centerPosition.x += player->speed.x * GetFrameTime();
+    player->centerPosition.y += player->speed.y * GetFrameTime();
 }
 
-void MovePlayer(Entity* player, Vector2 mov) {
-    player->speed.x += mov.x;
-    player->speed.y += mov.y;
+void ApplyForceToEntity(Entity* player, Vector2 mov) {
+    player->netForce.x += mov.x;
+    player->netForce.y += mov.y;
 }
 
 float square(float f1) {
@@ -89,11 +89,11 @@ float distance(Vector2 v1, Vector2 v2) {
     return sqrtf(square(v1.x - v2.x) + square(v1.y - v2.y));
 }
 
-int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** relevanEntities) {
-    Entity* entities = gameState->entities;
+int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** relevanEntities, int startOffset) {
+    Entity* entities = gameState->entities + startOffset;
     Entity** relevantEntitiesEnd = relevanEntities;
 
-    for (int i = 0; i < gameState->addedEntities; i++) {
+    for (int i = 0; 0 < (gameState->entities + gameState->addedEntities) - (entities + i); i++) {
         if (distance(entities[i].centerPosition, entity->centerPosition) < 300 && distance(entities[i].centerPosition, entity->centerPosition) != 0) {
             *(relevantEntitiesEnd++) = entities + i;
         }
@@ -256,20 +256,126 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
 
     }
     else {
-        Vector3 otherPos = { e2->centerPosition.x, e2->centerPosition.y, 0 };
         Vector3 diffOfPositions;
-        diffOfPositions.x = e1->centerPosition.x - otherPos.x;
-        diffOfPositions.y = e1->centerPosition.y - otherPos.y;
+        diffOfPositions.x = e1->centerPosition.x - e2->centerPosition.x;
+        diffOfPositions.y = e1->centerPosition.y - e2->centerPosition.x;
         diffOfPositions.z = 0;
+
+        float overlapLineLength = sqrt(pow(overlapLine.x, 2) + pow(overlapLine.y, 2));
+
+        Vector3 normalizedOverlapLine = { overlapLine.x / overlapLineLength, overlapLine.y / overlapLineLength , 0};
 
         if (DotProduct(diffOfPositions, overlapLine) < 0) {
             minOverlap *= -1;
+            normalizedOverlapLine.x *= -1;
+            normalizedOverlapLine.y *= -1;
+            normalizedOverlapLine.z *= -1;
         }
 
-        float sin = overlapLine.y / sqrt(overlapLine.x * overlapLine.x + overlapLine.y * overlapLine.y);
-        float cos = overlapLine.x / sqrt(overlapLine.x * overlapLine.x + overlapLine.y * overlapLine.y);
+        float totalMass = e1->mass + e2->mass;
+        
+        if (totalMass > 0.0f) {
+            if ((e1->flags & NON_MOVING_FLAG) > 0) {
+				e2->centerPosition.x += normalizedOverlapLine.x * minOverlap;
+				e2->centerPosition.y += normalizedOverlapLine.y * minOverlap;
+            }
+            else if ((e2->flags & NON_MOVING_FLAG) > 0) {
+				e1->centerPosition.x -= normalizedOverlapLine.x * minOverlap;
+				e1->centerPosition.y -= normalizedOverlapLine.y * minOverlap;
+            }
+            else {
+				float push1 = (e2->mass / totalMass) * minOverlap;
+				float push2 = (e1->mass / totalMass) * minOverlap;
 
-        MovePlayer(e1, { cos * (float)minOverlap, sin * (float)minOverlap });
+				e1->centerPosition.x -= normalizedOverlapLine.x * push1;
+				e1->centerPosition.y -= normalizedOverlapLine.y * push1;
+
+				e2->centerPosition.x += normalizedOverlapLine.x * push2;
+				e2->centerPosition.y += normalizedOverlapLine.y * push2;
+            }
+        }
+
+        Vector3 relativeVel;
+        relativeVel.x = e1->speed.x - e2->speed.x;
+        relativeVel.y = e1->speed.y - e2->speed.y;
+        relativeVel.z = 0;
+
+        float velAlongNormal = DotProduct(relativeVel, normalizedOverlapLine);
+
+        if (velAlongNormal < 0) {
+            return;
+        }
+
+        float e;
+        if ((e1->flags | e2->flags) & NON_MOVING_FLAG) {
+            e = 0;
+        }
+        else {
+            e = 0.3;
+        }
+
+        float inv1mass = e1->flags & NON_MOVING_FLAG ? 0 : (1 / e1->mass);
+        float inv2mass = e2->flags & NON_MOVING_FLAG ? 0 : (1 / e2->mass);
+        float sumOfInverseMasses = inv1mass + inv2mass;
+        if (sumOfInverseMasses == 0.0f) {
+            return;
+        }
+        float j = -(1.0 + e) * velAlongNormal;
+        j /= sumOfInverseMasses;
+
+        Vector3 impulse;
+        impulse.x = j * normalizedOverlapLine.x;
+        impulse.y = j * normalizedOverlapLine.y;
+        impulse.z = 0;
+
+        float deltaTime = GetFrameTime();
+
+        Vector3 relativeForce;
+        relativeForce.x = e1->netForce.x - e2->netForce.x;
+        relativeForce.y = e1->netForce.y - e2->netForce.y;
+        relativeForce.z = 0;
+
+        float normalRelativeForce = DotProduct(relativeForce, normalizedOverlapLine);
+
+		e1->speed.x += impulse.x / e1->mass;
+		e1->speed.y += impulse.y / e1->mass;
+		e1->netForce.x -= normalRelativeForce * normalizedOverlapLine.x;
+		e1->netForce.y -= normalRelativeForce * normalizedOverlapLine.y;
+
+        throw std::runtime_error("sometimes when I press jump it doesnt and when objects seperating the other one stops");
+
+        if (!(e2->flags & NON_MOVING_FLAG)) {
+            e2->speed.x -= impulse.x / e2->mass;
+            e2->speed.y -= impulse.y / e2->mass;
+
+            e2->netForce.x += normalRelativeForce * normalizedOverlapLine.x;
+            e2->netForce.y += normalRelativeForce * normalizedOverlapLine.y;
+        }
+        else{
+			Vector3 k = { 0, 0, 1 };
+			Vector3 frictionAxis;
+			CrossProduct(normalizedOverlapLine, k, frictionAxis);
+			float frictionAxisMagnitude = sqrt(pow(frictionAxis.x, 2) + pow(frictionAxis.y, 2));
+			frictionAxis.x /= frictionAxisMagnitude;
+			frictionAxis.y /= frictionAxisMagnitude;
+			float relativeVelOnFrictionAxis = DotProduct(relativeVel, frictionAxis);
+
+			if (relativeVelOnFrictionAxis != 0) {
+				int frictionDir = -relativeVelOnFrictionAxis / abs(relativeVelOnFrictionAxis);
+				float frictionMagnitude = normalRelativeForce * e2->frictionCons;
+
+				e1->netForce.x += frictionAxis.x * frictionMagnitude * frictionDir;
+				e2->netForce.y += frictionAxis.y * frictionMagnitude * frictionDir;
+			}
+		}
+
+        /*
+        if ((e1->flags & PLAYER_FLAG) && (e2->flags & NON_MOVING_FLAG)) {
+            std::cout << "Net force on the player: (" << e1->netForce.x << ", " << e1->netForce.y << ") " << std::endl;
+            std::cout << "Relative force: (" << relativeForce.x << ", " << relativeForce.y << ") " << std::endl;
+            std::cout << "Impulse: (" << impulse.x << ", " << impulse.y << ") " << std::endl;
+        }*/
+
     }
     
 }
@@ -887,10 +993,10 @@ void Triangulate2DPoints(VertexData* begin, size_t numOfPoints, GameState* gameS
 	}*/
 };
 
-void ApplyGravityAndMovement(GameState* gameState, Entity* entity) {
-    if(entity->flags & GRAVITY_FLAG > 0){
-        entity->speed.y += gameState->gravityConstant * entity->mass;
+void ApplyGravityCalculatePhysicsAndMoveEntity(GameState* gameState, Entity* entity) {
+    if((entity->flags & GRAVITY_FLAG) > 0){
+        entity->netForce.y += gameState->gravityConstant * entity->mass;
     }
-    MovePlayer(entity);
+    MoveEntity(entity);
     entity->speed = { 0, 0 };
 }

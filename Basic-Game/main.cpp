@@ -16,7 +16,7 @@ int main() {
 		gameState->entitiesCapacity = 100;
 		gameState->goalFps = 60;
 		gameState->isInitialized = true;
-		gameState->gravityConstant = 9.8;
+		gameState->gravityConstant = 98;
 	}
 
 	VertexData* rectData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
@@ -41,52 +41,62 @@ int main() {
 
 	uint32_t playerFlags = GRAVITY_FLAG | PLAYER_FLAG;
 	Entity* player = PushAndInitializePlayer(gameState, rectData, rectDataEnd, 0.1, playerFlags);
-	player->centerPosition = { 100, 400 };
+	player->centerPosition = { 300, 70 };
 	Entity* player2 = PushAndInitializePlayer(gameState, rectData, rectDataEnd, 0.1, GRAVITY_FLAG);
 	player2->centerPosition = { 300, 200 };
 	
-	Entity* floor = PushAndInitializePlayer(gameState, floorRectData, floorRectDataEnd, 0.1, 0x2);
+	Entity* floor = PushAndInitializePlayer(gameState, floorRectData, floorRectDataEnd, 0.2, 0x2);
 	floor->centerPosition = { 400, 600 };
+	floor->frictionCons = 1;
 
 	InitWindow(800, 800, "asd");
-	SetTargetFPS(60);
+	SetTargetFPS(120);
 	Entity** relevantEntities = (Entity**)PushSize(gameState, sizeof(Entity*) * 20);
-	int numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, player, relevantEntities);
+	int numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, player, relevantEntities, 0);
 	std::cout << numOfRelevantEntities << " is the number of importants first importants ";
 
 	
 	while (!WindowShouldClose()) {
 		BeginDrawing();
 			ClearBackground(RAYWHITE);
-			if (IsKeyDown(KEY_W)) {
-				MovePlayer(player, { 0, -1 });
+			if (IsKeyPressed(KEY_W)) {
+				ApplyForceToEntity(player, { 0, -1000 });
 			}
 			if (IsKeyDown(KEY_S)) {
-				MovePlayer(player, { 0, 2 });
+				ApplyForceToEntity(player, { 0, 20 });
 			}
 			if (IsKeyDown(KEY_A)) {
-				MovePlayer(player, { -2, 0 });
+				ApplyForceToEntity(player, { -20, 0 });
 			}
 			if (IsKeyDown(KEY_D)) {
-				MovePlayer(player, { 2, 0 });
-			}
-				
-			if (numOfRelevantEntities == 0) {
-				std::cout << "no relevant entities" << std::endl;
+				ApplyForceToEntity(player, { 20, 0 });
 			}
 
 			for (int i = 0; i < gameState->addedEntities; i++) {
-				numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, gameState->entities + i, relevantEntities);
-				for (int j = 0; j < numOfRelevantEntities; j++) {
-					CalculateAndApplyCollisionWithEntity(gameState->entities + i, relevantEntities[j]);
+				Entity* entity = gameState->entities + i;
+				numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, entity, relevantEntities, i);
+
+				if((entity->flags & GRAVITY_FLAG) > 0){
+					entity->netForce.y += gameState->gravityConstant * entity->mass;
 				}
-				ApplyGravityAndMovement(gameState, gameState->entities + i);
-				DrawEntity((gameState->entities + i));
+
+
+				for (int j = 0; j < numOfRelevantEntities; j++) {
+					CalculateAndApplyCollisionWithEntity(entity, relevantEntities[j]);
+				}
+
+				entity->acceleration.x = entity->netForce.x / entity->mass;
+				entity->acceleration.y = entity->netForce.y / entity->mass;
+
+				float deltaTime = GetFrameTime();
+				entity->speed.x += entity->acceleration.x * deltaTime;
+				entity->speed.y += entity->acceleration.y * deltaTime;
+
+				MoveEntity(entity);
+				entity->netForce = { 0, 0 };
+				DrawEntity(entity);
 			}
 
-			for (int i = 0; i < gameState->addedEntities; i++) {
-
-			}
 		EndDrawing();
 		//throw std::runtime_error("asd");
 	}

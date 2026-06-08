@@ -31,6 +31,7 @@ typedef struct Entity {
 	Vector2 acceleration = { 0, 0 };
 	Vector2 speed = {0, 0};
 	float mass = 0;
+	float frictionCons = 0;
 };
 
 // Initializes the player memory using the custom arena/push allocator
@@ -46,12 +47,14 @@ bool IsCounterClockwise(Vector2 v1, Vector2 v2, Vector2 v3);
 
 Vector2 AddVectors(Vector2& v1, Vector2& v2);
 
-void MovePlayer(Entity* player, Vector2 movement);
+void MoveEntity(Entity* player);
 
-int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** relevanEntities);
+void ApplyForceToEntity(Entity* player, Vector2 movement);
+
+int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** relevanEntities, int offset);
 
 void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2);
 
-void ApplyGravityAndMovement(GameState* gameState, Entity* entity);
+void ApplyGravityCalculatePhysicsAndMoveEntity(GameState* gameState, Entity* entity);
 
 #endif
