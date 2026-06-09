@@ -26,21 +26,22 @@ typedef struct Entity {
 	unsigned int* triangulationIndices = nullptr;
 	unsigned int* triangulationIndicesEnd = nullptr;
 
+	uint32_t id;
 	uint32_t flags = 0;
 	Vector2 netForce = { 0, 0 };
 	Vector2 acceleration = { 0, 0 };
 	Vector2 speed = {0, 0};
 	float mass = 0;
 	float frictionCons = 0;
+	bool moveHasBeenCalled = false;
 };
 
-// Initializes the player memory using the custom arena/push allocator
-Entity* PushAndInitializePlayer(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags);
+Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags);
 
-// Renders the player based on the triangulated mesh
 void DrawEntity(Entity* player);
 
-// Triangulates a set of 2D points (exposed if you need to use it outside of player initialization)
+void DrawEntityForceLine(Entity* entity);
+
 void Triangulate2DPoints(VertexData* begin, std::size_t numOfPoints, GameState* gameState, unsigned int** indices, unsigned int** indicesEnd);
 
 bool IsCounterClockwise(Vector2 v1, Vector2 v2, Vector2 v3);
