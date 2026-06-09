@@ -364,10 +364,9 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
         if (normalRelativeForce < 0) {
             normalRelativeForce = 0;
         }
-
         
-		e1->speed.x += impulse.x / e1->mass;
-		e1->speed.y += impulse.y / e1->mass;
+		e1->netForce.x += impulse.x / deltaTime;
+		e1->netForce.y += impulse.y / deltaTime;
 		e1->netForce.x -= normalRelativeForce * normalizedOverlapLine.x;
 		e1->netForce.y -= normalRelativeForce * normalizedOverlapLine.y;
 

@@ -53,7 +53,7 @@ int main() {
 	floor->frictionCons = 0.4;
 
 	InitWindow(800, 800, "asd");
-	SetTargetFPS(165);
+	SetTargetFPS(65);
 	Entity** relevantEntities = (Entity**)PushSize(gameState, sizeof(Entity*) * 20);
 	int numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, player, relevantEntities, 0);
 	std::cout << numOfRelevantEntities << " is the number of importants first importants ";
