@@ -18,7 +18,7 @@ int main() {
 		gameState->entitiesCapacity = 100;
 		gameState->goalFps = 60;
 		gameState->isInitialized = true;
-		gameState->gravityConstant = 98 * 2;
+		gameState->gravityConstant = 98 * 2 * 0;
 		gameState->nextAvailableId = 0;
 	}
 
@@ -58,7 +58,6 @@ int main() {
 	int numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, player, relevantEntities, 0);
 	std::cout << numOfRelevantEntities << " is the number of importants first importants ";
 
-	
 	bool playerJumped = false;
 	while (!WindowShouldClose()) {
 		std::cout << "Frame number " << gameState->frameCount << "is starting" << std::endl << std::endl;
@@ -79,14 +78,12 @@ int main() {
 			}
 
 			for (int i = 0; i < gameState->addedEntities; i++) {
-				
 				Entity* entity = gameState->entities + i;
 				numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, entity, relevantEntities, i);
 
 				if((entity->flags & GRAVITY_FLAG) > 0){
 					entity->netForce.y += gameState->gravityConstant * entity->mass;
 				}
-
 
 				for (int j = 0; j < numOfRelevantEntities; j++) {
 					CalculateAndApplyCollisionWithEntity(entity, relevantEntities[j]);
@@ -102,11 +99,10 @@ int main() {
 				MoveEntity(entity);
 				DrawEntity(entity);
 				if (entity->flags & PLAYER_FLAG) {
-					std::cout << "Net force on the player: (" << entity->netForce.x << ", " << entity->netForce.y << ") " << std::endl;
+					//std::cout << "Net force on the player: (" << entity->netForce.x << ", " << entity->netForce.y << ") " << std::endl;
 				}
 				DrawEntityForceLine(entity);
 				entity->netForce = { 0, 0 };
-				entity->moveHasBeenCalled = false;
 			}
 
 		EndDrawing();

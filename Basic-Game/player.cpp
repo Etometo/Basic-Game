@@ -23,6 +23,22 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
 	unsigned int* indices;
 	unsigned int* indicesEnd;
 	Triangulate2DPoints(returnPointer->vertexData, vertexDataEnd - vertexData, gameState, &indices, &indicesEnd);
+
+    int vertexCount = vertexDataEnd - vertexData;
+    float inertia = 0;
+    float massPerVertex = mass / (vertexDataEnd - vertexData);
+    Vector2 centerOfTheShape = {0, 0};
+    for (int i = 0; i < vertexCount; i++) {
+        centerOfTheShape.x += vertexData[i].position.x;
+        centerOfTheShape.y += vertexData[i].position.y;
+    }
+    centerOfTheShape.x /= vertexCount;
+    centerOfTheShape.y /= vertexCount;
+
+    for (int i = 0; i < vertexCount; i++) {
+        inertia += massPerVertex * (powf(vertexData[i].position.x - centerOfTheShape.x, 2) + powf(vertexData[i].position.y - centerOfTheShape.y, 2));
+    }
+
 	returnPointer->triangulationIndices = indices;
 	returnPointer->triangulationIndicesEnd = indicesEnd;
     returnPointer->isPlayer = true;
@@ -30,6 +46,7 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
     returnPointer->mass = mass;
     returnPointer->flags |= flags;
     returnPointer->id = gameState->nextAvailableId++;
+    returnPointer->inertia = inertia;
 
 	return returnPointer;
 }
@@ -81,7 +98,6 @@ void MoveEntity(Entity* player) {
 
     player->centerPosition.x += player->speed.x * GetFrameTime();
     player->centerPosition.y += player->speed.y * GetFrameTime();
-    player->moveHasBeenCalled = true;
 }
 
 void ApplyForceToEntity(Entity* player, Vector2 mov) {
@@ -316,17 +332,6 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
         relativeForce.y = e1->netForce.y - e2->netForce.y;
         relativeForce.z = 0;
 
-        if ((e1->flags & PLAYER_FLAG) && (e2->id == 1)) {
-            std::cout << "-------------" << std::endl;
-            std::cout << "PLAYER-PLAYER2 COLLISION: " << std::endl;
-            std::cout << "Net force on the player: (" << e1->netForce.x << ", " << e1->netForce.y << ") " << std::endl;
-            std::cout << "Speed of the player: (" << e1->speed.x << ", " << e1->speed.y << ") " << std::endl;
-            std::cout << "Relative force: (" << relativeForce.x << ", " << relativeForce.y << ") " << std::endl;
-            //std::cout << "Impulse: (" << impulse.x << ", " << impulse.y << ") " << std::endl;
-            std::cout << "Relative speed: (" << relativeVel.x << ", " << relativeVel.y << ") " << std::endl;
-            std::cout << "overlap line: (" << normalizedOverlapLine.x << ", " << normalizedOverlapLine.y << ") " << std::endl;
-            std::cout << "-------------" << std::endl;
-        }
 
         if (e1->flags & PLAYER_FLAG) {
 			//throw std::runtime_error("asd");
@@ -364,6 +369,90 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
         if (normalRelativeForce < 0) {
             normalRelativeForce = 0;
         }
+
+
+        Vector2 forceApplicationPoint = { 0, 0 };
+
+
+        Vector2 centerOfVerticesInsideE2 = { 0, 0 };
+        int numberOfVerticesInsideE2 = CheckHowManyVerticesOfE1IsInE2(e1, e2, centerOfVerticesInsideE2);
+
+        if (numberOfVerticesInsideE2 == 0 || numberOfVerticesInsideE2 == 1) {
+			float e1xMax = 0;
+			float e1yMax = 0;
+			float e1xMin = 0;
+			float e1yMin = 0;
+			for (int i = 0; i < e1->vertexDataEnd - e1->vertexData; i++) {
+				Vector2 vertexPos = e1->vertexData[i].position;
+				vertexPos.x += e1->centerPosition.x;
+				vertexPos.y += e1->centerPosition.y;
+				e1xMin = vertexPos.x < e1xMin ? vertexPos.x : e1xMin;
+				e1yMin = vertexPos.y < e1yMin ? vertexPos.y : e1yMin;
+				e1xMax = vertexPos.x > e1xMax ? vertexPos.x : e1xMax;
+				e1yMax = vertexPos.y > e1yMax ? vertexPos.y : e1yMax;
+			}
+
+            Vector2 centerOfVerticesInsideE1 = { 0, 0 };
+			int numberOfVerticesInsideE1 = 0;
+			for (int i = 0; i < e2->vertexDataEnd - e2->vertexData; i++) {
+				Vector2 vertexPos;
+				vertexPos = e2->vertexData[i].position;
+				vertexPos.x += e2->centerPosition.x;
+				vertexPos.y += e2->centerPosition.y;
+				if (vertexPos.x < e1xMin || vertexPos.x > e1xMax || vertexPos.y < e1yMin || vertexPos.y > e1yMax){
+					continue;
+				} 
+				Vector2 raycastStartingPoint = vertexPos;
+				Vector2 raycastDirection = { 1, 0 };
+				Vector2 e1vertex1, e1vertex2;
+				unsigned int numberOfIntersections = 0;
+				for (int j = 0; j < e1->vertexDataEnd - e1->vertexData - 1; j++) {
+                    e1vertex1 = { e1->vertexData[j].position.x + e1->centerPosition.x, e1->vertexData[j].position.y + e1->centerPosition.y };
+                    e1vertex2 = { e1->vertexData[j + 1].position.x + e1->centerPosition.x, e1->vertexData[j + 1].position.y + e1->centerPosition.y };
+					if ((raycastStartingPoint.y < e1vertex1.y && raycastStartingPoint.y < e1vertex2.y) || (raycastStartingPoint.y > e1vertex1.y && raycastStartingPoint.y > e1vertex2.y)) {
+						continue;
+					}
+					if ((e1vertex2.x - e1vertex1.x) == 0) {
+						if (e1vertex1.x < raycastStartingPoint.x) {
+							continue;
+						}
+					}
+					float slopeOfThePair = (e1vertex2.y - e1vertex1.y) / (e1vertex2.x - e1vertex1.x);
+					float xValueOfRaycastsYValueIntersection = (raycastStartingPoint.y - e1vertex1.y + e1vertex1.x * slopeOfThePair) / slopeOfThePair;
+					if (xValueOfRaycastsYValueIntersection < raycastStartingPoint.x) {
+						continue;
+					}
+					else {
+						numberOfIntersections += 1;
+					}
+				}
+				if (numberOfIntersections & 1) {
+					centerOfVerticesInsideE1.x += vertexPos.x;
+					centerOfVerticesInsideE1.y += vertexPos.y;
+					numberOfVerticesInsideE1++;
+				}
+			}
+            centerOfVerticesInsideE1.x /= numberOfVerticesInsideE1;
+            centerOfVerticesInsideE1.y /= numberOfVerticesInsideE1;
+
+            if (numberOfVerticesInsideE2 == 1) {
+				centerOfVerticesInsideE2.x /= numberOfVerticesInsideE2;
+				centerOfVerticesInsideE2.y /= numberOfVerticesInsideE2;
+
+				forceApplicationPoint.x = (centerOfVerticesInsideE1.x + centerOfVerticesInsideE2.x) / 2;
+				forceApplicationPoint.y = (centerOfVerticesInsideE1.y + centerOfVerticesInsideE2.y) / 2;
+            }
+            else {
+				forceApplicationPoint = centerOfVerticesInsideE1;
+            }
+        }
+        else{
+			centerOfVerticesInsideE2.x /= numberOfVerticesInsideE2;
+			centerOfVerticesInsideE2.y /= numberOfVerticesInsideE2;
+            forceApplicationPoint = centerOfVerticesInsideE2;
+        }
+
+        
         
 		e1->netForce.x += impulse.x / deltaTime;
 		e1->netForce.y += impulse.y / deltaTime;
@@ -423,6 +512,12 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
 		}
 
         if ((e1->flags & PLAYER_FLAG) && (e2->flags & NON_MOVING_FLAG)) {
+            std::cout << "Player's position: (" << e1->centerPosition.x << ", " << e1->centerPosition.y << ") " << std::endl;
+            std::cout << "Force application point: (" << forceApplicationPoint.x << ", " << forceApplicationPoint.y << ") " << std::endl;
+        }
+
+        return;
+        if ((e1->flags & PLAYER_FLAG) && (e2->flags & NON_MOVING_FLAG)) {
             std::cout << "-------------" << std::endl;
             std::cout << "PLAYER-FLOOR COLLISION: " << std::endl;
             std::cout << "Net force on the player: (" << e1->netForce.x << ", " << e1->netForce.y << ") " << std::endl;
@@ -444,7 +539,17 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
             std::cout << "-------------" << std::endl;
             //throw std::runtime_error("sad");
         }
-        return;
+        if ((e1->flags & PLAYER_FLAG) && (e2->id == 1)) {
+            std::cout << "-------------" << std::endl;
+            std::cout << "PLAYER-PLAYER2 COLLISION: " << std::endl;
+            std::cout << "Net force on the player: (" << e1->netForce.x << ", " << e1->netForce.y << ") " << std::endl;
+            std::cout << "Speed of the player: (" << e1->speed.x << ", " << e1->speed.y << ") " << std::endl;
+            std::cout << "Relative force: (" << relativeForce.x << ", " << relativeForce.y << ") " << std::endl;
+            //std::cout << "Impulse: (" << impulse.x << ", " << impulse.y << ") " << std::endl;
+            std::cout << "Relative speed: (" << relativeVel.x << ", " << relativeVel.y << ") " << std::endl;
+            std::cout << "overlap line: (" << normalizedOverlapLine.x << ", " << normalizedOverlapLine.y << ") " << std::endl;
+            std::cout << "-------------" << std::endl;
+        }
         /*
         if ((e1->flags & PLAYER_FLAG) && (e2->flags & NON_MOVING_FLAG)) {
             std::cout << "Net force on the player: (" << e1->netForce.x << ", " << e1->netForce.y << ") " << std::endl;
@@ -454,6 +559,66 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
 
     }
     
+}
+
+unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sumOfInsiderPointsPositions) {
+	float e2xMax = 0;
+	float e2yMax = 0;
+	float e2xMin = 0;
+	float e2yMin = 0;
+	for (int i = 0; i < e2->vertexDataEnd - e2->vertexData; i++) {
+		Vector2 vertexPos = e2->vertexData[i].position;
+		vertexPos.x += e2->centerPosition.x;
+		vertexPos.y += e2->centerPosition.y;
+		e2xMin = vertexPos.x < e2xMin ? vertexPos.x : e2xMin;
+		e2yMin = vertexPos.y < e2yMin ? vertexPos.y : e2yMin;
+		e2xMax = vertexPos.x > e2xMax ? vertexPos.x : e2xMax;
+		e2yMax = vertexPos.y > e2yMax ? vertexPos.y : e2yMax;
+	}
+	Vector2 centerOfVerticesInsideE2 = { 0, 0 };
+	int numberOfVerticesInsideE2 = 0;
+	for (int i = 0; i < e1->vertexDataEnd - e1->vertexData; i++) {
+		Vector2 vertexPos;
+		vertexPos = e1->vertexData[i].position;
+		vertexPos.x += e1->centerPosition.x;
+		vertexPos.y += e1->centerPosition.y;
+		if (vertexPos.x < e2xMin || vertexPos.x > e2xMax || vertexPos.y < e2yMin || vertexPos.y > e2yMax){
+			continue;
+		} 
+
+		Vector2 raycastStartingPoint = vertexPos;
+		Vector2 raycastDirection = { 1, 0 };
+		Vector2 e2vertex1, e2vertex2;
+		unsigned int numberOfIntersections = 0;
+		for (int j = 0; j < e2->vertexDataEnd - e2->vertexData - 1; j++) {
+			e2vertex1 = { e2->vertexData[j].position.x + e2->centerPosition.x, e2->vertexData[j].position.y + e2->centerPosition.y };
+			e2vertex2 = { e2->vertexData[j + 1].position.x + e2->centerPosition.x, e2->vertexData[j + 1].position.y + e2->centerPosition.y };
+			if ((raycastStartingPoint.y < e2vertex1.y && raycastStartingPoint.y < e2vertex2.y) || (raycastStartingPoint.y > e2vertex1.y && raycastStartingPoint.y > e2vertex2.y)) {
+				continue;
+			}
+			if ((e2vertex2.x - e2vertex1.x) == 0) {
+				if (e2vertex1.x < raycastStartingPoint.x) {
+					continue;
+				}
+			}
+			float slopeOfThePair = (e2vertex2.y - e2vertex1.y) / (e2vertex2.x - e2vertex1.x);
+			float xValueOfRaycastsYValueIntersection = (raycastStartingPoint.y - e2vertex1.y + e2vertex1.x * slopeOfThePair) / slopeOfThePair;
+			if (xValueOfRaycastsYValueIntersection < raycastStartingPoint.x) {
+				continue;
+			}
+			else {
+				numberOfIntersections += 1;
+			}
+		}
+		if (numberOfIntersections & 1) {
+			centerOfVerticesInsideE2.x += vertexPos.x;
+			centerOfVerticesInsideE2.y += vertexPos.y;
+			numberOfVerticesInsideE2++;
+		}
+	}
+    sumOfInsiderPointsPositions.x = centerOfVerticesInsideE2.x;
+    sumOfInsiderPointsPositions.y = centerOfVerticesInsideE2.y;
+    return numberOfVerticesInsideE2;
 }
 
 namespace delaunator {
