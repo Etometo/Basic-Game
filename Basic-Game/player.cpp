@@ -297,6 +297,36 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
             std::cout << "OVERLAP LINE DIRECTION CHANGED" << std::endl;
         }
 
+        Vector2 forceApplicationPoint = { 0, 0 };
+
+        Vector2 centerOfVerticesInsideE2 = { 0, 0 };
+        int numberOfVerticesInsideE2 = CheckHowManyVerticesOfE1IsInE2(e1, e2, centerOfVerticesInsideE2);
+        if (numberOfVerticesInsideE2 == 0 || numberOfVerticesInsideE2 == 1) {
+            Vector2 centerOfVerticesInsideE1 = { 0, 0 };
+            int numberOfVerticesInsideE1 = CheckHowManyVerticesOfE1IsInE2(e2, e1, centerOfVerticesInsideE1);
+
+            if (numberOfVerticesInsideE1 != 0) {
+				centerOfVerticesInsideE1.x /= numberOfVerticesInsideE1;
+				centerOfVerticesInsideE1.y /= numberOfVerticesInsideE1;
+            }
+
+            if (numberOfVerticesInsideE2 == 1) {
+				centerOfVerticesInsideE2.x /= numberOfVerticesInsideE2;
+				centerOfVerticesInsideE2.y /= numberOfVerticesInsideE2;
+
+				forceApplicationPoint.x = (centerOfVerticesInsideE1.x + centerOfVerticesInsideE2.x) / 2;
+				forceApplicationPoint.y = (centerOfVerticesInsideE1.y + centerOfVerticesInsideE2.y) / 2;
+            }
+            else {
+				forceApplicationPoint = centerOfVerticesInsideE1;
+            }
+        }
+        else{
+			centerOfVerticesInsideE2.x /= numberOfVerticesInsideE2;
+			centerOfVerticesInsideE2.y /= numberOfVerticesInsideE2;
+            forceApplicationPoint = centerOfVerticesInsideE2;
+        }
+
         float totalMass = e1->mass + e2->mass;
         
         if (totalMass > 0.0f && abs(minOverlap) > 0.2) {
@@ -371,86 +401,6 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
         }
 
 
-        Vector2 forceApplicationPoint = { 0, 0 };
-
-
-        Vector2 centerOfVerticesInsideE2 = { 0, 0 };
-        int numberOfVerticesInsideE2 = CheckHowManyVerticesOfE1IsInE2(e1, e2, centerOfVerticesInsideE2);
-
-        if (numberOfVerticesInsideE2 == 0 || numberOfVerticesInsideE2 == 1) {
-			float e1xMax = 0;
-			float e1yMax = 0;
-			float e1xMin = 0;
-			float e1yMin = 0;
-			for (int i = 0; i < e1->vertexDataEnd - e1->vertexData; i++) {
-				Vector2 vertexPos = e1->vertexData[i].position;
-				vertexPos.x += e1->centerPosition.x;
-				vertexPos.y += e1->centerPosition.y;
-				e1xMin = vertexPos.x < e1xMin ? vertexPos.x : e1xMin;
-				e1yMin = vertexPos.y < e1yMin ? vertexPos.y : e1yMin;
-				e1xMax = vertexPos.x > e1xMax ? vertexPos.x : e1xMax;
-				e1yMax = vertexPos.y > e1yMax ? vertexPos.y : e1yMax;
-			}
-
-            Vector2 centerOfVerticesInsideE1 = { 0, 0 };
-			int numberOfVerticesInsideE1 = 0;
-			for (int i = 0; i < e2->vertexDataEnd - e2->vertexData; i++) {
-				Vector2 vertexPos;
-				vertexPos = e2->vertexData[i].position;
-				vertexPos.x += e2->centerPosition.x;
-				vertexPos.y += e2->centerPosition.y;
-				if (vertexPos.x < e1xMin || vertexPos.x > e1xMax || vertexPos.y < e1yMin || vertexPos.y > e1yMax){
-					continue;
-				} 
-				Vector2 raycastStartingPoint = vertexPos;
-				Vector2 raycastDirection = { 1, 0 };
-				Vector2 e1vertex1, e1vertex2;
-				unsigned int numberOfIntersections = 0;
-				for (int j = 0; j < e1->vertexDataEnd - e1->vertexData - 1; j++) {
-                    e1vertex1 = { e1->vertexData[j].position.x + e1->centerPosition.x, e1->vertexData[j].position.y + e1->centerPosition.y };
-                    e1vertex2 = { e1->vertexData[j + 1].position.x + e1->centerPosition.x, e1->vertexData[j + 1].position.y + e1->centerPosition.y };
-					if ((raycastStartingPoint.y < e1vertex1.y && raycastStartingPoint.y < e1vertex2.y) || (raycastStartingPoint.y > e1vertex1.y && raycastStartingPoint.y > e1vertex2.y)) {
-						continue;
-					}
-					if ((e1vertex2.x - e1vertex1.x) == 0) {
-						if (e1vertex1.x < raycastStartingPoint.x) {
-							continue;
-						}
-					}
-					float slopeOfThePair = (e1vertex2.y - e1vertex1.y) / (e1vertex2.x - e1vertex1.x);
-					float xValueOfRaycastsYValueIntersection = (raycastStartingPoint.y - e1vertex1.y + e1vertex1.x * slopeOfThePair) / slopeOfThePair;
-					if (xValueOfRaycastsYValueIntersection < raycastStartingPoint.x) {
-						continue;
-					}
-					else {
-						numberOfIntersections += 1;
-					}
-				}
-				if (numberOfIntersections & 1) {
-					centerOfVerticesInsideE1.x += vertexPos.x;
-					centerOfVerticesInsideE1.y += vertexPos.y;
-					numberOfVerticesInsideE1++;
-				}
-			}
-            centerOfVerticesInsideE1.x /= numberOfVerticesInsideE1;
-            centerOfVerticesInsideE1.y /= numberOfVerticesInsideE1;
-
-            if (numberOfVerticesInsideE2 == 1) {
-				centerOfVerticesInsideE2.x /= numberOfVerticesInsideE2;
-				centerOfVerticesInsideE2.y /= numberOfVerticesInsideE2;
-
-				forceApplicationPoint.x = (centerOfVerticesInsideE1.x + centerOfVerticesInsideE2.x) / 2;
-				forceApplicationPoint.y = (centerOfVerticesInsideE1.y + centerOfVerticesInsideE2.y) / 2;
-            }
-            else {
-				forceApplicationPoint = centerOfVerticesInsideE1;
-            }
-        }
-        else{
-			centerOfVerticesInsideE2.x /= numberOfVerticesInsideE2;
-			centerOfVerticesInsideE2.y /= numberOfVerticesInsideE2;
-            forceApplicationPoint = centerOfVerticesInsideE2;
-        }
 
         
         
