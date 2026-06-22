@@ -16,9 +16,9 @@ int main() {
 		gameState->arena.used = 0;
 		gameState->arena.capacity = 150 * 1024 - sizeof(GameState);
 		gameState->entitiesCapacity = 100;
-		gameState->goalFps = 60;
+		gameState->goalFps = 165;
 		gameState->isInitialized = true;
-		gameState->gravityConstant = 98 * 2 * 0;
+		gameState->gravityConstant = 98 * 2;
 		gameState->nextAvailableId = 0;
 	}
 
@@ -47,25 +47,25 @@ int main() {
 	player->centerPosition = { 300, 70 };
 	Entity* player2 = InitializeAndPushEntity(gameState, rectData, rectDataEnd, 0.1, GRAVITY_FLAG);
 	player2->centerPosition = { 300, 200 };
+	player2->frictionCons = 0;
+	player2->elasticity = 0.2;
 	
 	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, 0x2);
 	floor->centerPosition = { 400, 600 };
-	floor->frictionCons = 0.4;
+	floor->frictionCons = 0.6;
 
 	InitWindow(800, 800, "asd");
-	SetTargetFPS(65);
+	SetTargetFPS(gameState->goalFps);
 	Entity** relevantEntities = (Entity**)PushSize(gameState, sizeof(Entity*) * 20);
 	int numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, player, relevantEntities, 0);
 	std::cout << numOfRelevantEntities << " is the number of importants first importants ";
 
-	bool playerJumped = false;
 	while (!WindowShouldClose()) {
-		std::cout << "Frame number " << gameState->frameCount << "is starting" << std::endl << std::endl;
+		//std::cout << "Frame number " << gameState->frameCount << "is starting" << std::endl << std::endl;
 		BeginDrawing();
 			ClearBackground(RAYWHITE);
 			if (IsKeyPressed(KEY_W)) {
-				ApplyForceToEntity(player, { 0, -1000 });
-				playerJumped = true;
+				ApplyForceToEntity(player, { 0, -500 });
 			}
 			if (IsKeyDown(KEY_S)) {
 				ApplyForceToEntity(player, { 0, 20 });
@@ -75,6 +75,8 @@ int main() {
 			}
 			if (IsKeyDown(KEY_D)) {
 				ApplyForceToEntity(player, { 20, 0 });
+			}
+			if (IsKeyPressed(KEY_E)) {
 			}
 
 			for (int i = 0; i < gameState->addedEntities; i++) {
@@ -106,7 +108,7 @@ int main() {
 			}
 
 		EndDrawing();
-		std::cout << "Frame number " << gameState->frameCount++ << "has ended" << std::endl << std::endl;
+		//std::cout << "Frame number " << gameState->frameCount++ << "has ended" << std::endl << std::endl;
 		//throw std::runtime_error("asd");
 	}
 	RetractSize(gameState, sizeof(Entity*) * 20);
