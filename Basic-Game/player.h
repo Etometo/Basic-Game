@@ -12,9 +12,12 @@ typedef struct VertexData {
 };
 
 enum {
-	GRAVITY_FLAG = 0x1,
-	NON_MOVING_FLAG = 0x2,
-	PLAYER_FLAG = 0x4,
+	GRAVITY_FLAG = 1,
+	NON_MOVING_FLAG = 2,
+	PLAYER_FLAG = 4,
+	GROUND_COLLISION_FLAG = 8,
+	ENTITY_COLLISION_FLAG = 16,
+	COLLISION_FLAGS = GROUND_COLLISION_FLAG + ENTITY_COLLISION_FLAG,
 };
 
 typedef struct Entity {
@@ -36,10 +39,16 @@ typedef struct Entity {
 	Vector2 speed = {0, 0};
 	Vector2 lastSpeed;
 	float frictionCons = 0;
+
+	uint32_t gridRowIdx, gridColumnIdx;
 	
 };
 
-Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags);
+//Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags);
+
+Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags, Vector2 centerPos);
+
+void CalibrateEntityWithGrid(GameState* gameState, Entity* e);
 
 void DrawEntity(Entity* player);
 

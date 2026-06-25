@@ -18,8 +18,26 @@ int main() {
 		gameState->entitiesCapacity = 100;
 		gameState->goalFps = 165;
 		gameState->isInitialized = true;
-		gameState->gravityConstant = 98 * 2;
-		gameState->nextAvailableId = 0;
+		gameState->gravityConstant = 98 * 4;
+		gameState->nextAvailableId = 1;
+		gameState->WINDOW_HEIGHT = 800;
+		gameState->WINDOW_WIDTH = 800;
+		gameState->gridSquareEdgeLength = 100;
+	}
+	int numberOfPartitionsOnWidthAxis = gameState->WINDOW_WIDTH / gameState->gridSquareEdgeLength;
+	int numberOfPartitionsOnHeightAxis = gameState->WINDOW_HEIGHT / gameState->gridSquareEdgeLength;
+	if (gameState->WINDOW_HEIGHT % gameState->gridSquareEdgeLength != 0) { numberOfPartitionsOnHeightAxis++; }
+	if (gameState->WINDOW_WIDTH % gameState->gridSquareEdgeLength != 0) { numberOfPartitionsOnWidthAxis++; }
+	int numOfIdsPerCell = 10;
+	gameState->spatialGrid = (uint32_t*)PushSize(gameState, numberOfPartitionsOnHeightAxis * numberOfPartitionsOnWidthAxis * sizeof(uint32_t) * numOfIdsPerCell);
+	gameState->gridDimentions[0] = numberOfPartitionsOnHeightAxis;
+	gameState->gridDimentions[1] = numberOfPartitionsOnWidthAxis;
+	gameState->gridDimentions[2] = numOfIdsPerCell;
+	
+	for (int i = 0; i < numberOfPartitionsOnWidthAxis; i++) {
+		for (int j = 0; j < numberOfPartitionsOnHeightAxis; j++) {
+
+		}
 	}
 
 	VertexData* rectData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
@@ -38,23 +56,29 @@ int main() {
 
 	VertexData* triData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 3);
 	VertexData* triDataEnd = triData;
-	*(triDataEnd++) = VertexData{ 50, 50 };
-	*(triDataEnd++) = VertexData{ 50, -50 };
-	*(triDataEnd++) = VertexData{ -50, -50 };
+	*(triDataEnd++) = VertexData{ 33.3333f,  33.3333f };
+	*(triDataEnd++) = VertexData{ 33.3333f, -66.6667f };
+	*(triDataEnd++) = VertexData{ -66.6667f,  33.3333f };
 
-	uint32_t playerFlags = GRAVITY_FLAG | PLAYER_FLAG;
-	Entity* player = InitializeAndPushEntity(gameState, rectData, rectDataEnd, 0.1, playerFlags);
-	player->centerPosition = { 300, 70 };
-	Entity* player2 = InitializeAndPushEntity(gameState, rectData, rectDataEnd, 0.1, GRAVITY_FLAG);
-	player2->centerPosition = { 300, 200 };
-	player2->frictionCons = 0;
+	VertexData* tri2Data = (VertexData*)PushSize(gameState, sizeof(VertexData) * 3);
+	VertexData* tri2DataEnd = tri2Data;
+	*(tri2DataEnd++) = VertexData{ -33.3333f, -33.3333f };
+	*(tri2DataEnd++) = VertexData{ -33.3333f,  66.6667f };
+	*(tri2DataEnd++) = VertexData{ 66.6667f, -33.3333f };
+
+	uint32_t playerFlags = GRAVITY_FLAG | PLAYER_FLAG | GROUND_COLLISION_FLAG;
+	Vector2 playerCenterPos = { 400, 301 };
+	Entity* player = InitializeAndPushEntity(gameState, tri2Data, tri2DataEnd, 0.1, playerFlags, playerCenterPos);
+	Vector2 player2CenterPos = { 300, 200 };
+	Entity* player2 = InitializeAndPushEntity(gameState, triData, triDataEnd, 0.1, GRAVITY_FLAG | GROUND_COLLISION_FLAG, player2CenterPos);
+	player2->frictionCons = 4.9;
 	player2->elasticity = 0.2;
 	
-	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, 0x2);
-	floor->centerPosition = { 400, 600 };
-	floor->frictionCons = 0.6;
+	Vector2 floorCenterPos = { 400, 600 };
+	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, NON_MOVING_FLAG | GROUND_COLLISION_FLAG, floorCenterPos);
+	floor->frictionCons = 0.9;
 
-	InitWindow(800, 800, "asd");
+	InitWindow(gameState->WINDOW_WIDTH, gameState->WINDOW_HEIGHT, "asd");
 	SetTargetFPS(gameState->goalFps);
 	Entity** relevantEntities = (Entity**)PushSize(gameState, sizeof(Entity*) * 20);
 	int numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, player, relevantEntities, 0);
@@ -65,7 +89,11 @@ int main() {
 		BeginDrawing();
 			ClearBackground(RAYWHITE);
 			if (IsKeyPressed(KEY_W)) {
-				ApplyForceToEntity(player, { 0, -500 });
+				float jumpForce = (float)(-1000 * GetFPS() / 65);
+				if (GetFPS() > 165) {
+					jumpForce = (float)(-1000 * 165 / 65);
+				}
+				ApplyForceToEntity(player, { 0, jumpForce});
 			}
 			if (IsKeyDown(KEY_S)) {
 				ApplyForceToEntity(player, { 0, 20 });
@@ -99,9 +127,13 @@ int main() {
 				entity->speed.y += entity->acceleration.y * deltaTime;
 
 				MoveEntity(entity);
+				CalibrateEntityWithGrid(gameState, entity);
 				DrawEntity(entity);
-				if (entity->flags & PLAYER_FLAG) {
+				if (entity->flags & PLAYER_FLAG && entity->netForce.y < -1) {
 					//std::cout << "Net force on the player: (" << entity->netForce.x << ", " << entity->netForce.y << ") " << std::endl;
+					//std::cout << "FPS: " << GetFPS() << std::endl;
+					std::cout << "grid pos of the player(row, column): " << entity->gridRowIdx << ", " << entity->gridColumnIdx << std::endl;
+					std::cout << "Num of relevant entities: " << numOfRelevantEntities << std::endl;
 				}
 				DrawEntityForceLine(entity);
 				entity->netForce = { 0, 0 };

@@ -11,6 +11,7 @@
 #include <raylib.h>
 #include "GameState.h"
 
+
 Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags) {
 	if (vertexDataEnd - vertexData < 3) {
 		throw std::runtime_error("At least 3 vertices for the player");
@@ -35,10 +36,7 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
     centerOfTheShape.x /= vertexCount;
     centerOfTheShape.y /= vertexCount;
 
-    for (int i = 0; i < vertexCount; i++) {
-        inertia += massPerVertex * (powf(vertexData[i].position.x - centerOfTheShape.x, 2) + powf(vertexData[i].position.y - centerOfTheShape.y, 2));
-    }
-
+	returnPointer->centerPosition = centerOfTheShape;
 	returnPointer->triangulationIndices = indices;
 	returnPointer->triangulationIndicesEnd = indicesEnd;
     returnPointer->isPlayer = true;
@@ -46,11 +44,73 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
     returnPointer->mass = mass;
     returnPointer->flags |= flags;
     returnPointer->id = gameState->nextAvailableId++;
-    returnPointer->inertia = inertia;
 
 	return returnPointer;
 }
 
+Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags, Vector2 centerPos) {
+    Entity* returnPointer = InitializeAndPushEntity(gameState, vertexData, vertexDataEnd, mass, flags);
+    returnPointer->centerPosition.x += centerPos.x;
+    returnPointer->centerPosition.y += centerPos.y;
+    CalibrateEntityWithGrid(gameState, returnPointer);
+    
+    return returnPointer;
+}
+
+void CalibrateEntityWithGrid(GameState* gameState, Entity* e) {
+    //even though unsigned int can't be -1 this still works because it gets a crazy big value
+    if (!(e->gridColumnIdx == -1 && e->gridRowIdx == -1)) {
+		uint32_t* cellArray = gameState->spatialGrid + ((e->gridRowIdx * gameState->gridDimentions[0] + e->gridColumnIdx) * gameState->gridDimentions[2]);
+		for (int j = 0; j < gameState->gridDimentions[2]; j++) {
+			if (cellArray[j] == e->id) {
+                cellArray[j] = 0;
+			}
+		}
+    }
+
+    Vector2 centerPos = e->centerPosition;
+    if ((centerPos.x < 0 || centerPos.x >= gameState->WINDOW_WIDTH) || (centerPos.y < 0 || centerPos.y >= gameState->WINDOW_HEIGHT)){
+		e->gridColumnIdx = -1;
+		e->gridRowIdx = -1;
+		for (int i = 0; i < e->vertexDataEnd - e->vertexData; i++) {
+			VertexData vertex = e->vertexData[i];
+            vertex.position.x += e->centerPosition.x;
+            vertex.position.y += e->centerPosition.y;
+			if ((vertex.position.x < 0 || vertex.position.x >= gameState->WINDOW_WIDTH) || (vertex.position.y < 0 || vertex.position.y >= gameState->WINDOW_HEIGHT)) {
+				continue;
+			}
+			int gridRowIdx = (int)vertex.position.y / gameState->gridSquareEdgeLength;
+            int gridColumnIdx = (int)vertex.position.x / gameState->gridSquareEdgeLength;
+            uint32_t* cellArray = gameState->spatialGrid + ((gridRowIdx * gameState->gridDimentions[0] + gridColumnIdx) * gameState->gridDimentions[2]);
+            e->gridColumnIdx = gridColumnIdx;
+            e->gridRowIdx = gridRowIdx;
+            for (int j = 0; j < gameState->gridDimentions[2]; j++) {
+                if (cellArray[j] == 0) {
+                    cellArray[j] = e->id;
+                    return;
+                }
+                if (cellArray[j] == e->id) {
+                    return;
+                }
+            }
+		}
+        return;
+    }
+	int gridRowIdx = (int)centerPos.y / gameState->gridSquareEdgeLength;
+	int gridColumnIdx = (int)centerPos.x / gameState->gridSquareEdgeLength;
+	e->gridColumnIdx = gridColumnIdx;
+	e->gridRowIdx = gridRowIdx;
+	uint32_t* cellArray = gameState->spatialGrid + ((gridRowIdx * gameState->gridDimentions[0] + gridColumnIdx) * gameState->gridDimentions[2]);
+	for (int j = 0; j < gameState->gridDimentions[2]; j++) {
+		if (cellArray[j] == 0) {
+			cellArray[j] = e->id;
+			return;
+		}
+		if (cellArray[j] == e->id) {
+			return;
+		}
+	}
+}
 void PrintVector(Vector2 vec) {
     std::cout << "(X: " << vec.x << " ,Y: " << vec.y << " )" ;
 }
@@ -96,7 +156,7 @@ void MoveEntity(Entity* player) {
         return;
     }
 
-    if ((player->flags & PLAYER_FLAG) > 0 && player->lastSpeed.y - player->speed.y > 1 && player->lastSpeed.y != 0){
+    /*if ((player->flags & PLAYER_FLAG) > 0 && player->lastSpeed.y - player->speed.y > 1 && player->lastSpeed.y != 0) {
         std::cout << "Players speed: ";
         PrintVector(player->speed);
         std::cout << std::endl;
@@ -104,21 +164,24 @@ void MoveEntity(Entity* player) {
         Vector2 speedDiff = { player->lastSpeed.x - player->speed.x, player->lastSpeed.y - player->speed.y };
         PrintVector(speedDiff);
         std::cout << std::endl;
+    }*/
+    float frameTime = GetFrameTime();
+    if (frameTime != 0) {
+		player->centerPosition.x += player->speed.x * frameTime;
+		player->centerPosition.y += player->speed.y * frameTime;
     }
-    player->centerPosition.x += player->speed.x * GetFrameTime();
-    player->centerPosition.y += player->speed.y * GetFrameTime();
     player->lastSpeed = player->speed;
 }
 
 void ApplyForceToEntity(Entity* player, Vector2 mov) {
     player->netForce.x += mov.x;
     player->netForce.y += mov.y;
-    if ((player->flags & PLAYER_FLAG) && mov.y < -800) {
+    /*if ((player->flags & PLAYER_FLAG) && mov.y < -800) {
         std::cout << "Force applied on the player: ";
         PrintVector(mov);
         std::cout << std::endl;
         //throw std::runtime_error("sad");
-    }
+    }*/
 }
 
 float square(float f1) {
@@ -130,12 +193,23 @@ float distance(Vector2 v1, Vector2 v2) {
 }
 
 int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** relevanEntities, int startOffset) {
-    Entity* entities = gameState->entities + startOffset;
+    Entity* entities = gameState->entities;
     Entity** relevantEntitiesEnd = relevanEntities;
 
-    for (int i = 0; 0 < (gameState->entities + gameState->addedEntities) - (entities + i); i++) {
-        if (distance(entities[i].centerPosition, entity->centerPosition) < 300 && distance(entities[i].centerPosition, entity->centerPosition) != 0) {
-            *(relevantEntitiesEnd++) = entities + i;
+    for (int i = -2; i < 3; i++) {
+        for (int j = -2; j < 3; j++) {
+            int cellRowPosition = i + entity->gridRowIdx;
+            int cellColumnPosition = j + entity->gridColumnIdx;
+            if (cellRowPosition < 0 || cellColumnPosition < 0 || cellRowPosition >= gameState->gridDimentions[0] || cellColumnPosition >= gameState->gridDimentions[1]) {
+                continue;
+            }
+			uint32_t* cellArray = gameState->spatialGrid + ((cellRowPosition * gameState->gridDimentions[0] + cellColumnPosition) * gameState->gridDimentions[2]);
+            for (int k = 0; k < gameState->gridDimentions[2]; k++) {
+                //the ids are one added to their indexes on entities array
+                if (cellArray[k] != 0 && cellArray[k] != entity->id && (cellArray[k] - 1) >= startOffset) {
+					*(relevantEntitiesEnd++) = entities + (cellArray[k] - 1);
+                }
+            }
         }
     }
     return relevantEntitiesEnd - relevanEntities;
@@ -164,8 +238,10 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
     
     //stupid comment change later
     //because we go over every pair twice if we skip this other calculation will be done anyways
+    if (((e1->flags & e2->flags) & COLLISION_FLAGS) == 0) { return; }
     if ((e1->flags & NON_MOVING_FLAG) > 0) { 
         return; }
+
     double minOverlap = DBL_MAX;
     Vector3 overlapLine;
 
@@ -219,9 +295,14 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
             if (projectedLen > player1Up) {
                 player1Up = projectedLen;
             }
-            else if (projectedLen < player1Down) {
+            if (projectedLen < player1Down) {
                 player1Down = projectedLen;
             }
+            /*std::cout << "on line: ";
+            PrintVector(normal);
+            std::cout << "\nProjected len for vertex: ";
+            PrintVector(posVector);
+            std::cout << " is : " << projectedLen << std::endl;*/
         }
 
         for (int j = 0; j < e2NumOfVertices; j++) {
@@ -234,7 +315,7 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
             if (projectedLen > player2Up) {
                 player2Up = projectedLen;
             }
-            else if (projectedLen < player2Down) {
+            if (projectedLen < player2Down) {
                 player2Down = projectedLen;
             }
         }
@@ -244,6 +325,7 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
         std::cout << "Players up and downs: " << std::endl;
         std::cout << "Player1Up: " << player1Up << " player1Down: " << player1Down << std::endl;
         std::cout << "Player2Up: " << player2Up << " player2Down: " << player2Down << std::endl;*/
+
 
         if (player1Up <= player2Down || player2Up <= player1Down) {
             minOverlap = 0;
@@ -291,9 +373,11 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
                 }
             }
         }
+		if (e1->id == 1 && (minOverlap == DBL_MAX || minOverlap == 0) && (i == (e1NumOfVertices + e2NumOfVertices - 1))) {
+			//throw std::runtime_error("as");
+		}
     }
     if (minOverlap == DBL_MAX || minOverlap == 0) {
-
     }
     else {
         Vector3 diffOfPositions;
@@ -310,7 +394,7 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
             normalizedOverlapLine.x *= -1;
             normalizedOverlapLine.y *= -1;
             normalizedOverlapLine.z *= -1;
-            std::cout << "OVERLAP LINE DIRECTION CHANGED" << std::endl;
+            //std::cout << "OVERLAP LINE DIRECTION CHANGED" << std::endl;
         }
 
 
@@ -347,27 +431,20 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
 
         float totalMass = e1->mass + e2->mass;
         
-        /*
+        
         if (totalMass > 0.0f && abs(minOverlap) > 0.3) {
-            if ((e1->flags & NON_MOVING_FLAG) > 0) {
-				e2->centerPosition.x += normalizedOverlapLine.x * minOverlap;
-				e2->centerPosition.y += normalizedOverlapLine.y * minOverlap;
-            }
-            else if ((e2->flags & NON_MOVING_FLAG) > 0) {
-				e1->centerPosition.x -= normalizedOverlapLine.x * minOverlap;
-				e1->centerPosition.y -= normalizedOverlapLine.y * minOverlap;
-            }
-            else {
-				float push1 = (e2->mass / totalMass) * minOverlap;
-				float push2 = (e1->mass / totalMass) * minOverlap;
+			float push1 = (e2->mass / totalMass) * (minOverlap - 0.3);
+			float push2 = (e1->mass / totalMass) * (minOverlap - 0.3);
 
+            if ((e1->flags & NON_MOVING_FLAG) == 0) {
 				e1->centerPosition.x -= normalizedOverlapLine.x * push1;
 				e1->centerPosition.y -= normalizedOverlapLine.y * push1;
-
+            }
+            if ((e2->flags & NON_MOVING_FLAG) == 0) {
 				e2->centerPosition.x += normalizedOverlapLine.x * push2;
 				e2->centerPosition.y += normalizedOverlapLine.y * push2;
             }
-        }*/
+        }
 
         Vector3 relativeVel;
         relativeVel.x = e1->speed.x - e2->speed.x;
@@ -383,7 +460,7 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
         relativeForce.y = e1->netForce.y - e2->netForce.y;
         relativeForce.z = 0;
 
-
+        
         float e;
         if ((e1->flags | e2->flags) & NON_MOVING_FLAG) {
             e = 0;
@@ -560,16 +637,16 @@ unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sum
 }
 
 void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDir) {
-        Vector2 netForceDueToFriction = {0, 0};
+        Vector2 netForceAfterFriction = {0, 0};
 		Vector3 currentSpeed = {e->speed.x, e->speed.y, 0};
 		Vector3 speedAfterFriction;
 		Vector2 acceleration;
 
-		netForceDueToFriction.x += normalizedFrictionAxis.x * frictionMagnitude * frictionDir;
-		netForceDueToFriction.y += normalizedFrictionAxis.y * frictionMagnitude * frictionDir;
+		netForceAfterFriction.x += normalizedFrictionAxis.x * frictionMagnitude * frictionDir;
+		netForceAfterFriction.y += normalizedFrictionAxis.y * frictionMagnitude * frictionDir;
 		
-		acceleration.x = netForceDueToFriction.x / e->mass;
-		acceleration.y = netForceDueToFriction.y / e->mass;
+		acceleration.x = netForceAfterFriction.x / e->mass;
+		acceleration.y = netForceAfterFriction.y / e->mass;
 		
         float deltaTime = GetFrameTime();
 		speedAfterFriction.x = currentSpeed.x + acceleration.x * deltaTime;
@@ -582,6 +659,24 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
 			e->speed.x = 0;
 			e->speed.y = 0;
 			std::cout << "Player stopped" << std::endl;
+
+            Vector3 k = { 0, 0, 1 };
+            Vector3 normalAxis;
+            CrossProduct(normalizedFrictionAxis, k, normalAxis);
+            float normalAxisLen = sqrt(pow(normalAxis.x, 2) + pow(normalAxis.y, 2));
+            normalAxis.x /= normalAxisLen;
+            normalAxis.y /= normalAxisLen;
+            normalAxis.z /= normalAxisLen;
+            Vector3 netForce;
+            netForce.x = e->netForce.x;
+            netForce.y = e->netForce.y;
+            netForce.z = 0;
+
+            float projectedNetForce = DotProduct(normalAxis, netForce) / normalAxisLen;
+            e->netForce.x = normalAxis.x * projectedNetForce;
+            e->netForce.y = normalAxis.y * projectedNetForce;
+            //e->netForce.x = 0;
+            //e->netForce.y = 0;
             //throw std::runtime_error("when you push one with another they frequently stop and go again it flickers");
 		}
         else {
