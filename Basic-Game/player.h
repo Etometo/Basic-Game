@@ -40,8 +40,9 @@ typedef struct Entity {
 	Vector2 lastSpeed;
 	float frictionCons = 0;
 
-	uint32_t gridRowIdx, gridColumnIdx;
-	
+	//two dimentional, contains pair elements the first one being the row index the second one being the column index
+	uint32_t* gridIdxes; 
+	uint32_t gridIdxesSize;
 };
 
 //Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags);

@@ -28,7 +28,7 @@ int main() {
 	int numberOfPartitionsOnHeightAxis = gameState->WINDOW_HEIGHT / gameState->gridSquareEdgeLength;
 	if (gameState->WINDOW_HEIGHT % gameState->gridSquareEdgeLength != 0) { numberOfPartitionsOnHeightAxis++; }
 	if (gameState->WINDOW_WIDTH % gameState->gridSquareEdgeLength != 0) { numberOfPartitionsOnWidthAxis++; }
-	int numOfIdsPerCell = 10;
+	int numOfIdsPerCell = 50;
 	gameState->spatialGrid = (uint32_t*)PushSize(gameState, numberOfPartitionsOnHeightAxis * numberOfPartitionsOnWidthAxis * sizeof(uint32_t) * numOfIdsPerCell);
 	gameState->gridDimentions[0] = numberOfPartitionsOnHeightAxis;
 	gameState->gridDimentions[1] = numberOfPartitionsOnWidthAxis;
@@ -65,6 +65,7 @@ int main() {
 	*(tri2DataEnd++) = VertexData{ -33.3333f, -33.3333f };
 	*(tri2DataEnd++) = VertexData{ -33.3333f,  66.6667f };
 	*(tri2DataEnd++) = VertexData{ 66.6667f, -33.3333f };
+	spatial grid gets  filled with the same values for the entire cell at some point
 
 	uint32_t playerFlags = GRAVITY_FLAG | PLAYER_FLAG | GROUND_COLLISION_FLAG;
 	Vector2 playerCenterPos = { 400, 301 };
@@ -76,7 +77,7 @@ int main() {
 	
 	Vector2 floorCenterPos = { 400, 600 };
 	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, NON_MOVING_FLAG | GROUND_COLLISION_FLAG, floorCenterPos);
-	floor->frictionCons = 0.9;
+	floor->frictionCons = 0.1;
 
 	InitWindow(gameState->WINDOW_WIDTH, gameState->WINDOW_HEIGHT, "asd");
 	SetTargetFPS(gameState->goalFps);
@@ -132,7 +133,7 @@ int main() {
 				if (entity->flags & PLAYER_FLAG && entity->netForce.y < -1) {
 					//std::cout << "Net force on the player: (" << entity->netForce.x << ", " << entity->netForce.y << ") " << std::endl;
 					//std::cout << "FPS: " << GetFPS() << std::endl;
-					std::cout << "grid pos of the player(row, column): " << entity->gridRowIdx << ", " << entity->gridColumnIdx << std::endl;
+					//std::cout << "grid pos of the player(row, column): " << entity->gridRowIdx << ", " << entity->gridColumnIdx << std::endl;
 					std::cout << "Num of relevant entities: " << numOfRelevantEntities << std::endl;
 				}
 				DrawEntityForceLine(entity);
@@ -147,5 +148,3 @@ int main() {
 	CloseWindow();
 	return 0;
 }
-
-

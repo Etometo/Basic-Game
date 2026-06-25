@@ -52,62 +52,44 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
     Entity* returnPointer = InitializeAndPushEntity(gameState, vertexData, vertexDataEnd, mass, flags);
     returnPointer->centerPosition.x += centerPos.x;
     returnPointer->centerPosition.y += centerPos.y;
+    returnPointer->gridIdxes = (uint32_t*)PushSize(gameState, (returnPointer->vertexDataEnd - returnPointer->vertexData) * 2 * sizeof(uint32_t));
     CalibrateEntityWithGrid(gameState, returnPointer);
     
     return returnPointer;
 }
 
 void CalibrateEntityWithGrid(GameState* gameState, Entity* e) {
-    //even though unsigned int can't be -1 this still works because it gets a crazy big value
-    if (!(e->gridColumnIdx == -1 && e->gridRowIdx == -1)) {
-		uint32_t* cellArray = gameState->spatialGrid + ((e->gridRowIdx * gameState->gridDimentions[0] + e->gridColumnIdx) * gameState->gridDimentions[2]);
+    for (int i = 0; i < e->gridIdxesSize; i++) {
+        uint32_t rowIdx = *(e->gridIdxes + (i * 2)), columnIdx = *(e->gridIdxes + (i * 2) + 1);
+		uint32_t* cellArray = gameState->spatialGrid + ((rowIdx * gameState->gridDimentions[0] + columnIdx) * gameState->gridDimentions[2]);
 		for (int j = 0; j < gameState->gridDimentions[2]; j++) {
 			if (cellArray[j] == e->id) {
                 cellArray[j] = 0;
+                break;
 			}
 		}
     }
-
-    Vector2 centerPos = e->centerPosition;
-    if ((centerPos.x < 0 || centerPos.x >= gameState->WINDOW_WIDTH) || (centerPos.y < 0 || centerPos.y >= gameState->WINDOW_HEIGHT)){
-		e->gridColumnIdx = -1;
-		e->gridRowIdx = -1;
-		for (int i = 0; i < e->vertexDataEnd - e->vertexData; i++) {
-			VertexData vertex = e->vertexData[i];
-            vertex.position.x += e->centerPosition.x;
-            vertex.position.y += e->centerPosition.y;
-			if ((vertex.position.x < 0 || vertex.position.x >= gameState->WINDOW_WIDTH) || (vertex.position.y < 0 || vertex.position.y >= gameState->WINDOW_HEIGHT)) {
-				continue;
+	for (int i = 0; i < e->vertexDataEnd - e->vertexData; i++) {
+		VertexData vertex = e->vertexData[i];
+		vertex.position.x += e->centerPosition.x;
+		vertex.position.y += e->centerPosition.y;
+		if ((vertex.position.x < 0 || vertex.position.x >= gameState->WINDOW_WIDTH) || (vertex.position.y < 0 || vertex.position.y >= gameState->WINDOW_HEIGHT)) {
+			//even though unsigned int can't be -1 this still works because it gets a crazy big value
+            *(e->gridIdxes + (i * 2)) = -1;
+            *(e->gridIdxes + (i * 2) + 1) = -1;
+			continue;
+		}
+		int gridRowIdx = (int)vertex.position.y / gameState->gridSquareEdgeLength;
+		int gridColumnIdx = (int)vertex.position.x / gameState->gridSquareEdgeLength;
+		uint32_t* cellArray = gameState->spatialGrid + ((gridRowIdx * gameState->gridDimentions[0] + gridColumnIdx) * gameState->gridDimentions[2]);
+        int numOfEntitiesIdInCell = 0;
+		for (int j = 0; j < gameState->gridDimentions[2]; j++) {
+			if (cellArray[j] == 0 && numOfEntitiesIdInCell == 0) {
+				cellArray[j] = e->id;
+				*(e->gridIdxes + (i * 2)) = gridRowIdx;
+				*(e->gridIdxes + (i * 2) + 1) = gridColumnIdx;
+                break;
 			}
-			int gridRowIdx = (int)vertex.position.y / gameState->gridSquareEdgeLength;
-            int gridColumnIdx = (int)vertex.position.x / gameState->gridSquareEdgeLength;
-            uint32_t* cellArray = gameState->spatialGrid + ((gridRowIdx * gameState->gridDimentions[0] + gridColumnIdx) * gameState->gridDimentions[2]);
-            e->gridColumnIdx = gridColumnIdx;
-            e->gridRowIdx = gridRowIdx;
-            for (int j = 0; j < gameState->gridDimentions[2]; j++) {
-                if (cellArray[j] == 0) {
-                    cellArray[j] = e->id;
-                    return;
-                }
-                if (cellArray[j] == e->id) {
-                    return;
-                }
-            }
-		}
-        return;
-    }
-	int gridRowIdx = (int)centerPos.y / gameState->gridSquareEdgeLength;
-	int gridColumnIdx = (int)centerPos.x / gameState->gridSquareEdgeLength;
-	e->gridColumnIdx = gridColumnIdx;
-	e->gridRowIdx = gridRowIdx;
-	uint32_t* cellArray = gameState->spatialGrid + ((gridRowIdx * gameState->gridDimentions[0] + gridColumnIdx) * gameState->gridDimentions[2]);
-	for (int j = 0; j < gameState->gridDimentions[2]; j++) {
-		if (cellArray[j] == 0) {
-			cellArray[j] = e->id;
-			return;
-		}
-		if (cellArray[j] == e->id) {
-			return;
 		}
 	}
 }
@@ -196,14 +178,14 @@ int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** 
     Entity* entities = gameState->entities;
     Entity** relevantEntitiesEnd = relevanEntities;
 
+	int centerRowPosition = (int)entity->centerPosition.y / (int)gameState->gridSquareEdgeLength;
+	int centerColumnPosition = (int)entity->centerPosition.x / (int)gameState->gridSquareEdgeLength;            
     for (int i = -2; i < 3; i++) {
         for (int j = -2; j < 3; j++) {
-            int cellRowPosition = i + entity->gridRowIdx;
-            int cellColumnPosition = j + entity->gridColumnIdx;
-            if (cellRowPosition < 0 || cellColumnPosition < 0 || cellRowPosition >= gameState->gridDimentions[0] || cellColumnPosition >= gameState->gridDimentions[1]) {
+            if (centerRowPosition + i < 0 || centerRowPosition + i >= gameState->gridDimentions[0] || centerColumnPosition + j < 0 || centerColumnPosition + j>= gameState->gridDimentions[1]) {
                 continue;
             }
-			uint32_t* cellArray = gameState->spatialGrid + ((cellRowPosition * gameState->gridDimentions[0] + cellColumnPosition) * gameState->gridDimentions[2]);
+			uint32_t* cellArray = gameState->spatialGrid + (((centerRowPosition + i) * gameState->gridDimentions[0] + (centerColumnPosition + j)) * gameState->gridDimentions[2]);
             for (int k = 0; k < gameState->gridDimentions[2]; k++) {
                 //the ids are one added to their indexes on entities array
                 if (cellArray[k] != 0 && cellArray[k] != entity->id && (cellArray[k] - 1) >= startOffset) {
