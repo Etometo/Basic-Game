@@ -65,7 +65,7 @@ int main() {
 	*(tri2DataEnd++) = VertexData{ -33.3333f, -33.3333f };
 	*(tri2DataEnd++) = VertexData{ -33.3333f,  66.6667f };
 	*(tri2DataEnd++) = VertexData{ 66.6667f, -33.3333f };
-	spatial grid gets  filled with the same values for the entire cell at some point
+	//spatial grid gets  filled with the same values for the entire cell at some point
 
 	uint32_t playerFlags = GRAVITY_FLAG | PLAYER_FLAG | GROUND_COLLISION_FLAG;
 	Vector2 playerCenterPos = { 400, 301 };

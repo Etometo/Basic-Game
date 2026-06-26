@@ -53,6 +53,7 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
     returnPointer->centerPosition.x += centerPos.x;
     returnPointer->centerPosition.y += centerPos.y;
     returnPointer->gridIdxes = (uint32_t*)PushSize(gameState, (returnPointer->vertexDataEnd - returnPointer->vertexData) * 2 * sizeof(uint32_t));
+    returnPointer->gridIdxesSize = returnPointer->vertexDataEnd - returnPointer->vertexData;
     CalibrateEntityWithGrid(gameState, returnPointer);
     
     return returnPointer;
@@ -61,6 +62,7 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
 void CalibrateEntityWithGrid(GameState* gameState, Entity* e) {
     for (int i = 0; i < e->gridIdxesSize; i++) {
         uint32_t rowIdx = *(e->gridIdxes + (i * 2)), columnIdx = *(e->gridIdxes + (i * 2) + 1);
+        if (rowIdx > 40000 || columnIdx > 40000) { continue; }
 		uint32_t* cellArray = gameState->spatialGrid + ((rowIdx * gameState->gridDimentions[0] + columnIdx) * gameState->gridDimentions[2]);
 		for (int j = 0; j < gameState->gridDimentions[2]; j++) {
 			if (cellArray[j] == e->id) {
@@ -69,6 +71,7 @@ void CalibrateEntityWithGrid(GameState* gameState, Entity* e) {
 			}
 		}
     }
+
 	for (int i = 0; i < e->vertexDataEnd - e->vertexData; i++) {
 		VertexData vertex = e->vertexData[i];
 		vertex.position.x += e->centerPosition.x;
@@ -194,6 +197,31 @@ int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** 
             }
         }
     }
+    uint32_t totalAllocatedSize = (relevantEntitiesEnd - relevanEntities) * sizeof(uint32_t);
+    Entity** uniqueItems = (Entity**)PushSize(gameState, totalAllocatedSize);
+    uint32_t numOfUniqueItems = 0;
+    
+    for (int i = 0; i < relevantEntitiesEnd - relevanEntities; i++) {
+        Entity* item = relevanEntities[i];
+        uint32_t count = 0;
+        for (int j = 0; j < numOfUniqueItems; j++) {
+            if (uniqueItems[j] == item) {
+                count++;
+            }
+        }
+        if (count == 0) {
+            uniqueItems[numOfUniqueItems] = item;
+            numOfUniqueItems++;
+        }
+    }
+
+    relevantEntitiesEnd = relevanEntities;
+    for (int j = 0; j < numOfUniqueItems; j++) {
+        *(relevantEntitiesEnd++) = uniqueItems[j];
+    }
+
+    RetractSize(gameState, totalAllocatedSize);
+
     return relevantEntitiesEnd - relevanEntities;
 }
 
