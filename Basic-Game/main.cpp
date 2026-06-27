@@ -72,7 +72,7 @@ int main() {
 	Entity* player = InitializeAndPushEntity(gameState, tri2Data, tri2DataEnd, 0.1, playerFlags, playerCenterPos);
 	Vector2 player2CenterPos = { 300, 200 };
 	Entity* player2 = InitializeAndPushEntity(gameState, triData, triDataEnd, 0.1, GRAVITY_FLAG | GROUND_COLLISION_FLAG, player2CenterPos);
-	player2->frictionCons = 4.9;
+	player2->frictionCons = 40.9;
 	player2->elasticity = 0.2;
 	
 	Vector2 floorCenterPos = { 400, 600 };
@@ -120,6 +120,7 @@ int main() {
 					CalculateAndApplyCollisionWithEntity(entity, relevantEntities[j]);
 				}
 
+				//throw std::runtime_error("look at the friction bug in the videos")
 				entity->acceleration.x = entity->netForce.x / entity->mass;
 				entity->acceleration.y = entity->netForce.y / entity->mass;
 

@@ -181,18 +181,18 @@ int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** 
     Entity* entities = gameState->entities;
     Entity** relevantEntitiesEnd = relevanEntities;
 
-	int centerRowPosition = (int)entity->centerPosition.y / (int)gameState->gridSquareEdgeLength;
-	int centerColumnPosition = (int)entity->centerPosition.x / (int)gameState->gridSquareEdgeLength;            
+    int centerRowPosition = (int)entity->centerPosition.y / (int)gameState->gridSquareEdgeLength;
+    int centerColumnPosition = (int)entity->centerPosition.x / (int)gameState->gridSquareEdgeLength;
     for (int i = -2; i < 3; i++) {
         for (int j = -2; j < 3; j++) {
-            if (centerRowPosition + i < 0 || centerRowPosition + i >= gameState->gridDimentions[0] || centerColumnPosition + j < 0 || centerColumnPosition + j>= gameState->gridDimentions[1]) {
+            if (centerRowPosition + i < 0 || centerRowPosition + i >= gameState->gridDimentions[0] || centerColumnPosition + j < 0 || centerColumnPosition + j >= gameState->gridDimentions[1]) {
                 continue;
             }
-			uint32_t* cellArray = gameState->spatialGrid + (((centerRowPosition + i) * gameState->gridDimentions[0] + (centerColumnPosition + j)) * gameState->gridDimentions[2]);
+            uint32_t* cellArray = gameState->spatialGrid + (((centerRowPosition + i) * gameState->gridDimentions[0] + (centerColumnPosition + j)) * gameState->gridDimentions[2]);
             for (int k = 0; k < gameState->gridDimentions[2]; k++) {
                 //the ids are one added to their indexes on entities array
                 if (cellArray[k] != 0 && cellArray[k] != entity->id && (cellArray[k] - 1) >= startOffset) {
-					*(relevantEntitiesEnd++) = entities + (cellArray[k] - 1);
+                    *(relevantEntitiesEnd++) = entities + (cellArray[k] - 1);
                 }
             }
         }
@@ -200,7 +200,7 @@ int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** 
     uint32_t totalAllocatedSize = (relevantEntitiesEnd - relevanEntities) * sizeof(uint32_t);
     Entity** uniqueItems = (Entity**)PushSize(gameState, totalAllocatedSize);
     uint32_t numOfUniqueItems = 0;
-    
+
     for (int i = 0; i < relevantEntitiesEnd - relevanEntities; i++) {
         Entity* item = relevanEntities[i];
         uint32_t count = 0;
@@ -529,7 +529,7 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
                 ApplyFrictionToEntity(e1, frictionAxis, frictionMagnitude, frictionDir);
 
                 if (!(e2->flags & NON_MOVING_FLAG) && false) {
-                    //ApplyFrictionToEntity(e2, frictionAxis, frictionMagnitude, frictionDir);
+                    ApplyFrictionToEntity(e2, frictionAxis, frictionMagnitude, frictionDir);
                 }
                 //throw std::runtime_error("asd");
 			}
@@ -663,14 +663,14 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
 		speedAfterFriction.y = currentSpeed.y + acceleration.y * deltaTime;
 		speedAfterFriction.z = 0;
 
-        float netForceOnObject = sqrt(pow(e->netForce.x, 2) + pow(e->netForce.y, 2));
+        float netForceOnObject = sqrt(pow(netForceAfterFriction.x, 2) + pow(netForceAfterFriction.y, 2));
 
-		if (DotProduct(speedAfterFriction, currentSpeed) < 0 && netForceOnObject < 0.5) {
+		if (DotProduct(speedAfterFriction, currentSpeed) < 0) {
 			e->speed.x = 0;
 			e->speed.y = 0;
 			std::cout << "Player stopped" << std::endl;
 
-            Vector3 k = { 0, 0, 1 };
+            Vector3 k = { 0, 0, -1 };
             Vector3 normalAxis;
             CrossProduct(normalizedFrictionAxis, k, normalAxis);
             float normalAxisLen = sqrt(pow(normalAxis.x, 2) + pow(normalAxis.y, 2));
@@ -685,6 +685,12 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
             float projectedNetForce = DotProduct(normalAxis, netForce) / normalAxisLen;
             e->netForce.x = normalAxis.x * projectedNetForce;
             e->netForce.y = normalAxis.y * projectedNetForce;
+            if (e->flags & PLAYER_FLAG) {
+                std::cout << "Player net force: ";
+                PrintVector(e->netForce);
+                std::cout << std::endl;
+
+            }
             //e->netForce.x = 0;
             //e->netForce.y = 0;
             //throw std::runtime_error("when you push one with another they frequently stop and go again it flickers");
