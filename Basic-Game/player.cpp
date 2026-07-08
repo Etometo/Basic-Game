@@ -140,7 +140,11 @@ void MoveEntity(Entity* player) {
     if ((player->flags & NON_MOVING_FLAG) > 0) {
         return;
     }
-
+    if ((player->flags & PLAYER_FLAG) > 0) {
+        std::cout << "Players speed: ";
+        PrintVector(player->speed);
+        std::cout << std::endl;
+    }
     /*if ((player->flags & PLAYER_FLAG) > 0 && player->lastSpeed.y - player->speed.y > 1 && player->lastSpeed.y != 0) {
         std::cout << "Players speed: ";
         PrintVector(player->speed);
@@ -242,6 +246,10 @@ void NormalVector(Vector3& vector, Vector3& normalVector) {
 
 double DotProduct(Vector3& vec1, Vector3& vec2) {
     return vec1.x * vec2.x + vec1.y * vec2.y + vec1.z * vec2.z;
+}
+
+double DotProduct(Vector3& vec1, Vector2& vec2) {
+    return vec1.x * vec2.x + vec1.y * vec2.y;
 }
 
 void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
@@ -488,6 +496,15 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
         float j = -(1.0 + e) * velAlongNormal;
         j /= sumOfInverseMasses;
 
+        /*
+        if (velAlongNormal < 20) {
+            std::cout << "speed canceled" << std::endl;
+            j = 0;
+            //e1's speed is bigger then e2's so we just make them equal
+            e1->speed.x = e2->speed.x;
+            e1->speed.y = e2->speed.y;
+        }*/
+
         float deltaTime = GetFrameTime();
         Vector3 impulse;
         impulse.x = j * normalizedOverlapLine.x;
@@ -512,6 +529,7 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
         float relativeVelOnFrictionAxis;
         int frictionDir;
         float frictionMagnitude;
+        float relativeForceOnFrictionAxis;
         if(e1->frictionCons != 0 || e2->frictionCons != 0){
             float frictionConst = e1->frictionCons > e2->frictionCons ? e1->frictionCons : e2->frictionCons;
 			Vector3 k = { 0, 0, 1 };
@@ -522,21 +540,30 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
 			frictionAxis.y /= frictionAxisMagnitude;
 			relativeVelOnFrictionAxis = DotProduct(relativeVel, frictionAxis);
 
-			if (relativeVelOnFrictionAxis != 0) {
-				frictionDir = -relativeVelOnFrictionAxis / abs(relativeVelOnFrictionAxis);
+			relativeForce.x = e1->netForce.x - e2->netForce.x;
+			relativeForce.y = e1->netForce.y - e2->netForce.y;
+			relativeForce.z = 0;
+            relativeForceOnFrictionAxis = DotProduct(relativeForce, frictionAxis);
+
+			if (relativeVelOnFrictionAxis != 0 || abs(relativeForceOnFrictionAxis) > 0) {
 				frictionMagnitude = normalRelativeForce * frictionConst;
+                if (relativeVelOnFrictionAxis == 0) {
+                    frictionDir = -relativeForceOnFrictionAxis / abs(relativeForceOnFrictionAxis);
+                }
+                else {
+					frictionDir = -relativeVelOnFrictionAxis / abs(relativeVelOnFrictionAxis);
+                }
 
                 ApplyFrictionToEntity(e1, frictionAxis, frictionMagnitude, frictionDir);
-
-                if (!(e2->flags & NON_MOVING_FLAG) && false) {
-                    ApplyFrictionToEntity(e2, frictionAxis, frictionMagnitude, frictionDir);
-                }
-                //throw std::runtime_error("asd");
 			}
 		}
        //throw std::runtime_error("look at the videos for the jumping bug");
-
         return;
+
+        if ((e1->flags & PLAYER_FLAG) && (e2->flags & NON_MOVING_FLAG)) {
+            std::cout << "player floor collision" << std::endl;
+        }
+
         if ((e1->flags & PLAYER_FLAG) && (e2->flags & NON_MOVING_FLAG)) {
             std::cout << "Player's position: (" << e1->centerPosition.x << ", " << e1->centerPosition.y << ") " << std::endl;
             std::cout << "Force application point: (" << forceApplicationPoint.x << ", " << forceApplicationPoint.y << ") " << std::endl;
@@ -663,9 +690,24 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
 		speedAfterFriction.y = currentSpeed.y + acceleration.y * deltaTime;
 		speedAfterFriction.z = 0;
 
-        float netForceOnObject = sqrt(pow(netForceAfterFriction.x, 2) + pow(netForceAfterFriction.y, 2));
+        float netForceOnObjectAfterFriction = sqrt(pow(netForceAfterFriction.x, 2) + pow(netForceAfterFriction.y, 2));
 
-		if (DotProduct(speedAfterFriction, currentSpeed) < 0) {
+		if (e->flags & PLAYER_FLAG) {
+            std::cout << "Player friction" << std::endl;
+		}
+        bool objectIsntMoving = false;
+        if (currentSpeed.x == 0 && currentSpeed.y == 0 && currentSpeed.z == 0) {
+            objectIsntMoving = true;
+        }
+        bool frictionBiggerThanNetForceOnFrictionAxis = false;
+        if(objectIsntMoving) {
+            float currentNetForceOnFrictionAxis = DotProduct(normalizedFrictionAxis, e->netForce);
+            if (currentNetForceOnFrictionAxis <= frictionMagnitude) {
+                frictionBiggerThanNetForceOnFrictionAxis = true;
+            }
+        }
+
+		if ((DotProduct(speedAfterFriction, currentSpeed) < 0) || (objectIsntMoving && frictionBiggerThanNetForceOnFrictionAxis)) {
 			e->speed.x = 0;
 			e->speed.y = 0;
 			std::cout << "Player stopped" << std::endl;

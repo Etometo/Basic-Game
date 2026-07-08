@@ -72,13 +72,14 @@ int main() {
 	Entity* player = InitializeAndPushEntity(gameState, tri2Data, tri2DataEnd, 0.1, playerFlags, playerCenterPos);
 	Vector2 player2CenterPos = { 300, 200 };
 	Entity* player2 = InitializeAndPushEntity(gameState, triData, triDataEnd, 0.1, GRAVITY_FLAG | GROUND_COLLISION_FLAG, player2CenterPos);
-	player2->frictionCons = 40.9;
-	player2->elasticity = 0.2;
+	player2->frictionCons = 200.9;
+	player2->elasticity = 0;
 	
 	Vector2 floorCenterPos = { 400, 600 };
 	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, NON_MOVING_FLAG | GROUND_COLLISION_FLAG, floorCenterPos);
 	floor->frictionCons = 0.1;
 
+	throw std::runtime_error("do the rotation stuff and fix the very little impulses preventing objects from staying on top of each other");
 	InitWindow(gameState->WINDOW_WIDTH, gameState->WINDOW_HEIGHT, "asd");
 	SetTargetFPS(gameState->goalFps);
 	Entity** relevantEntities = (Entity**)PushSize(gameState, sizeof(Entity*) * 20);
@@ -86,7 +87,7 @@ int main() {
 	std::cout << numOfRelevantEntities << " is the number of importants first importants ";
 
 	while (!WindowShouldClose()) {
-		//std::cout << "Frame number " << gameState->frameCount << "is starting" << std::endl << std::endl;
+		std::cout << "Frame number " << gameState->frameCount << "is starting" << std::endl << std::endl;
 		BeginDrawing();
 			ClearBackground(RAYWHITE);
 			if (IsKeyPressed(KEY_W)) {
@@ -142,7 +143,7 @@ int main() {
 			}
 
 		EndDrawing();
-		//std::cout << "Frame number " << gameState->frameCount++ << "has ended" << std::endl << std::endl;
+		std::cout << "Frame number " << gameState->frameCount++ << "has ended" << std::endl << std::endl;
 		//throw std::runtime_error("asd");
 	}
 	RetractSize(gameState, sizeof(Entity*) * 20);
