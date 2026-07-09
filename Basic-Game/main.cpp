@@ -16,7 +16,7 @@ int main() {
 		gameState->arena.used = 0;
 		gameState->arena.capacity = 150 * 1024 - sizeof(GameState);
 		gameState->entitiesCapacity = 100;
-		gameState->goalFps = 165;
+		gameState->goalFps = 60;
 		gameState->isInitialized = true;
 		gameState->gravityConstant = 98 * 4;
 		gameState->nextAvailableId = 1;
@@ -70,7 +70,8 @@ int main() {
 	uint32_t playerFlags = GRAVITY_FLAG | PLAYER_FLAG | GROUND_COLLISION_FLAG;
 	Vector2 playerCenterPos = { 400, 301 };
 	Entity* player = InitializeAndPushEntity(gameState, tri2Data, tri2DataEnd, 0.1, playerFlags, playerCenterPos);
-	Vector2 player2CenterPos = { 300, 200 };
+	player->isPlayer = true;
+	Vector2 player2CenterPos = { 500, 200 };
 	Entity* player2 = InitializeAndPushEntity(gameState, triData, triDataEnd, 0.1, GRAVITY_FLAG | GROUND_COLLISION_FLAG, player2CenterPos);
 	player2->frictionCons = 200.9;
 	player2->elasticity = 0;
@@ -79,7 +80,7 @@ int main() {
 	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, NON_MOVING_FLAG | GROUND_COLLISION_FLAG, floorCenterPos);
 	floor->frictionCons = 0.1;
 
-	throw std::runtime_error("do the rotation stuff and fix the very little impulses preventing objects from staying on top of each other");
+	//throw std::runtime_error("do the rotation stuff and fix the very little impulses preventing objects from staying on top of each other");
 	InitWindow(gameState->WINDOW_WIDTH, gameState->WINDOW_HEIGHT, "asd");
 	SetTargetFPS(gameState->goalFps);
 	Entity** relevantEntities = (Entity**)PushSize(gameState, sizeof(Entity*) * 20);
@@ -125,7 +126,7 @@ int main() {
 				entity->acceleration.x = entity->netForce.x / entity->mass;
 				entity->acceleration.y = entity->netForce.y / entity->mass;
 
-				float deltaTime = GetFrameTime();
+				float deltaTime = GetDeltaTime();
 				entity->speed.x += entity->acceleration.x * deltaTime;
 				entity->speed.y += entity->acceleration.y * deltaTime;
 

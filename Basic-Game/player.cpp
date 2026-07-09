@@ -11,6 +11,13 @@
 #include <raylib.h>
 #include "GameState.h"
 
+float GetDeltaTime() {
+    float frameTime = GetFrameTime();
+    if (frameTime > 0.1) {
+        return 0.1;
+    }
+    return frameTime;
+}
 
 Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags) {
 	if (vertexDataEnd - vertexData < 3) {
@@ -39,7 +46,6 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
 	returnPointer->centerPosition = centerOfTheShape;
 	returnPointer->triangulationIndices = indices;
 	returnPointer->triangulationIndicesEnd = indicesEnd;
-    returnPointer->isPlayer = true;
     returnPointer->color = { 255, 0, 0, 255 };
     returnPointer->mass = mass;
     returnPointer->flags |= flags;
@@ -102,9 +108,6 @@ void PrintVector(Vector2 vec) {
 
 void PrintVector(Vector3 vec) {
     std::cout << "(X: " << vec.x << " ,Y: " << vec.y << " ,Z: " << vec.z << " )" ;
-    if (sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z) < 1) {
-        throw std::runtime_error("asd");
-    }
 }
 void DrawEntity(Entity* player) {
 	for (int i = 0; i < player->triangulationIndicesEnd - player->triangulationIndices; i += 3) {
@@ -154,10 +157,14 @@ void MoveEntity(Entity* player) {
         PrintVector(speedDiff);
         std::cout << std::endl;
     }*/
-    float frameTime = GetFrameTime();
-    if (frameTime != 0) {
+    float frameTime = GetDeltaTime();
+    if (frameTime != 0 && frameTime < 0.01) {
 		player->centerPosition.x += player->speed.x * frameTime;
 		player->centerPosition.y += player->speed.y * frameTime;
+    }
+    else if (frameTime > 0.01) {
+		player->centerPosition.x += player->speed.x * 0.01;
+		player->centerPosition.y += player->speed.y * 0.01;
     }
     player->lastSpeed = player->speed;
 }
@@ -252,6 +259,9 @@ double DotProduct(Vector3& vec1, Vector2& vec2) {
     return vec1.x * vec2.x + vec1.y * vec2.y;
 }
 
+double DotProduct(Vector2& vec1, Vector2& vec2) {
+    return vec1.x * vec2.x + vec1.y * vec2.y;
+}
 void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
     
     //stupid comment change later
@@ -450,6 +460,7 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
         float totalMass = e1->mass + e2->mass;
         
         
+        
         if (totalMass > 0.0f && abs(minOverlap) > 0.3) {
 			float push1 = (e2->mass / totalMass) * (minOverlap - 0.3);
 			float push2 = (e1->mass / totalMass) * (minOverlap - 0.3);
@@ -505,7 +516,7 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
             e1->speed.y = e2->speed.y;
         }*/
 
-        float deltaTime = GetFrameTime();
+        float deltaTime = GetDeltaTime();
         Vector3 impulse;
         impulse.x = j * normalizedOverlapLine.x;
         impulse.y = j * normalizedOverlapLine.y;
@@ -515,6 +526,15 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
         //forces are pulling them apart they won't increase the normal force
         if (normalRelativeForce < 0) {
             normalRelativeForce = 0;
+        }
+
+        Vector2 currentMomentum = { e1->speed.x * e1->mass, e1->speed.y * e1->mass };
+        Vector2 newMomentum = { currentMomentum.x + impulse.x, currentMomentum.y + impulse.y };
+        float newMomentumMagnitude = sqrt(pow(newMomentum.x, 2) + pow(newMomentum.y, 2));
+        if (DotProduct(currentMomentum, newMomentum) < 0 && newMomentumMagnitude < 1) {
+            impulse.x = -currentMomentum.x;
+            impulse.y = -currentMomentum.y;
+            std::cout << "player momentum vanished" << std::endl;
         }
 
         ApplyForceToEntity(e1, {impulse.x / deltaTime, impulse.y / deltaTime});
@@ -554,6 +574,9 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
 					frictionDir = -relativeVelOnFrictionAxis / abs(relativeVelOnFrictionAxis);
                 }
 
+                if (e1->flags & PLAYER_FLAG) {
+                    std::cout << " ";
+                }
                 ApplyFrictionToEntity(e1, frictionAxis, frictionMagnitude, frictionDir);
 			}
 		}
@@ -685,7 +708,7 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
 		acceleration.x = netForceAfterFriction.x / e->mass;
 		acceleration.y = netForceAfterFriction.y / e->mass;
 		
-        float deltaTime = GetFrameTime();
+        float deltaTime = GetDeltaTime();
 		speedAfterFriction.x = currentSpeed.x + acceleration.x * deltaTime;
 		speedAfterFriction.y = currentSpeed.y + acceleration.y * deltaTime;
 		speedAfterFriction.z = 0;
@@ -702,16 +725,12 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
         bool frictionBiggerThanNetForceOnFrictionAxis = false;
         if(objectIsntMoving) {
             float currentNetForceOnFrictionAxis = DotProduct(normalizedFrictionAxis, e->netForce);
-            if (currentNetForceOnFrictionAxis <= frictionMagnitude) {
+            if (abs(currentNetForceOnFrictionAxis) <= frictionMagnitude) {
                 frictionBiggerThanNetForceOnFrictionAxis = true;
             }
         }
 
 		if ((DotProduct(speedAfterFriction, currentSpeed) < 0) || (objectIsntMoving && frictionBiggerThanNetForceOnFrictionAxis)) {
-			e->speed.x = 0;
-			e->speed.y = 0;
-			std::cout << "Player stopped" << std::endl;
-
             Vector3 k = { 0, 0, -1 };
             Vector3 normalAxis;
             CrossProduct(normalizedFrictionAxis, k, normalAxis);
@@ -724,6 +743,12 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
             netForce.y = e->netForce.y;
             netForce.z = 0;
 
+            //the impulse isnt applied to the speed yet that might be the problem
+            float speedOnNormal = DotProduct(normalAxis, e->speed) / normalAxisLen;
+			e->speed.x = speedOnNormal * normalAxis.x;
+			e->speed.y = speedOnNormal * normalAxis.y;
+			std::cout << "Player stopped" << std::endl;
+
             float projectedNetForce = DotProduct(normalAxis, netForce) / normalAxisLen;
             e->netForce.x = normalAxis.x * projectedNetForce;
             e->netForce.y = normalAxis.y * projectedNetForce;
@@ -731,7 +756,12 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
                 std::cout << "Player net force: ";
                 PrintVector(e->netForce);
                 std::cout << std::endl;
-
+                std::cout << "friction axis: ";
+                PrintVector(normalizedFrictionAxis);
+                std::cout << std::endl;
+                std::cout << "normal axis: ";
+                PrintVector(normalAxis);
+                std::cout << std::endl;
             }
             //e->netForce.x = 0;
             //e->netForce.y = 0;

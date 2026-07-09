@@ -47,6 +47,8 @@ typedef struct Entity {
 
 //Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags);
 
+float GetDeltaTime();
+
 Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags, Vector2 centerPos);
 
 void CalibrateEntityWithGrid(GameState* gameState, Entity* e);
