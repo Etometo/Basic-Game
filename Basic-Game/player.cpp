@@ -262,13 +262,16 @@ double DotProduct(Vector3& vec1, Vector2& vec2) {
 double DotProduct(Vector2& vec1, Vector2& vec2) {
     return vec1.x * vec2.x + vec1.y * vec2.y;
 }
-void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
-    
+CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2) {
+
     //stupid comment change later
     //because we go over every pair twice if we skip this other calculation will be done anyways
-    if (((e1->flags & e2->flags) & COLLISION_FLAGS) == 0) { return; }
-    if ((e1->flags & NON_MOVING_FLAG) > 0) { 
-        return; }
+    CollisionInfo collInfo;
+    collInfo.minOverlap = 0;
+    if (((e1->flags & e2->flags) & COLLISION_FLAGS) == 0) { return collInfo; }
+    if ((e1->flags & NON_MOVING_FLAG) > 0) {
+        return collInfo;
+    }
 
     double minOverlap = DBL_MAX;
     Vector3 overlapLine;
@@ -294,7 +297,7 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
         else {
             int a = i - (e1NumOfVertices);
             vertex1 = AddVectors(e2->vertexData[a].position, e2->centerPosition);
-            if (a + 1 >= e2NumOfVertices) { 
+            if (a + 1 >= e2NumOfVertices) {
                 vertex2 = AddVectors(e2->vertexData[0].position, e2->centerPosition);
             }
             else {
@@ -347,7 +350,7 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
                 player2Down = projectedLen;
             }
         }
-        
+
         /*std::cout << std::endl << "Normal: ";
         PrintVector(normal);
         std::cout << "Players up and downs: " << std::endl;
@@ -401,11 +404,14 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
                 }
             }
         }
-		if (e1->id == 1 && (minOverlap == DBL_MAX || minOverlap == 0) && (i == (e1NumOfVertices + e2NumOfVertices - 1))) {
-			//throw std::runtime_error("as");
-		}
+        if (e1->id == 1 && (minOverlap == DBL_MAX || minOverlap == 0) && (i == (e1NumOfVertices + e2NumOfVertices - 1))) {
+            //throw std::runtime_error("as");
+        }
     }
     if (minOverlap == DBL_MAX || minOverlap == 0) {
+        collInfo.minOverlap = 0;
+        collInfo.normalizedOverlapLine = { 0, 0, 0 };
+        return collInfo;
     }
     else {
         Vector3 diffOfPositions;
@@ -415,7 +421,7 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
 
         float overlapLineLength = sqrt(pow(overlapLine.x, 2) + pow(overlapLine.y, 2));
 
-        Vector3 normalizedOverlapLine = { overlapLine.x / overlapLineLength, overlapLine.y / overlapLineLength , 0};
+        Vector3 normalizedOverlapLine = { overlapLine.x / overlapLineLength, overlapLine.y / overlapLineLength , 0 };
 
         if (DotProduct(diffOfPositions, overlapLine) < 0) {
             //minOverlap *= -1;
@@ -425,164 +431,165 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
             //std::cout << "OVERLAP LINE DIRECTION CHANGED" << std::endl;
         }
 
+        collInfo.normalizedOverlapLine = normalizedOverlapLine;
+        collInfo.minOverlap = minOverlap;
+        return collInfo;
+    }
+}
 
-        Vector2 forceApplicationPoint = { 0, 0 };
+Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2) {
+	Vector2 forceApplicationPoint = { 0, 0 };
 
-        Vector2 centerOfVerticesInsideE2 = { 0, 0 };
-        int numberOfVerticesInsideE2 = CheckHowManyVerticesOfE1IsInE2(e1, e2, centerOfVerticesInsideE2);
-        if (numberOfVerticesInsideE2 == 0 || numberOfVerticesInsideE2 == 1) {
-            Vector2 centerOfVerticesInsideE1 = { 0, 0 };
-            int numberOfVerticesInsideE1 = CheckHowManyVerticesOfE1IsInE2(e2, e1, centerOfVerticesInsideE1);
+	Vector2 centerOfVerticesInsideE2 = { 0, 0 };
+	int numberOfVerticesInsideE2 = CheckHowManyVerticesOfE1IsInE2(e1, e2, centerOfVerticesInsideE2);
+	if (numberOfVerticesInsideE2 == 0 || numberOfVerticesInsideE2 == 1) {
+		Vector2 centerOfVerticesInsideE1 = { 0, 0 };
+		int numberOfVerticesInsideE1 = CheckHowManyVerticesOfE1IsInE2(e2, e1, centerOfVerticesInsideE1);
 
-            if (numberOfVerticesInsideE1 != 0) {
-				centerOfVerticesInsideE1.x /= numberOfVerticesInsideE1;
-				centerOfVerticesInsideE1.y /= numberOfVerticesInsideE1;
-            }
+		if (numberOfVerticesInsideE1 != 0) {
+			centerOfVerticesInsideE1.x /= numberOfVerticesInsideE1;
+			centerOfVerticesInsideE1.y /= numberOfVerticesInsideE1;
+		}
 
-            if (numberOfVerticesInsideE2 == 1) {
-				centerOfVerticesInsideE2.x /= numberOfVerticesInsideE2;
-				centerOfVerticesInsideE2.y /= numberOfVerticesInsideE2;
-
-				forceApplicationPoint.x = (centerOfVerticesInsideE1.x + centerOfVerticesInsideE2.x) / 2;
-				forceApplicationPoint.y = (centerOfVerticesInsideE1.y + centerOfVerticesInsideE2.y) / 2;
-            }
-            else {
-				forceApplicationPoint = centerOfVerticesInsideE1;
-            }
-        }
-        else{
+		if (numberOfVerticesInsideE2 == 1) {
 			centerOfVerticesInsideE2.x /= numberOfVerticesInsideE2;
 			centerOfVerticesInsideE2.y /= numberOfVerticesInsideE2;
-            forceApplicationPoint = centerOfVerticesInsideE2;
+
+			forceApplicationPoint.x = (centerOfVerticesInsideE1.x + centerOfVerticesInsideE2.x) / 2;
+			forceApplicationPoint.y = (centerOfVerticesInsideE1.y + centerOfVerticesInsideE2.y) / 2;
+		}
+		else {
+			forceApplicationPoint = centerOfVerticesInsideE1;
+		}
+	}
+	else{
+		centerOfVerticesInsideE2.x /= numberOfVerticesInsideE2;
+		centerOfVerticesInsideE2.y /= numberOfVerticesInsideE2;
+		forceApplicationPoint = centerOfVerticesInsideE2;
+	}
+
+    return forceApplicationPoint;
+}
+
+void HandlePushImpulseAndFriction(Entity* e1, Entity* e2, CollisionInfo collInfo) {
+    float totalMass = e1->mass + e2->mass;
+
+    if (totalMass > 0.0f && abs(collInfo.minOverlap) > 0.3) {
+        float push1 = (e2->mass / totalMass) * (collInfo.minOverlap - 0.3);
+        float push2 = (e1->mass / totalMass) * (collInfo.minOverlap - 0.3);
+
+        if ((e1->flags & NON_MOVING_FLAG) == 0) {
+            e1->centerPosition.x -= collInfo.normalizedOverlapLine.x * push1;
+            e1->centerPosition.y -= collInfo.normalizedOverlapLine.y * push1;
         }
-
-
-        float totalMass = e1->mass + e2->mass;
-        
-        
-        
-        if (totalMass > 0.0f && abs(minOverlap) > 0.3) {
-			float push1 = (e2->mass / totalMass) * (minOverlap - 0.3);
-			float push2 = (e1->mass / totalMass) * (minOverlap - 0.3);
-
-            if ((e1->flags & NON_MOVING_FLAG) == 0) {
-				e1->centerPosition.x -= normalizedOverlapLine.x * push1;
-				e1->centerPosition.y -= normalizedOverlapLine.y * push1;
-            }
-            if ((e2->flags & NON_MOVING_FLAG) == 0) {
-				e2->centerPosition.x += normalizedOverlapLine.x * push2;
-				e2->centerPosition.y += normalizedOverlapLine.y * push2;
-            }
+        if ((e2->flags & NON_MOVING_FLAG) == 0) {
+            e2->centerPosition.x += collInfo.normalizedOverlapLine.x * push2;
+            e2->centerPosition.y += collInfo.normalizedOverlapLine.y * push2;
         }
+    }
 
-        Vector3 relativeVel;
-        relativeVel.x = e1->speed.x - e2->speed.x;
-        relativeVel.y = e1->speed.y - e2->speed.y;
-        relativeVel.z = 0;
-        float velAlongNormal = DotProduct(relativeVel, normalizedOverlapLine);
-        if (velAlongNormal < 0) {
-            return;
-        }
+    Vector3 relativeVel;
+    relativeVel.x = e1->speed.x - e2->speed.x;
+    relativeVel.y = e1->speed.y - e2->speed.y;
+    relativeVel.z = 0;
+    float velAlongNormal = DotProduct(relativeVel, collInfo.normalizedOverlapLine);
+    if (velAlongNormal < 0) {
+        return;
+    }
 
-        Vector3 relativeForce;
+    Vector3 relativeForce;
+    relativeForce.x = e1->netForce.x - e2->netForce.x;
+    relativeForce.y = e1->netForce.y - e2->netForce.y;
+    relativeForce.z = 0;
+
+
+    float e;
+    if ((e1->flags | e2->flags) & NON_MOVING_FLAG) {
+        e = 0;
+    }
+    else {
+        e = e1->elasticity > e2->elasticity ? e1->elasticity : e2->elasticity;
+    }
+
+    float inv1mass = e1->flags & NON_MOVING_FLAG ? 0 : (1 / e1->mass);
+    float inv2mass = e2->flags & NON_MOVING_FLAG ? 0 : (1 / e2->mass);
+    float sumOfInverseMasses = inv1mass + inv2mass;
+    if (sumOfInverseMasses == 0.0f) {
+        return;
+    }
+    float j = -(1.0 + e) * velAlongNormal;
+    j /= sumOfInverseMasses;
+
+    float deltaTime = GetDeltaTime();
+    Vector3 impulse;
+    impulse.x = j * collInfo.normalizedOverlapLine.x;
+    impulse.y = j * collInfo.normalizedOverlapLine.y;
+    impulse.z = 0;
+
+    float normalRelativeForce = DotProduct(relativeForce, collInfo.normalizedOverlapLine);
+    //forces are pulling them apart they won't increase the normal force
+    if (normalRelativeForce < 0) {
+        normalRelativeForce = 0;
+    }
+
+    Vector2 currentMomentum = { e1->speed.x * e1->mass, e1->speed.y * e1->mass };
+    Vector2 newMomentum = { currentMomentum.x + impulse.x, currentMomentum.y + impulse.y };
+    float newMomentumMagnitude = sqrt(pow(newMomentum.x, 2) + pow(newMomentum.y, 2));
+    if (DotProduct(currentMomentum, newMomentum) < 0 && newMomentumMagnitude < 1) {
+        impulse.x = -currentMomentum.x;
+        impulse.y = -currentMomentum.y;
+        std::cout << "player momentum vanished" << std::endl;
+    }
+
+    e1->speed.x += impulse.x / e1->mass;
+    e1->speed.y += impulse.y / e1->mass;
+    ApplyForceToEntity(e1, { -normalRelativeForce * collInfo.normalizedOverlapLine.x, -normalRelativeForce * collInfo.normalizedOverlapLine.y });
+
+    if (!(e2->flags & NON_MOVING_FLAG)) {
+        e2->speed.x -= impulse.x / e2->mass;
+        e2->speed.y -= impulse.y / e2->mass;
+        ApplyForceToEntity(e2, { normalRelativeForce * collInfo.normalizedOverlapLine.x, normalRelativeForce * collInfo.normalizedOverlapLine.y });
+    }
+
+    float frictionAxisMagnitude;
+    float relativeVelOnFrictionAxis;
+    int frictionDir;
+    float frictionMagnitude;
+    float relativeForceOnFrictionAxis;
+    if (e1->frictionCons != 0 || e2->frictionCons != 0) {
+        float frictionConst = e1->frictionCons > e2->frictionCons ? e1->frictionCons : e2->frictionCons;
+        Vector3 k = { 0, 0, 1 };
+        Vector3 frictionAxis;
+        CrossProduct(collInfo.normalizedOverlapLine, k, frictionAxis);
+        frictionAxisMagnitude = sqrt(pow(frictionAxis.x, 2) + pow(frictionAxis.y, 2));
+        frictionAxis.x /= frictionAxisMagnitude;
+        frictionAxis.y /= frictionAxisMagnitude;
+        relativeVelOnFrictionAxis = DotProduct(relativeVel, frictionAxis);
+
         relativeForce.x = e1->netForce.x - e2->netForce.x;
         relativeForce.y = e1->netForce.y - e2->netForce.y;
         relativeForce.z = 0;
+        relativeForceOnFrictionAxis = DotProduct(relativeForce, frictionAxis);
 
-        
-        float e;
-        if ((e1->flags | e2->flags) & NON_MOVING_FLAG) {
-            e = 0;
+        if (relativeVelOnFrictionAxis != 0 || abs(relativeForceOnFrictionAxis) > 0) {
+            frictionMagnitude = normalRelativeForce * frictionConst;
+            if (relativeVelOnFrictionAxis == 0) {
+                frictionDir = -relativeForceOnFrictionAxis / abs(relativeForceOnFrictionAxis);
+            }
+            else {
+                frictionDir = -relativeVelOnFrictionAxis / abs(relativeVelOnFrictionAxis);
+            }
+
+            if (e1->flags & PLAYER_FLAG) {
+                std::cout << " ";
+            }
+            ApplyFrictionToEntity(e1, frictionAxis, frictionMagnitude, frictionDir);
         }
-        else {
-            e = e1->elasticity > e2->elasticity ? e1->elasticity : e2->elasticity;
-        }
-
-        float inv1mass = e1->flags & NON_MOVING_FLAG ? 0 : (1 / e1->mass);
-        float inv2mass = e2->flags & NON_MOVING_FLAG ? 0 : (1 / e2->mass);
-        float sumOfInverseMasses = inv1mass + inv2mass;
-        if (sumOfInverseMasses == 0.0f) {
-            return;
-        }
-        float j = -(1.0 + e) * velAlongNormal;
-        j /= sumOfInverseMasses;
-
-        /*
-        if (velAlongNormal < 20) {
-            std::cout << "speed canceled" << std::endl;
-            j = 0;
-            //e1's speed is bigger then e2's so we just make them equal
-            e1->speed.x = e2->speed.x;
-            e1->speed.y = e2->speed.y;
-        }*/
-
-        float deltaTime = GetDeltaTime();
-        Vector3 impulse;
-        impulse.x = j * normalizedOverlapLine.x;
-        impulse.y = j * normalizedOverlapLine.y;
-        impulse.z = 0;
-
-        float normalRelativeForce = DotProduct(relativeForce, normalizedOverlapLine);
-        //forces are pulling them apart they won't increase the normal force
-        if (normalRelativeForce < 0) {
-            normalRelativeForce = 0;
-        }
-
-        Vector2 currentMomentum = { e1->speed.x * e1->mass, e1->speed.y * e1->mass };
-        Vector2 newMomentum = { currentMomentum.x + impulse.x, currentMomentum.y + impulse.y };
-        float newMomentumMagnitude = sqrt(pow(newMomentum.x, 2) + pow(newMomentum.y, 2));
-        if (DotProduct(currentMomentum, newMomentum) < 0 && newMomentumMagnitude < 1) {
-            impulse.x = -currentMomentum.x;
-            impulse.y = -currentMomentum.y;
-            std::cout << "player momentum vanished" << std::endl;
-        }
-
-        ApplyForceToEntity(e1, {impulse.x / deltaTime, impulse.y / deltaTime});
-        ApplyForceToEntity(e1, {-normalRelativeForce * normalizedOverlapLine.x, -normalRelativeForce * normalizedOverlapLine.y});
-
-        if (!(e2->flags & NON_MOVING_FLAG)) {
-			ApplyForceToEntity(e2, {-impulse.x / deltaTime, -impulse.y / deltaTime});
-			ApplyForceToEntity(e2, {normalRelativeForce * normalizedOverlapLine.x, normalRelativeForce * normalizedOverlapLine.y});
-        }
-
-        float frictionAxisMagnitude;
-        float relativeVelOnFrictionAxis;
-        int frictionDir;
-        float frictionMagnitude;
-        float relativeForceOnFrictionAxis;
-        if(e1->frictionCons != 0 || e2->frictionCons != 0){
-            float frictionConst = e1->frictionCons > e2->frictionCons ? e1->frictionCons : e2->frictionCons;
-			Vector3 k = { 0, 0, 1 };
-			Vector3 frictionAxis;
-			CrossProduct(normalizedOverlapLine, k, frictionAxis);
-			frictionAxisMagnitude = sqrt(pow(frictionAxis.x, 2) + pow(frictionAxis.y, 2));
-			frictionAxis.x /= frictionAxisMagnitude;
-			frictionAxis.y /= frictionAxisMagnitude;
-			relativeVelOnFrictionAxis = DotProduct(relativeVel, frictionAxis);
-
-			relativeForce.x = e1->netForce.x - e2->netForce.x;
-			relativeForce.y = e1->netForce.y - e2->netForce.y;
-			relativeForce.z = 0;
-            relativeForceOnFrictionAxis = DotProduct(relativeForce, frictionAxis);
-
-			if (relativeVelOnFrictionAxis != 0 || abs(relativeForceOnFrictionAxis) > 0) {
-				frictionMagnitude = normalRelativeForce * frictionConst;
-                if (relativeVelOnFrictionAxis == 0) {
-                    frictionDir = -relativeForceOnFrictionAxis / abs(relativeForceOnFrictionAxis);
-                }
-                else {
-					frictionDir = -relativeVelOnFrictionAxis / abs(relativeVelOnFrictionAxis);
-                }
-
-                if (e1->flags & PLAYER_FLAG) {
-                    std::cout << " ";
-                }
-                ApplyFrictionToEntity(e1, frictionAxis, frictionMagnitude, frictionDir);
-			}
-		}
-       //throw std::runtime_error("look at the videos for the jumping bug");
-        return;
-
+    }
+    //throw std::runtime_error("look at the videos for the jumping bug");
+    return;
+}
+/*
         if ((e1->flags & PLAYER_FLAG) && (e2->flags & NON_MOVING_FLAG)) {
             std::cout << "player floor collision" << std::endl;
         }
@@ -622,19 +629,15 @@ void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2) {
             std::cout << "Relative force: (" << relativeForce.x << ", " << relativeForce.y << ") " << std::endl;
             //std::cout << "Impulse: (" << impulse.x << ", " << impulse.y << ") " << std::endl;
             std::cout << "Relative speed: (" << relativeVel.x << ", " << relativeVel.y << ") " << std::endl;
-            std::cout << "overlap line: (" << normalizedOverlapLine.x << ", " << normalizedOverlapLine.y << ") " << std::endl;
+            std::cout << "overlap line: (" << collInfo.normalizedOverlapLine.x << ", " << collInfo.normalizedOverlapLine.y << ") " << std::endl;
             std::cout << "-------------" << std::endl;
         }
-        /*
+        
         if ((e1->flags & PLAYER_FLAG) && (e2->flags & NON_MOVING_FLAG)) {
             std::cout << "Net force on the player: (" << e1->netForce.x << ", " << e1->netForce.y << ") " << std::endl;
             std::cout << "Relative force: (" << relativeForce.x << ", " << relativeForce.y << ") " << std::endl;
             std::cout << "Impulse: (" << impulse.x << ", " << impulse.y << ") " << std::endl;
         }*/
-
-    }
-    
-}
 
 unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sumOfInsiderPointsPositions) {
 	float e2xMax = 0;
@@ -715,22 +718,25 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
 
         float netForceOnObjectAfterFriction = sqrt(pow(netForceAfterFriction.x, 2) + pow(netForceAfterFriction.y, 2));
 
-		if (e->flags & PLAYER_FLAG) {
-            std::cout << "Player friction" << std::endl;
-		}
-        bool objectIsntMoving = false;
-        if (currentSpeed.x == 0 && currentSpeed.y == 0 && currentSpeed.z == 0) {
-            objectIsntMoving = true;
+        bool objectIsntMovingOnFrictionAxis = false;
+        float speedOnFrictionAxis = DotProduct(normalizedFrictionAxis, e->speed);
+        if (speedOnFrictionAxis == 0) {
+            objectIsntMovingOnFrictionAxis = true;
         }
         bool frictionBiggerThanNetForceOnFrictionAxis = false;
-        if(objectIsntMoving) {
+        if(objectIsntMovingOnFrictionAxis) {
             float currentNetForceOnFrictionAxis = DotProduct(normalizedFrictionAxis, e->netForce);
             if (abs(currentNetForceOnFrictionAxis) <= frictionMagnitude) {
                 frictionBiggerThanNetForceOnFrictionAxis = true;
             }
         }
+		if (e->flags & PLAYER_FLAG) {
+            std::cout << "Player friction" << std::endl;
+            std::cout << "object isnt moving: " << objectIsntMovingOnFrictionAxis << std::endl;
+            std::cout << "friction bigger than net force: " << frictionBiggerThanNetForceOnFrictionAxis << std::endl;
+		}
 
-		if ((DotProduct(speedAfterFriction, currentSpeed) < 0) || (objectIsntMoving && frictionBiggerThanNetForceOnFrictionAxis)) {
+		if ((DotProduct(speedAfterFriction, currentSpeed) < 0) || (objectIsntMovingOnFrictionAxis && frictionBiggerThanNetForceOnFrictionAxis)) {
             Vector3 k = { 0, 0, -1 };
             Vector3 normalAxis;
             CrossProduct(normalizedFrictionAxis, k, normalAxis);
@@ -744,7 +750,7 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
             netForce.z = 0;
 
             //the impulse isnt applied to the speed yet that might be the problem
-            float speedOnNormal = DotProduct(normalAxis, e->speed) / normalAxisLen;
+            float speedOnNormal = DotProduct(normalAxis, e->speed);
 			e->speed.x = speedOnNormal * normalAxis.x;
 			e->speed.y = speedOnNormal * normalAxis.y;
 			std::cout << "Player stopped" << std::endl;

@@ -45,6 +45,11 @@ typedef struct Entity {
 	uint32_t gridIdxesSize;
 };
 
+struct CollisionInfo {
+	Vector3 normalizedOverlapLine;
+	float minOverlap;
+};
+
 //Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags);
 
 float GetDeltaTime();
@@ -69,7 +74,9 @@ void ApplyForceToEntity(Entity* player, Vector2 movement);
 
 int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** relevanEntities, int offset);
 
-void CalculateAndApplyCollisionWithEntity(Entity* e1, Entity* e2);
+CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2);
+
+void HandlePushImpulseAndFriction(Entity* e1, Entity* e2, CollisionInfo collInfo);
 
 void ApplyGravityCalculatePhysicsAndMoveEntity(GameState* gameState, Entity* entity);
 

@@ -119,7 +119,11 @@ int main() {
 				}
 
 				for (int j = 0; j < numOfRelevantEntities; j++) {
-					CalculateAndApplyCollisionWithEntity(entity, relevantEntities[j]);
+					CollisionInfo collInfo = DetectCollisionWithEntity(entity, relevantEntities[j]);
+					if (collInfo.minOverlap > 0) {
+						HandlePushImpulseAndFriction(entity, relevantEntities[j], collInfo);
+					}
+
 				}
 
 				//throw std::runtime_error("look at the friction bug in the videos")
