@@ -77,12 +77,16 @@ int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** 
 
 CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2);
 
-void HandlePushImpulseAndFriction(Entity* e1, Entity* e2, CollisionInfo collInfo, float gravityConstant);
+float ResolvePenetrationAndReturnThePush(Entity* e1, Entity* e2, CollisionInfo collInfo, float totalMass);
+
+void CalculateAndApplyImpulse(Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2& impulse, Vector2& relativeVelocity);
+
+void HandleFriction(Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2 &impulse, Vector2 &relativeVel, float push);
 
 void ApplyGravityCalculatePhysicsAndMoveEntity(GameState* gameState, Entity* entity);
 
 unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sumOfInsiderVerticesPositions);
 
-void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDirection, Vector2 entitySpeedAtStart);
+void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDirection);
 
 #endif

@@ -124,8 +124,12 @@ int main() {
 
 				for (int j = 0; j < numOfRelevantEntities; j++) {
 					CollisionInfo collInfo = DetectCollisionWithEntity(entity, relevantEntities[j]);
+					float totalMass = entity->mass + relevantEntities[j]->mass;
 					if (collInfo.minOverlap > 0) {
-						HandlePushImpulseAndFriction(entity, relevantEntities[j], collInfo, gameState->gravityConstant);
+						float push = ResolvePenetrationAndReturnThePush(entity, relevantEntities[j], collInfo, totalMass);
+						Vector2 impulse, relativeVel;
+						CalculateAndApplyImpulse(entity, relevantEntities[j], collInfo, impulse, relativeVel);
+						HandleFriction(entity, relevantEntities[j], collInfo, impulse, relativeVel, push);
 					}
 				}
 
