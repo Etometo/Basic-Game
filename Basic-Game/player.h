@@ -34,6 +34,7 @@ typedef struct Entity {
 
 	float elasticity = 0;
 	float mass = 0;
+	bool gravityApplied;
 	Vector2 netForce = { 0, 0 };
 	Vector2 acceleration = { 0, 0 };
 	Vector2 speed = {0, 0};
@@ -76,12 +77,12 @@ int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** 
 
 CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2);
 
-void HandlePushImpulseAndFriction(Entity* e1, Entity* e2, CollisionInfo collInfo);
+void HandlePushImpulseAndFriction(Entity* e1, Entity* e2, CollisionInfo collInfo, float gravityConstant);
 
 void ApplyGravityCalculatePhysicsAndMoveEntity(GameState* gameState, Entity* entity);
 
 unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sumOfInsiderVerticesPositions);
 
-void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDirection);
+void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDirection, Vector2 entitySpeedAtStart);
 
 #endif

@@ -112,18 +112,21 @@ int main() {
 
 			for (int i = 0; i < gameState->addedEntities; i++) {
 				Entity* entity = gameState->entities + i;
-				numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, entity, relevantEntities, i);
-
-				if((entity->flags & GRAVITY_FLAG) > 0){
+				if ((entity->flags & GRAVITY_FLAG) > 0) {
 					entity->netForce.y += gameState->gravityConstant * entity->mass;
+					entity->gravityApplied = true;
 				}
+			}
+
+			for (int i = 0; i < gameState->addedEntities; i++) {
+				Entity* entity = gameState->entities + i;
+				numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, entity, relevantEntities, i);
 
 				for (int j = 0; j < numOfRelevantEntities; j++) {
 					CollisionInfo collInfo = DetectCollisionWithEntity(entity, relevantEntities[j]);
 					if (collInfo.minOverlap > 0) {
-						HandlePushImpulseAndFriction(entity, relevantEntities[j], collInfo);
+						HandlePushImpulseAndFriction(entity, relevantEntities[j], collInfo, gameState->gravityConstant);
 					}
-
 				}
 
 				//throw std::runtime_error("look at the friction bug in the videos")
@@ -145,6 +148,10 @@ int main() {
 				}
 				DrawEntityForceLine(entity);
 				entity->netForce = { 0, 0 };
+			}
+
+			for (int i = 0; i < gameState->addedEntities; i++) {
+				(gameState->entities + i)->gravityApplied = false;
 			}
 
 		EndDrawing();

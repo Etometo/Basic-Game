@@ -201,7 +201,7 @@ int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** 
             }
             uint32_t* cellArray = gameState->spatialGrid + (((centerRowPosition + i) * gameState->gridDimentions[0] + (centerColumnPosition + j)) * gameState->gridDimentions[2]);
             for (int k = 0; k < gameState->gridDimentions[2]; k++) {
-                //the ids are one added to their indexes on entities array
+                //the ids of entities = 1 + their indexes on entities array
                 if (cellArray[k] != 0 && cellArray[k] != entity->id && (cellArray[k] - 1) >= startOffset) {
                     *(relevantEntitiesEnd++) = entities + (cellArray[k] - 1);
                 }
@@ -232,6 +232,10 @@ int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** 
     }
 
     RetractSize(gameState, totalAllocatedSize);
+
+    if (entity->id == 2) {
+        std::cout << "";
+    }
 
     return relevantEntitiesEnd - relevanEntities;
 }
@@ -471,21 +475,25 @@ Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2) {
     return forceApplicationPoint;
 }
 
-void HandlePushImpulseAndFriction(Entity* e1, Entity* e2, CollisionInfo collInfo) {
+void HandlePushImpulseAndFriction(Entity* e1, Entity* e2, CollisionInfo collInfo, float gravityConstant) {
+    float deltaTime = GetDeltaTime();
     float totalMass = e1->mass + e2->mass;
 
-    if (totalMass > 0.0f && abs(collInfo.minOverlap) > 0.3) {
-        float push1 = (e2->mass / totalMass) * (collInfo.minOverlap - 0.3);
-        float push2 = (e1->mass / totalMass) * (collInfo.minOverlap - 0.3);
+    //trying to turn the push into impulse too so we can calculate friction based off of it
+    Vector3 impulse;
+    Vector3 e2Impulse;
+    impulse.x = 0;
+    impulse.y = 0;
+    impulse.z = 0;
 
-        if ((e1->flags & NON_MOVING_FLAG) == 0) {
-            e1->centerPosition.x -= collInfo.normalizedOverlapLine.x * push1;
-            e1->centerPosition.y -= collInfo.normalizedOverlapLine.y * push1;
-        }
-        if ((e2->flags & NON_MOVING_FLAG) == 0) {
-            e2->centerPosition.x += collInfo.normalizedOverlapLine.x * push2;
-            e2->centerPosition.y += collInfo.normalizedOverlapLine.y * push2;
-        }
+    Vector2 e1SpeedAtStart = { e1->speed.x, e1->speed.y };
+    Vector2 e2SpeedAtStart = { e2->speed.x, e2->speed.y };
+
+    if (totalMass > 0.0f && abs(collInfo.minOverlap) > 0.2) {
+        float push = collInfo.minOverlap - 0.2;
+
+		impulse.x -= (collInfo.normalizedOverlapLine.x * push) * e1->mass / deltaTime;
+		impulse.y -= (collInfo.normalizedOverlapLine.y * push) * e1->mass / deltaTime;
     }
 
     Vector3 relativeVel;
@@ -502,6 +510,9 @@ void HandlePushImpulseAndFriction(Entity* e1, Entity* e2, CollisionInfo collInfo
     relativeForce.y = e1->netForce.y - e2->netForce.y;
     relativeForce.z = 0;
 
+    if (e2->gravityApplied == false && (e2->flags & GRAVITY_FLAG)) {
+        relativeForce.y -= e2->mass * gravityConstant;
+    }
 
     float e;
     if ((e1->flags | e2->flags) & NON_MOVING_FLAG) {
@@ -520,10 +531,8 @@ void HandlePushImpulseAndFriction(Entity* e1, Entity* e2, CollisionInfo collInfo
     float j = -(1.0 + e) * velAlongNormal;
     j /= sumOfInverseMasses;
 
-    float deltaTime = GetDeltaTime();
-    Vector3 impulse;
-    impulse.x = j * collInfo.normalizedOverlapLine.x;
-    impulse.y = j * collInfo.normalizedOverlapLine.y;
+    impulse.x += j * collInfo.normalizedOverlapLine.x;
+    impulse.y += j * collInfo.normalizedOverlapLine.y;
     impulse.z = 0;
 
     float normalRelativeForce = DotProduct(relativeForce, collInfo.normalizedOverlapLine);
@@ -550,6 +559,9 @@ void HandlePushImpulseAndFriction(Entity* e1, Entity* e2, CollisionInfo collInfo
         e2->speed.y -= impulse.y / e2->mass;
         ApplyForceToEntity(e2, { normalRelativeForce * collInfo.normalizedOverlapLine.x, normalRelativeForce * collInfo.normalizedOverlapLine.y });
     }
+    if (e1->isPlayer && e2->id == 2) {
+        std::cout << " ";
+    }
 
     float frictionAxisMagnitude;
     float relativeVelOnFrictionAxis;
@@ -569,10 +581,17 @@ void HandlePushImpulseAndFriction(Entity* e1, Entity* e2, CollisionInfo collInfo
         relativeForce.x = e1->netForce.x - e2->netForce.x;
         relativeForce.y = e1->netForce.y - e2->netForce.y;
         relativeForce.z = 0;
+		if (e2->gravityApplied == false && (e2->flags & GRAVITY_FLAG)) {
+			relativeForce.y -= e2->mass * gravityConstant;
+		}
+
         relativeForceOnFrictionAxis = DotProduct(relativeForce, frictionAxis);
 
+        float impulseMagnitude = sqrt(pow(impulse.x, 2) + pow(impulse.y, 2));
+
         if (relativeVelOnFrictionAxis != 0 || abs(relativeForceOnFrictionAxis) > 0) {
-            frictionMagnitude = normalRelativeForce * frictionConst;
+            frictionMagnitude =  impulseMagnitude / deltaTime * frictionConst;
+
             if (relativeVelOnFrictionAxis == 0) {
                 frictionDir = -relativeForceOnFrictionAxis / abs(relativeForceOnFrictionAxis);
             }
@@ -583,7 +602,9 @@ void HandlePushImpulseAndFriction(Entity* e1, Entity* e2, CollisionInfo collInfo
             if (e1->flags & PLAYER_FLAG) {
                 std::cout << " ";
             }
-            ApplyFrictionToEntity(e1, frictionAxis, frictionMagnitude, frictionDir);
+
+            ApplyFrictionToEntity(e1, frictionAxis, frictionMagnitude, frictionDir, e1SpeedAtStart);
+            //ApplyFrictionToEntity(e2, frictionAxis, frictionMagnitude, -frictionDir);
         }
     }
     //throw std::runtime_error("look at the videos for the jumping bug");
@@ -699,7 +720,7 @@ unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sum
     return numberOfVerticesInsideE2;
 }
 
-void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDir) {
+void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDir, Vector2 entitySpeedAtTheStartOfFunction) {
         Vector2 netForceAfterFriction = {0, 0};
 		Vector3 currentSpeed = {e->speed.x, e->speed.y, 0};
 		Vector3 speedAfterFriction;
@@ -719,8 +740,9 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
         float netForceOnObjectAfterFriction = sqrt(pow(netForceAfterFriction.x, 2) + pow(netForceAfterFriction.y, 2));
 
         bool objectIsntMovingOnFrictionAxis = false;
-        float speedOnFrictionAxis = DotProduct(normalizedFrictionAxis, e->speed);
-        if (speedOnFrictionAxis == 0) {
+        //we don't care about the speed added in this collision pair
+        float speedOnFrictionAxis = DotProduct(normalizedFrictionAxis, entitySpeedAtTheStartOfFunction);
+        if (speedOnFrictionAxis < 0.001) {
             objectIsntMovingOnFrictionAxis = true;
         }
         bool frictionBiggerThanNetForceOnFrictionAxis = false;
