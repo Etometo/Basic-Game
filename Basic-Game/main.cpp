@@ -126,10 +126,14 @@ int main() {
 					CollisionInfo collInfo = DetectCollisionWithEntity(entity, relevantEntities[j]);
 					float totalMass = entity->mass + relevantEntities[j]->mass;
 					if (collInfo.minOverlap > 0) {
-						float push = ResolvePenetrationAndReturnThePush(entity, relevantEntities[j], collInfo, totalMass);
-						Vector2 impulse, relativeVel;
+						Vector2 impulse = { 0, 0 }, relativeVel = {0, 0};
+
+						float push = ResolvePenetrationAndReturnThePush(entity, relevantEntities[j], collInfo, totalMass, impulse);
+
 						CalculateAndApplyImpulse(entity, relevantEntities[j], collInfo, impulse, relativeVel);
+
 						HandleFriction(entity, relevantEntities[j], collInfo, impulse, relativeVel, push);
+
 					}
 				}
 
@@ -138,8 +142,8 @@ int main() {
 				entity->acceleration.y = entity->netForce.y / entity->mass;
 
 				float deltaTime = GetDeltaTime();
-				entity->speed.x += entity->acceleration.x * deltaTime;
-				entity->speed.y += entity->acceleration.y * deltaTime;
+				entity->physicsVelocity.x += entity->acceleration.x * deltaTime;
+				entity->physicsVelocity.y += entity->acceleration.y * deltaTime;
 
 				MoveEntity(entity);
 				CalibrateEntityWithGrid(gameState, entity);

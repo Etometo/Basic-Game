@@ -140,33 +140,34 @@ Vector2 AddVectors(Vector2& v1, Vector2& v2) {
 }
 
 void MoveEntity(Entity* player) {
-    if ((player->flags & NON_MOVING_FLAG) > 0) {
-        return;
+    if ((player->flags & NON_MOVING_FLAG) == 0) {
+        if ((player->flags & PLAYER_FLAG) > 0) {
+            std::cout << "Players speed: ";
+            Vector2 speed = { player->physicsVelocity.x + player->penetrationVelocity.x, player->physicsVelocity.y + player->penetrationVelocity.y};
+            PrintVector(speed);
+            std::cout << std::endl;
+        }
+        /*if ((player->flags & PLAYER_FLAG) > 0 && player->lastSpeed.y - player->physicsVelocity.y > 1 && player->lastSpeed.y != 0) {
+            std::cout << "Players physicsVelocity: ";
+            PrintVector(player->physicsVelocity);
+            std::cout << std::endl;
+            std::cout << "Players physicsVelocity diff: ";
+            Vector2 speedDiff = { player->lastSpeed.x - player->physicsVelocity.x, player->lastSpeed.y - player->physicsVelocity.y };
+            PrintVector(speedDiff);
+            std::cout << std::endl;
+        }*/
+        float frameTime = GetDeltaTime();
+        if (frameTime != 0 && frameTime < 0.01) {
+            player->centerPosition.x += player->physicsVelocity.x * frameTime;
+            player->centerPosition.y += player->physicsVelocity.y * frameTime;
+        }
+        else if (frameTime > 0.01) {
+            player->centerPosition.x += player->physicsVelocity.x * 0.01;
+            player->centerPosition.y += player->physicsVelocity.y * 0.01;
+        }
+        player->lastSpeed = { player->physicsVelocity.x + player->penetrationVelocity.x, player->physicsVelocity.y + player->penetrationVelocity.y };
+		player->penetrationVelocity = { 0, 0 };
     }
-    if ((player->flags & PLAYER_FLAG) > 0) {
-        std::cout << "Players speed: ";
-        PrintVector(player->speed);
-        std::cout << std::endl;
-    }
-    /*if ((player->flags & PLAYER_FLAG) > 0 && player->lastSpeed.y - player->speed.y > 1 && player->lastSpeed.y != 0) {
-        std::cout << "Players speed: ";
-        PrintVector(player->speed);
-        std::cout << std::endl;
-        std::cout << "Players speed diff: ";
-        Vector2 speedDiff = { player->lastSpeed.x - player->speed.x, player->lastSpeed.y - player->speed.y };
-        PrintVector(speedDiff);
-        std::cout << std::endl;
-    }*/
-    float frameTime = GetDeltaTime();
-    if (frameTime != 0 && frameTime < 0.01) {
-		player->centerPosition.x += player->speed.x * frameTime;
-		player->centerPosition.y += player->speed.y * frameTime;
-    }
-    else if (frameTime > 0.01) {
-		player->centerPosition.x += player->speed.x * 0.01;
-		player->centerPosition.y += player->speed.y * 0.01;
-    }
-    player->lastSpeed = player->speed;
 }
 
 void ApplyForceToEntity(Entity* player, Vector2 mov) {
@@ -471,158 +472,6 @@ Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2) {
     return forceApplicationPoint;
 }
 
-float ResolvePenetrationAndReturnThePush(Entity* e1, Entity* e2, CollisionInfo collInfo, float totalMass) {
-    float push = collInfo.minOverlap - 0.3;
-    if (totalMass > 0.0f && push > 0) {
-        float push1 = (e2->mass / totalMass) * (push);
-        float push2 = (e1->mass / totalMass) * (push);
-
-        if ((e1->flags & NON_MOVING_FLAG) == 0) {
-            e1->centerPosition.x -= collInfo.normalizedOverlapLine.x * push1;
-            e1->centerPosition.y -= collInfo.normalizedOverlapLine.y * push1;
-        }
-        if ((e2->flags & NON_MOVING_FLAG) == 0) {
-            e2->centerPosition.x += collInfo.normalizedOverlapLine.x * push2;
-            e2->centerPosition.y += collInfo.normalizedOverlapLine.y * push2;
-        }
-    }
-    return push;
-}
-
-void CalculateAndApplyImpulse(Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2 &impulse, Vector2 &relativeVelocity) {
-    relativeVelocity.x = e1->speed.x - e2->speed.x;
-    relativeVelocity.y = e1->speed.y - e2->speed.y;
-    float velAlongNormal = DotProduct(collInfo.normalizedOverlapLine, relativeVelocity);
-    if (velAlongNormal < 0) {
-        return;
-    }
-
-    float e;
-    if ((e1->flags | e2->flags) & NON_MOVING_FLAG) {
-        e = 0;
-    }
-    else {
-        e = e1->elasticity > e2->elasticity ? e1->elasticity : e2->elasticity;
-    }
-
-    float inv1mass = e1->flags & NON_MOVING_FLAG ? 0 : (1 / e1->mass);
-    float inv2mass = e2->flags & NON_MOVING_FLAG ? 0 : (1 / e2->mass);
-    float sumOfInverseMasses = inv1mass + inv2mass;
-    if (sumOfInverseMasses == 0.0f) {
-        return;
-    }
-    float j = -(1.0 + e) * velAlongNormal;
-    j /= sumOfInverseMasses;
-
-    float deltaTime = GetDeltaTime();
-    impulse.x = j * collInfo.normalizedOverlapLine.x;
-    impulse.y = j * collInfo.normalizedOverlapLine.y;
-
-    e1->speed.x += impulse.x / e1->mass;
-    e1->speed.y += impulse.y / e1->mass;
-
-    if (!(e2->flags & NON_MOVING_FLAG)) {
-        e2->speed.x -= impulse.x / e2->mass;
-        e2->speed.y -= impulse.y / e2->mass;
-    }
-}
-
-void HandleFriction(Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2 &impulse, Vector2 &relativeVel, float push) {
-    Vector2 relativeForce;
-    relativeForce.x = e1->netForce.x - e2->netForce.x;
-    relativeForce.y = e1->netForce.y - e2->netForce.y;
-
-    float deltaTime = GetDeltaTime();
-
-    float frictionAxisMagnitude;
-    float relativeVelOnFrictionAxis;
-    int frictionDir;
-    float frictionMagnitude;
-    float relativeForceOnFrictionAxis;
-    if (e1->frictionCons != 0 || e2->frictionCons != 0) {
-        float frictionConst = e1->frictionCons > e2->frictionCons ? e1->frictionCons : e2->frictionCons;
-        Vector3 k = { 0, 0, 1 };
-        Vector3 frictionAxis;
-        CrossProduct(collInfo.normalizedOverlapLine, k, frictionAxis);
-        frictionAxisMagnitude = sqrt(pow(frictionAxis.x, 2) + pow(frictionAxis.y, 2));
-        frictionAxis.x /= frictionAxisMagnitude;
-        frictionAxis.y /= frictionAxisMagnitude;
-        relativeVelOnFrictionAxis = DotProduct(frictionAxis, relativeVel);
-
-        relativeForce.x = e1->netForce.x - e2->netForce.x;
-        relativeForce.y = e1->netForce.y - e2->netForce.y;
-        relativeForceOnFrictionAxis = DotProduct(frictionAxis, relativeForce);
-
-        if (push <= 0) {
-            push = 0.3;
-        }
-        Vector2 impulseForCalculatingFriction = { impulse.x - push * collInfo.normalizedOverlapLine.x, impulse.y - push * collInfo.normalizedOverlapLine.y};
-        float impulseForCalculatingFrictionMagnitude = sqrt(pow(impulseForCalculatingFriction.x, 2) + pow(impulseForCalculatingFriction.y, 2));
-
-        if (relativeVelOnFrictionAxis != 0 && impulseForCalculatingFrictionMagnitude > 0) {
-            frictionMagnitude = impulseForCalculatingFrictionMagnitude / deltaTime * frictionConst;
-
-			frictionDir = -relativeVelOnFrictionAxis / abs(relativeVelOnFrictionAxis);
-
-            if (e1->flags & PLAYER_FLAG) {
-                std::cout << " ";
-            }
-            ApplyFrictionToEntity(e1, frictionAxis, frictionMagnitude, frictionDir);
-        }
-    }
-    //throw std::runtime_error("look at the videos for the jumping bug");
-    return;
-}
-/*
-        if ((e1->flags & PLAYER_FLAG) && (e2->flags & NON_MOVING_FLAG)) {
-            std::cout << "player floor collision" << std::endl;
-        }
-
-        if ((e1->flags & PLAYER_FLAG) && (e2->flags & NON_MOVING_FLAG)) {
-            std::cout << "Player's position: (" << e1->centerPosition.x << ", " << e1->centerPosition.y << ") " << std::endl;
-            std::cout << "Force application point: (" << forceApplicationPoint.x << ", " << forceApplicationPoint.y << ") " << std::endl;
-        }
-
-        if ((e1->flags & PLAYER_FLAG) && (e2->flags & NON_MOVING_FLAG)) {
-            std::cout << "-------------" << std::endl;
-            std::cout << "PLAYER-FLOOR COLLISION: " << std::endl;
-            std::cout << "Net force on the player: (" << e1->netForce.x << ", " << e1->netForce.y << ") " << std::endl;
-            std::cout << "Acceleration of the player: (" << e1->acceleration.x << ", " << e1->speed.y << ") " << std::endl;
-            std::cout << "Speed of the player: (" << e1->speed.x << ", " << e1->speed.y << ") " << std::endl;
-            std::cout << "Relative force: (" << relativeForce.x << ", " << relativeForce.y << ") " << std::endl;
-            std::cout << "Impulse: (" << impulse.x << ", " << impulse.y << ") " << std::endl;
-            std::cout << "-------------" << std::endl;
-            //throw std::runtime_error("sad");
-        }
-        if ((e1->flags & NON_MOVING_FLAG) && (e2->flags & PLAYER_FLAG)) {
-            std::cout << "-------------" << std::endl;
-            std::cout << "FLOOR-PLAYER COLLISION: " << std::endl;
-            std::cout << "Net force on the player: (" << e1->netForce.x << ", " << e1->netForce.y << ") " << std::endl;
-            std::cout << "Acceleration of the player: (" << e1->acceleration.x << ", " << e1->speed.y << ") " << std::endl;
-            std::cout << "Speed of the player: (" << e1->speed.x << ", " << e1->speed.y << ") " << std::endl;
-            std::cout << "Relative force: (" << relativeForce.x << ", " << relativeForce.y << ") " << std::endl;
-            std::cout << "Impulse: (" << impulse.x << ", " << impulse.y << ") " << std::endl;
-            std::cout << "-------------" << std::endl;
-            //throw std::runtime_error("sad");
-        }
-        if ((e1->flags & PLAYER_FLAG) && (e2->id == 1)) {
-            std::cout << "-------------" << std::endl;
-            std::cout << "PLAYER-PLAYER2 COLLISION: " << std::endl;
-            std::cout << "Net force on the player: (" << e1->netForce.x << ", " << e1->netForce.y << ") " << std::endl;
-            std::cout << "Speed of the player: (" << e1->speed.x << ", " << e1->speed.y << ") " << std::endl;
-            std::cout << "Relative force: (" << relativeForce.x << ", " << relativeForce.y << ") " << std::endl;
-            //std::cout << "Impulse: (" << impulse.x << ", " << impulse.y << ") " << std::endl;
-            std::cout << "Relative speed: (" << relativeVelocity.x << ", " << relativeVelocity.y << ") " << std::endl;
-            std::cout << "overlap line: (" << collInfo.normalizedOverlapLine.x << ", " << collInfo.normalizedOverlapLine.y << ") " << std::endl;
-            std::cout << "-------------" << std::endl;
-        }
-        
-        if ((e1->flags & PLAYER_FLAG) && (e2->flags & NON_MOVING_FLAG)) {
-            std::cout << "Net force on the player: (" << e1->netForce.x << ", " << e1->netForce.y << ") " << std::endl;
-            std::cout << "Relative force: (" << relativeForce.x << ", " << relativeForce.y << ") " << std::endl;
-            std::cout << "Impulse: (" << impulse.x << ", " << impulse.y << ") " << std::endl;
-        }*/
-
 unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sumOfInsiderPointsPositions) {
 	float e2xMax = 0;
 	float e2yMax = 0;
@@ -683,9 +532,124 @@ unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sum
     return numberOfVerticesInsideE2;
 }
 
+
+float ResolvePenetrationAndReturnThePush(Entity* e1, Entity* e2, CollisionInfo collInfo, float totalMass, Vector2 &impulse) {
+    float push = collInfo.minOverlap - 0.3;
+    float deltaTime = GetDeltaTime();
+
+    if (e1->mass + e2->mass > 0.0f && push > 0) {
+        float push1 = (e2->mass / totalMass) * (push);
+        float push2 = (e1->mass / totalMass) * (push);
+
+        if ((e1->flags & NON_MOVING_FLAG) == 0) {
+            e1->centerPosition.x -= collInfo.normalizedOverlapLine.x * push1;
+            e1->centerPosition.y -= collInfo.normalizedOverlapLine.y * push1;
+            e1->penetrationVelocity.x -= collInfo.normalizedOverlapLine.x * push1;
+            e1->penetrationVelocity.y -= collInfo.normalizedOverlapLine.y * push1;
+        }
+        else if ((e2->flags & NON_MOVING_FLAG) == 0) {
+            e2->centerPosition.x += collInfo.normalizedOverlapLine.x * push2;
+            e2->centerPosition.y += collInfo.normalizedOverlapLine.y * push2;
+            e2->penetrationVelocity.x += collInfo.normalizedOverlapLine.x * push2;
+            e2->penetrationVelocity.y += collInfo.normalizedOverlapLine.y * push2;
+        }
+    }
+    return push;
+}
+
+void CalculateAndApplyImpulse(Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2 &impulse, Vector2 &relativeVelocity) {
+    relativeVelocity.x = (e1->physicsVelocity.x + e1->penetrationVelocity.x) - (e2->physicsVelocity.x + e2->penetrationVelocity.x);
+    relativeVelocity.y = (e1->physicsVelocity.y + e1->penetrationVelocity.y) - (e2->physicsVelocity.y + e2->penetrationVelocity.y);
+    float velAlongNormal = DotProduct(collInfo.normalizedOverlapLine, relativeVelocity);
+    if (velAlongNormal < 0) {
+        return;
+    }
+
+    float e;
+    if ((e1->flags | e2->flags) & NON_MOVING_FLAG) {
+        e = 0;
+    }
+    else {
+        e = e1->elasticity > e2->elasticity ? e1->elasticity : e2->elasticity;
+    }
+
+    float inv1mass = e1->flags & NON_MOVING_FLAG ? 0 : (1 / e1->mass);
+    float inv2mass = e2->flags & NON_MOVING_FLAG ? 0 : (1 / e2->mass);
+    float sumOfInverseMasses = inv1mass + inv2mass;
+    if (sumOfInverseMasses == 0.0f) {
+        return;
+    }
+    float j = -(1.0 + e) * velAlongNormal;
+    j /= sumOfInverseMasses;
+
+    float deltaTime = GetDeltaTime();
+    impulse.x += j * collInfo.normalizedOverlapLine.x;
+    impulse.y += j * collInfo.normalizedOverlapLine.y;
+
+    e1->physicsVelocity.x += impulse.x / e1->mass;
+    e1->physicsVelocity.y += impulse.y / e1->mass;
+
+    if (!(e2->flags & NON_MOVING_FLAG)) {
+        e2->physicsVelocity.x -= impulse.x / e2->mass;
+        e2->physicsVelocity.y -= impulse.y / e2->mass;
+    }
+}
+
+void HandleFriction(Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2 &impulse, Vector2 &relativeVel, float push) {
+    Vector2 relativeForce;
+    relativeForce.x = e1->netForce.x - e2->netForce.x;
+    relativeForce.y = e1->netForce.y - e2->netForce.y;
+
+    float deltaTime = GetDeltaTime();
+
+    float frictionAxisMagnitude;
+    float relativeVelOnFrictionAxis;
+    int frictionDir;
+    float frictionMagnitude;
+    float relativeForceOnFrictionAxis;
+    if (e1->frictionCons != 0 || e2->frictionCons != 0) {
+        float frictionConst = e1->frictionCons > e2->frictionCons ? e1->frictionCons : e2->frictionCons;
+        Vector3 k = { 0, 0, 1 };
+        Vector3 frictionAxis;
+        CrossProduct(collInfo.normalizedOverlapLine, k, frictionAxis);
+        frictionAxisMagnitude = sqrt(pow(frictionAxis.x, 2) + pow(frictionAxis.y, 2));
+        frictionAxis.x /= frictionAxisMagnitude;
+        frictionAxis.y /= frictionAxisMagnitude;
+        relativeVelOnFrictionAxis = DotProduct(frictionAxis, relativeVel);
+
+        relativeForce.x = e1->netForce.x - e2->netForce.x;
+        relativeForce.y = e1->netForce.y - e2->netForce.y;
+        relativeForceOnFrictionAxis = DotProduct(frictionAxis, relativeForce);
+
+        if (push <= 0) {
+            push = 0.3;
+        }
+        float impulseMagnitude = sqrt(pow(impulse.x, 2) + pow(impulse.y, 2));
+
+        if ((relativeVelOnFrictionAxis != 0 && impulseMagnitude > 0) || relativeForceOnFrictionAxis > 0) {
+            frictionMagnitude = impulseMagnitude / deltaTime * frictionConst;
+            if (relativeVelOnFrictionAxis != 0) {
+				frictionDir = -relativeVelOnFrictionAxis / abs(relativeVelOnFrictionAxis);
+            }
+            else if (relativeForceOnFrictionAxis > 0) {
+				frictionDir = -relativeForceOnFrictionAxis / abs(relativeForceOnFrictionAxis);
+            }
+
+            if (e1->flags & PLAYER_FLAG) {
+                std::cout << " ";
+            }
+
+            ApplyFrictionToEntity(e1, frictionAxis, frictionMagnitude, frictionDir);
+        }
+    }
+    //throw std::runtime_error("look at the videos for the jumping bug");
+    return;
+}
+
+
 void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDir) {
         Vector2 netForceAfterFriction = {0, 0};
-		Vector3 currentSpeed = {e->speed.x, e->speed.y, 0};
+		Vector3 currentSpeed = {e->physicsVelocity.x + e->penetrationVelocity.x, e->physicsVelocity.y + e->penetrationVelocity.y, 0};
 		Vector3 speedAfterFriction;
 		Vector2 acceleration;
 
@@ -703,7 +667,7 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
         float netForceOnObjectAfterFriction = sqrt(pow(netForceAfterFriction.x, 2) + pow(netForceAfterFriction.y, 2));
 
         bool objectIsntMovingOnFrictionAxis = false;
-        float speedOnFrictionAxis = DotProduct(normalizedFrictionAxis, e->speed);
+        float speedOnFrictionAxis = DotProduct(normalizedFrictionAxis, currentSpeed);
         if (speedOnFrictionAxis == 0) {
             objectIsntMovingOnFrictionAxis = true;
         }
@@ -733,10 +697,9 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
             netForce.y = e->netForce.y;
             netForce.z = 0;
 
-            //the impulse isnt applied to the speed yet that might be the problem
-            float speedOnNormal = DotProduct(normalAxis, e->speed);
-			e->speed.x = speedOnNormal * normalAxis.x;
-			e->speed.y = speedOnNormal * normalAxis.y;
+            float speedOnNormal = DotProduct(normalAxis, currentSpeed);
+			e->physicsVelocity.x = speedOnNormal * normalAxis.x;
+			e->physicsVelocity.y = speedOnNormal * normalAxis.y;
 			std::cout << "Player stopped" << std::endl;
 
             float projectedNetForce = DotProduct(normalAxis, netForce) / normalAxisLen;
@@ -1379,5 +1342,5 @@ void ApplyGravityCalculatePhysicsAndMoveEntity(GameState* gameState, Entity* ent
         entity->netForce.y += gameState->gravityConstant * entity->mass;
     }
     MoveEntity(entity);
-    entity->speed = { 0, 0 };
+    entity->physicsVelocity = { 0, 0 };
 }

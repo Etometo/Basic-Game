@@ -37,7 +37,9 @@ typedef struct Entity {
 	bool gravityApplied;
 	Vector2 netForce = { 0, 0 };
 	Vector2 acceleration = { 0, 0 };
-	Vector2 speed = {0, 0};
+	//amount the object was moved directly to prevent penetrations
+	Vector2 penetrationVelocity;
+	Vector2 physicsVelocity = {0, 0};
 	Vector2 lastSpeed;
 	float frictionCons = 0;
 
@@ -77,7 +79,7 @@ int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** 
 
 CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2);
 
-float ResolvePenetrationAndReturnThePush(Entity* e1, Entity* e2, CollisionInfo collInfo, float totalMass);
+float ResolvePenetrationAndReturnThePush(Entity* e1, Entity* e2, CollisionInfo collInfo, float totalMass, Vector2 &impulse);
 
 void CalculateAndApplyImpulse(Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2& impulse, Vector2& relativeVelocity);
 
