@@ -270,9 +270,6 @@ CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2) {
     CollisionInfo collInfo;
     collInfo.minOverlap = 0;
     if (((e1->flags & e2->flags) & COLLISION_FLAGS) == 0) { return collInfo; }
-    if ((e1->flags & NON_MOVING_FLAG) > 0) {
-        return collInfo;
-    }
 
     double minOverlap = DBL_MAX;
     Vector3 overlapLine;
@@ -640,6 +637,7 @@ void HandleFriction(Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2 &imp
             }
 
             ApplyFrictionToEntity(e1, frictionAxis, frictionMagnitude, frictionDir);
+            ApplyFrictionToEntity(e2, frictionAxis, frictionMagnitude, -frictionDir);
         }
     }
     //throw std::runtime_error("look at the videos for the jumping bug");
@@ -649,7 +647,7 @@ void HandleFriction(Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2 &imp
 
 void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDir) {
         Vector2 netForceAfterFriction = {0, 0};
-		Vector3 currentSpeed = {e->physicsVelocity.x + e->penetrationVelocity.x, e->physicsVelocity.y + e->penetrationVelocity.y, 0};
+		Vector3 currentSpeed = {e->physicsVelocity.x, e->physicsVelocity.y, 0};
 		Vector3 speedAfterFriction;
 		Vector2 acceleration;
 
@@ -678,11 +676,15 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
                 frictionBiggerThanNetForceOnFrictionAxis = true;
             }
         }
-		if (e->flags & PLAYER_FLAG) {
-            std::cout << "Player friction" << std::endl;
-            std::cout << "object isnt moving: " << objectIsntMovingOnFrictionAxis << std::endl;
-            std::cout << "friction bigger than net force: " << frictionBiggerThanNetForceOnFrictionAxis << std::endl;
-		}
+
+		std::cout << "object " << e->id << " friction" << std::endl;
+		std::cout << "object isnt moving: " << objectIsntMovingOnFrictionAxis << std::endl;
+        if (!objectIsntMovingOnFrictionAxis) {
+			std::cout << "object physics speed: ";
+            PrintVector(e->physicsVelocity);
+            std::cout << std::endl;
+        }
+		std::cout << "friction bigger than net force: " << frictionBiggerThanNetForceOnFrictionAxis << std::endl;
 
 		if ((DotProduct(speedAfterFriction, currentSpeed) < 0) || (objectIsntMovingOnFrictionAxis && frictionBiggerThanNetForceOnFrictionAxis)) {
             Vector3 k = { 0, 0, -1 };
