@@ -19,10 +19,12 @@ int main() {
 		gameState->goalFps = 60;
 		gameState->isInitialized = true;
 		gameState->gravityConstant = 98 * 4;
+		gameState->EPSILON = 1e-5f;
 		gameState->nextAvailableId = 1;
 		gameState->WINDOW_HEIGHT = 800;
 		gameState->WINDOW_WIDTH = 800;
 		gameState->gridSquareEdgeLength = 100;
+		gameState->SOLVER_ITERATIONS = 5;
 	}
 	int numberOfPartitionsOnWidthAxis = gameState->WINDOW_WIDTH / gameState->gridSquareEdgeLength;
 	int numberOfPartitionsOnHeightAxis = gameState->WINDOW_HEIGHT / gameState->gridSquareEdgeLength;
@@ -71,7 +73,7 @@ int main() {
 	Vector2 playerCenterPos = { 400, 301 };
 	Entity* player = InitializeAndPushEntity(gameState, tri2Data, tri2DataEnd, 0.1, playerFlags, playerCenterPos);
 	player->isPlayer = true;
-	Vector2 player2CenterPos = { 500, 200 };
+	Vector2 player2CenterPos = { 500, 100 };
 	Entity* player2 = InitializeAndPushEntity(gameState, triData, triDataEnd, 0.1, GRAVITY_FLAG | GROUND_COLLISION_FLAG, player2CenterPos);
 	player2->frictionCons = 200.9;
 	player2->elasticity = 0;
@@ -96,66 +98,82 @@ int main() {
 				if (GetFPS() > 165) {
 					jumpForce = (float)(-1000 * 165 / 65);
 				}
-				ApplyForceToEntity(player, { 0, jumpForce});
+				ApplyForceToEntitiesVelocityImmediately(player, { 0, jumpForce });
 			}
 			if (IsKeyDown(KEY_S)) {
-				ApplyForceToEntity(player, { 0, 20 });
+				ApplyForceToEntitiesVelocityImmediately(player, { 0, 20 });
 			}
 			if (IsKeyDown(KEY_A)) {
-				ApplyForceToEntity(player, { -20, 0 });
+				ApplyForceToEntitiesVelocityImmediately(player, { -20, 0 });
 			}
 			if (IsKeyDown(KEY_D)) {
-				ApplyForceToEntity(player, { 20, 0 });
+				ApplyForceToEntitiesVelocityImmediately(player, { 20, 0 });
 			}
 			if (IsKeyPressed(KEY_E)) {
 			}
 
 			for (int i = 0; i < gameState->addedEntities; i++) {
 				Entity* entity = gameState->entities + i;
-				if ((entity->flags & GRAVITY_FLAG) > 0) {
-					entity->netForce.y += gameState->gravityConstant * entity->mass;
-					entity->gravityApplied = true;
-				}
-			}
-
-			for (int i = 0; i < gameState->addedEntities; i++) {
-				Entity* entity = gameState->entities + i;
 				numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, entity, relevantEntities, i);
 
-				for (int j = 0; j < numOfRelevantEntities; j++) {
-					CollisionInfo collInfo = DetectCollisionWithEntity(entity, relevantEntities[j]);
-					float totalMass = entity->mass + relevantEntities[j]->mass;
-					if (collInfo.minOverlap > 0) {
-						Vector2 impulse = { 0, 0 }, relativeVel = {0, 0};
-
-						float push = ResolvePenetrationAndReturnThePush(entity, relevantEntities[j], collInfo, totalMass, impulse);
-
-						CalculateAndApplyImpulse(entity, relevantEntities[j], collInfo, impulse, relativeVel);
-
-						HandleFriction(entity, relevantEntities[j], collInfo, impulse, relativeVel, push);
-
-					}
+				if ((entity->flags & GRAVITY_FLAG) > 0) {
+					ApplyForceToEntitiesVelocityImmediately(entity, { 0, entity->mass * gameState->gravityConstant });
+					entity->gravityApplied = true;
 				}
 
+				for(int k = 0; k < gameState->SOLVER_ITERATIONS; k++){
+					for (int j = 0; j < numOfRelevantEntities; j++) {
+						Entity* relevantEntity = relevantEntities[j];
+						CollisionInfo collInfo = DetectCollisionWithEntity(entity, relevantEntity);
+						float totalMass = entity->mass + relevantEntity->mass;
+						if (collInfo.minOverlap > 0) {
+							Vector2 impulse = { 0, 0 }, relativeVel = {0, 0};
+							float inv1mass = entity->flags & NON_MOVING_FLAG ? 0 : (1 / entity->mass);
+							float inv2mass = relevantEntity->flags & NON_MOVING_FLAG ? 0 : (1 / relevantEntity->mass);
+							float sumOfInverseMasses = inv1mass + inv2mass;
+							if (sumOfInverseMasses == 0.0f) {
+								continue;
+							}
+
+							float push = ResolvePenetrationAndReturnThePush(entity, relevantEntity, collInfo, sumOfInverseMasses, impulse);
+
+							CalculateAndApplyImpulse(gameState, entity, relevantEntity, collInfo, impulse, relativeVel, sumOfInverseMasses);
+
+							HandleFriction(gameState, entity, relevantEntity, collInfo, impulse, relativeVel, push);
+
+						}
+					}
+				}
 				//throw std::runtime_error("look at the friction bug in the videos")
-				entity->acceleration.x = entity->netForce.x / entity->mass;
-				entity->acceleration.y = entity->netForce.y / entity->mass;
+				if ((entity->flags & NON_MOVING_FLAG) == 0) {
 
-				float deltaTime = GetDeltaTime();
-				entity->physicsVelocity.x += entity->acceleration.x * deltaTime;
-				entity->physicsVelocity.y += entity->acceleration.y * deltaTime;
+					//because we apply gravity at the start of the loop for these calculations we get rid of it
+					entity->netForce.x -= entity->forceAppliedToAccelerationAndVelocity.x;
+					entity->netForce.y -= entity->forceAppliedToAccelerationAndVelocity.y;
+					entity->acceleration.x = entity->netForce.x / entity->mass;
+					entity->acceleration.y = entity->netForce.y / entity->mass;
 
-				MoveEntity(entity);
-				CalibrateEntityWithGrid(gameState, entity);
-				DrawEntity(entity);
+					float deltaTime = GetDeltaTime();
+					entity->physicsVelocity.x += entity->acceleration.x * deltaTime;
+					entity->physicsVelocity.y += entity->acceleration.y * deltaTime;
+					entity->netForce.x += entity->forceAppliedToAccelerationAndVelocity.x;
+					entity->netForce.y += entity->forceAppliedToAccelerationAndVelocity.y;
+
+					MoveEntity(entity);
+					CalibrateEntityWithGrid(gameState, entity);
+
+				}
 				if (entity->flags & PLAYER_FLAG && entity->netForce.y < -1) {
 					//std::cout << "Net force on the player: (" << entity->netForce.x << ", " << entity->netForce.y << ") " << std::endl;
 					//std::cout << "FPS: " << GetFPS() << std::endl;
 					//std::cout << "grid pos of the player(row, column): " << entity->gridRowIdx << ", " << entity->gridColumnIdx << std::endl;
 					std::cout << "Num of relevant entities: " << numOfRelevantEntities << std::endl;
 				}
+
+				DrawEntity(entity);
 				DrawEntityForceLine(entity);
 				entity->netForce = { 0, 0 };
+				entity->forceAppliedToAccelerationAndVelocity = { 0, 0 };
 			}
 
 			for (int i = 0; i < gameState->addedEntities; i++) {

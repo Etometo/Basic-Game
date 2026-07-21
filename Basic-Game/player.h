@@ -35,6 +35,7 @@ typedef struct Entity {
 	float elasticity = 0;
 	float mass = 0;
 	bool gravityApplied;
+	Vector2 forceAppliedToAccelerationAndVelocity;
 	Vector2 netForce = { 0, 0 };
 	Vector2 acceleration = { 0, 0 };
 	//amount the object was moved directly to prevent penetrations
@@ -46,6 +47,8 @@ typedef struct Entity {
 	//two dimentional, contains pair elements the first one being the row index the second one being the column index
 	uint32_t* gridIdxes; 
 	uint32_t gridIdxesSize;
+
+	bool stoppedByFriction;
 };
 
 struct CollisionInfo {
@@ -75,15 +78,17 @@ void MoveEntity(Entity* player);
 
 void ApplyForceToEntity(Entity* player, Vector2 movement);
 
+void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force);
+
 int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** relevanEntities, int offset);
 
 CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2);
 
-float ResolvePenetrationAndReturnThePush(Entity* e1, Entity* e2, CollisionInfo collInfo, float totalMass, Vector2 &impulse);
+float ResolvePenetrationAndReturnThePush(Entity* e1, Entity* e2, CollisionInfo collInfo, float sumOfInverseMasses, Vector2 &impulse);
 
-void CalculateAndApplyImpulse(Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2& impulse, Vector2& relativeVelocity);
+void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2& impulse, Vector2& relativeVelocity, float sumOfInverseMasses);
 
-void HandleFriction(Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2 &impulse, Vector2 &relativeVel, float push);
+void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2 &impulse, Vector2 &relativeVel, float push);
 
 void ApplyGravityCalculatePhysicsAndMoveEntity(GameState* gameState, Entity* entity);
 

@@ -15,6 +15,8 @@ typedef struct GameState {
 	unsigned int addedEntities = 0;
 	unsigned int entitiesCapacity = 100;
 	float gravityConstant = 0.098;
+	float EPSILON;
+	int SOLVER_ITERATIONS;
 	uint32_t nextAvailableId = 1;
 
 	uint64_t frameCount = 0;
