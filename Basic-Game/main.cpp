@@ -98,16 +98,16 @@ int main() {
 				if (GetFPS() > 165) {
 					jumpForce = (float)(-1000 * 165 / 65);
 				}
-				ApplyForceToEntitiesVelocityImmediately(player, { 0, jumpForce });
+				ApplyForceToEntitiesVelocityImmediately(player, { 0, jumpForce }, GetDeltaTime());
 			}
 			if (IsKeyDown(KEY_S)) {
-				ApplyForceToEntitiesVelocityImmediately(player, { 0, 20 });
+				ApplyForceToEntitiesVelocityImmediately(player, { 0, 20 }, GetDeltaTime());
 			}
 			if (IsKeyDown(KEY_A)) {
-				ApplyForceToEntitiesVelocityImmediately(player, { -20, 0 });
+				ApplyForceToEntitiesVelocityImmediately(player, { -20, 0 }, GetDeltaTime());
 			}
 			if (IsKeyDown(KEY_D)) {
-				ApplyForceToEntitiesVelocityImmediately(player, { 20, 0 });
+				ApplyForceToEntitiesVelocityImmediately(player, { 20, 0 }, GetDeltaTime());
 			}
 			if (IsKeyPressed(KEY_E)) {
 			}
@@ -117,9 +117,11 @@ int main() {
 				numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, entity, relevantEntities, i);
 
 				if ((entity->flags & GRAVITY_FLAG) > 0) {
-					ApplyForceToEntitiesVelocityImmediately(entity, { 0, entity->mass * gameState->gravityConstant });
+					ApplyForceToEntitiesVelocityImmediately(entity, { 0, entity->mass * gameState->gravityConstant }, GetDeltaTime());
 					entity->gravityApplied = true;
 				}
+
+				float deltaTime = GetDeltaTime();
 
 				for(int k = 0; k < gameState->SOLVER_ITERATIONS; k++){
 					for (int j = 0; j < numOfRelevantEntities; j++) {
@@ -128,40 +130,31 @@ int main() {
 						float totalMass = entity->mass + relevantEntity->mass;
 						if (collInfo.minOverlap > 0) {
 							Vector2 impulse = { 0, 0 }, relativeVel = {0, 0};
-							float inv1mass = entity->flags & NON_MOVING_FLAG ? 0 : (1 / entity->mass);
-							float inv2mass = relevantEntity->flags & NON_MOVING_FLAG ? 0 : (1 / relevantEntity->mass);
-							float sumOfInverseMasses = inv1mass + inv2mass;
-							if (sumOfInverseMasses == 0.0f) {
-								continue;
-							}
 
-							float push = ResolvePenetrationAndReturnThePush(entity, relevantEntity, collInfo, sumOfInverseMasses, impulse);
+							CalculateAndApplyImpulse(gameState, entity, relevantEntity, collInfo, impulse, relativeVel, deltaTime / gameState->SOLVER_ITERATIONS);
 
-							CalculateAndApplyImpulse(gameState, entity, relevantEntity, collInfo, impulse, relativeVel, sumOfInverseMasses);
-
-							HandleFriction(gameState, entity, relevantEntity, collInfo, impulse, relativeVel, push);
-
+							HandleFriction(gameState, entity, relevantEntity, collInfo, impulse, relativeVel, deltaTime / gameState->SOLVER_ITERATIONS);
 						}
 					}
-				}
-				//throw std::runtime_error("look at the friction bug in the videos")
-				if ((entity->flags & NON_MOVING_FLAG) == 0) {
 
-					//because we apply gravity at the start of the loop for these calculations we get rid of it
-					entity->netForce.x -= entity->forceAppliedToAccelerationAndVelocity.x;
-					entity->netForce.y -= entity->forceAppliedToAccelerationAndVelocity.y;
-					entity->acceleration.x = entity->netForce.x / entity->mass;
-					entity->acceleration.y = entity->netForce.y / entity->mass;
+					if ((entity->flags & NON_MOVING_FLAG) == 0) {
 
-					float deltaTime = GetDeltaTime();
-					entity->physicsVelocity.x += entity->acceleration.x * deltaTime;
-					entity->physicsVelocity.y += entity->acceleration.y * deltaTime;
-					entity->netForce.x += entity->forceAppliedToAccelerationAndVelocity.x;
-					entity->netForce.y += entity->forceAppliedToAccelerationAndVelocity.y;
+						//because we apply gravity at the start of the loop for these calculations we get rid of it
+						entity->netForce.x -= entity->forceAppliedToAccelerationAndVelocity.x;
+						entity->netForce.y -= entity->forceAppliedToAccelerationAndVelocity.y;
+						entity->acceleration.x = entity->netForce.x / entity->mass;
+						entity->acceleration.y = entity->netForce.y / entity->mass;
 
-					MoveEntity(entity);
-					CalibrateEntityWithGrid(gameState, entity);
+						float deltaTime = GetDeltaTime();
+						entity->physicsVelocity.x += entity->acceleration.x * deltaTime;
+						entity->physicsVelocity.y += entity->acceleration.y * deltaTime;
+						entity->netForce.x += entity->forceAppliedToAccelerationAndVelocity.x;
+						entity->netForce.y += entity->forceAppliedToAccelerationAndVelocity.y;
 
+						MoveEntity(entity, deltaTime / gameState->SOLVER_ITERATIONS);
+						CalibrateEntityWithGrid(gameState, entity);
+
+					}
 				}
 				if (entity->flags & PLAYER_FLAG && entity->netForce.y < -1) {
 					//std::cout << "Net force on the player: (" << entity->netForce.x << ", " << entity->netForce.y << ") " << std::endl;

@@ -74,11 +74,11 @@ bool IsCounterClockwise(Vector2 v1, Vector2 v2, Vector2 v3);
 
 Vector2 AddVectors(Vector2& v1, Vector2& v2);
 
-void MoveEntity(Entity* player);
+void MoveEntity(Entity* player, float deltaTime);
 
 void ApplyForceToEntity(Entity* player, Vector2 movement);
 
-void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force);
+void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, float deltaTime);
 
 int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** relevanEntities, int offset);
 
@@ -86,9 +86,9 @@ CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2);
 
 float ResolvePenetrationAndReturnThePush(Entity* e1, Entity* e2, CollisionInfo collInfo, float sumOfInverseMasses, Vector2 &impulse);
 
-void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2& impulse, Vector2& relativeVelocity, float sumOfInverseMasses);
+void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2& impulse, Vector2& relativeVelocity, float deltaTime);
 
-void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2 &impulse, Vector2 &relativeVel, float push);
+void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2 &impulse, Vector2 &relativeVel, float deltaTime);
 
 void ApplyGravityCalculatePhysicsAndMoveEntity(GameState* gameState, Entity* entity);
 
