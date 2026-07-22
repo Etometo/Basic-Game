@@ -89,6 +89,9 @@ int main() {
 	int numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, player, relevantEntities, 0);
 	std::cout << numOfRelevantEntities << " is the number of importants first importants ";
 
+	bool inputGiven = false;
+	Vector2 inputForce = { 0, 0 };
+
 	while (!WindowShouldClose()) {
 		std::cout << "Frame number " << gameState->frameCount << "is starting" << std::endl << std::endl;
 		BeginDrawing();
@@ -98,16 +101,20 @@ int main() {
 				if (GetFPS() > 165) {
 					jumpForce = (float)(-1000 * 165 / 65);
 				}
-				ApplyForceToEntitiesVelocityImmediately(player, { 0, jumpForce }, GetDeltaTime());
+				inputGiven = true;
+				inputForce.y += jumpForce;
 			}
 			if (IsKeyDown(KEY_S)) {
-				ApplyForceToEntitiesVelocityImmediately(player, { 0, 20 }, GetDeltaTime());
+				inputGiven = true;
+				inputForce.y += 20;
 			}
 			if (IsKeyDown(KEY_A)) {
-				ApplyForceToEntitiesVelocityImmediately(player, { -20, 0 }, GetDeltaTime());
+				inputGiven = true;
+				inputForce.x += -20;
 			}
 			if (IsKeyDown(KEY_D)) {
-				ApplyForceToEntitiesVelocityImmediately(player, { 20, 0 }, GetDeltaTime());
+				inputGiven = true;
+				inputForce.x += 20;
 			}
 			if (IsKeyPressed(KEY_E)) {
 			}
@@ -116,14 +123,18 @@ int main() {
 				Entity* entity = gameState->entities + i;
 				numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, entity, relevantEntities, i);
 
-				if ((entity->flags & GRAVITY_FLAG) > 0) {
-					ApplyForceToEntitiesVelocityImmediately(entity, { 0, entity->mass * gameState->gravityConstant }, GetDeltaTime());
-					entity->gravityApplied = true;
-				}
-
 				float deltaTime = GetDeltaTime();
 
 				for(int k = 0; k < gameState->SOLVER_ITERATIONS; k++){
+					float iterationTimeStep = deltaTime / gameState->SOLVER_ITERATIONS;
+					if ((entity->flags & GRAVITY_FLAG) > 0) {
+						ApplyForceToEntitiesVelocityImmediately(entity, { 0, entity->mass * gameState->gravityConstant }, iterationTimeStep);
+						entity->gravityApplied = true;
+					}
+					if (entity->isPlayer && inputGiven) {
+						ApplyForceToEntitiesVelocityImmediately(entity, inputForce, iterationTimeStep);
+					}
+
 					for (int j = 0; j < numOfRelevantEntities; j++) {
 						Entity* relevantEntity = relevantEntities[j];
 						CollisionInfo collInfo = DetectCollisionWithEntity(entity, relevantEntity);
@@ -131,9 +142,9 @@ int main() {
 						if (collInfo.minOverlap > 0) {
 							Vector2 impulse = { 0, 0 }, relativeVel = {0, 0};
 
-							CalculateAndApplyImpulse(gameState, entity, relevantEntity, collInfo, impulse, relativeVel, deltaTime / gameState->SOLVER_ITERATIONS);
+							CalculateAndApplyImpulse(gameState, entity, relevantEntity, collInfo, impulse, relativeVel, iterationTimeStep);
 
-							HandleFriction(gameState, entity, relevantEntity, collInfo, impulse, relativeVel, deltaTime / gameState->SOLVER_ITERATIONS);
+							HandleFriction(gameState, entity, relevantEntity, collInfo, impulse, relativeVel, iterationTimeStep);
 						}
 					}
 
@@ -146,14 +157,18 @@ int main() {
 						entity->acceleration.y = entity->netForce.y / entity->mass;
 
 						float deltaTime = GetDeltaTime();
-						entity->physicsVelocity.x += entity->acceleration.x * deltaTime;
-						entity->physicsVelocity.y += entity->acceleration.y * deltaTime;
+						entity->physicsVelocity.x += entity->acceleration.x * iterationTimeStep;
+						entity->physicsVelocity.y += entity->acceleration.y * iterationTimeStep;
 						entity->netForce.x += entity->forceAppliedToAccelerationAndVelocity.x;
 						entity->netForce.y += entity->forceAppliedToAccelerationAndVelocity.y;
 
-						MoveEntity(entity, deltaTime / gameState->SOLVER_ITERATIONS);
+						MoveEntity(entity, iterationTimeStep);
 						CalibrateEntityWithGrid(gameState, entity);
 
+					}
+					if (k != gameState->SOLVER_ITERATIONS - 1) {
+						entity->netForce = { 0, 0 };
+						entity->forceAppliedToAccelerationAndVelocity = { 0, 0 };
 					}
 				}
 				if (entity->flags & PLAYER_FLAG && entity->netForce.y < -1) {
@@ -165,13 +180,14 @@ int main() {
 
 				DrawEntity(entity);
 				DrawEntityForceLine(entity);
-				entity->netForce = { 0, 0 };
-				entity->forceAppliedToAccelerationAndVelocity = { 0, 0 };
 			}
 
 			for (int i = 0; i < gameState->addedEntities; i++) {
 				(gameState->entities + i)->gravityApplied = false;
 			}
+
+			inputGiven = false;
+			inputForce = { 0, 0 };
 
 		EndDrawing();
 		std::cout << "Frame number " << gameState->frameCount++ << "has ended" << std::endl << std::endl;

@@ -704,8 +704,8 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
             }
 
             std::cout << "object " << e1->id << " and " << e2->id << " friction" << std::endl;
-            ApplyFrictionToEntity(e1, frictionAxis, frictionMagnitude, frictionDir);
-            ApplyFrictionToEntity(e2, frictionAxis, frictionMagnitude, -frictionDir);
+            ApplyFrictionToEntity(e1, frictionAxis, frictionMagnitude, frictionDir, deltaTime);
+            ApplyFrictionToEntity(e2, frictionAxis, frictionMagnitude, -frictionDir, deltaTime);
         }
     }
     //throw std::runtime_error("look at the videos for the jumping bug");
@@ -713,19 +713,18 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
 }
 
 
-void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDir) {
+void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDir, float deltaTime) {
         Vector2 netForceAfterFriction = {0, 0};
-		Vector3 currentSpeed = {e->physicsVelocity.x, e->physicsVelocity.y, 0};
+        Vector3 currentSpeed = { e->physicsVelocity.x, e->physicsVelocity.y, 0 };
 		Vector3 speedAfterFriction;
 		Vector2 acceleration;
 
-		netForceAfterFriction.x += normalizedFrictionAxis.x * frictionMagnitude * frictionDir;
-		netForceAfterFriction.y += normalizedFrictionAxis.y * frictionMagnitude * frictionDir;
+        netForceAfterFriction.x += normalizedFrictionAxis.x * frictionMagnitude * frictionDir;
+        netForceAfterFriction.y += normalizedFrictionAxis.y * frictionMagnitude * frictionDir;
 		
-		acceleration.x = netForceAfterFriction.x / e->mass;
-		acceleration.y = netForceAfterFriction.y / e->mass;
+        acceleration.x = netForceAfterFriction.x / e->mass;
+        acceleration.y = netForceAfterFriction.y / e->mass;
 		
-        float deltaTime = GetDeltaTime();
 		speedAfterFriction.x = currentSpeed.x + acceleration.x * deltaTime;
 		speedAfterFriction.y = currentSpeed.y + acceleration.y * deltaTime;
 		speedAfterFriction.z = 0;
@@ -770,8 +769,8 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
             netForce.z = 0;
 
             float currentPenetrationVelocityOnFrictionAxis = DotProduct(normalizedFrictionAxis, e->penetrationVelocity);
-            float impulseScalar = -(currentSpeedOnFrictionAxis + currentPenetrationVelocityOnFrictionAxis) * e->mass;
-            Vector2 requiredImpulseForNewSpeed = {impulseScalar * normalizedFrictionAxis.x, impulseScalar * normalizedFrictionAxis.y};
+            float impulseScalar = -(currentSpeedOnFrictionAxis)*e->mass;
+            Vector2 requiredImpulseForNewSpeed = { impulseScalar * normalizedFrictionAxis.x, impulseScalar * normalizedFrictionAxis.y };
             ApplyForceToEntitiesVelocityImmediately(e, { requiredImpulseForNewSpeed.x / deltaTime, requiredImpulseForNewSpeed.y / deltaTime }, deltaTime);
 			std::cout << "Player stopped" << std::endl;
             e->stoppedByFriction = true;
@@ -792,7 +791,7 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
             //throw std::runtime_error("when you push one with another they frequently stop and go again it flickers");
 		}
         else if(abs(speedAfterFrictionOnFrictionAxis) < abs(currentSpeedOnFrictionAxis)) {
-            if(frictionMagnitude > 1000){
+            if (frictionMagnitude > 1000) {
                 std::cout << " ";
             }
             ApplyForceToEntity(e, { normalizedFrictionAxis.x * frictionMagnitude * frictionDir, normalizedFrictionAxis.y * frictionMagnitude * frictionDir });
