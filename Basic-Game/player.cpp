@@ -62,16 +62,16 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
     Entity* returnPointer = InitializeAndPushEntity(gameState, vertexData, vertexDataEnd, mass, flags);
     returnPointer->centerPosition.x += centerPos.x;
     returnPointer->centerPosition.y += centerPos.y;
-    returnPointer->gridIdxes = (uint32_t*)PushSize(gameState, (returnPointer->vertexDataEnd - returnPointer->vertexData) * 2 * sizeof(uint32_t));
-    returnPointer->gridIdxesSize = returnPointer->vertexDataEnd - returnPointer->vertexData;
+    returnPointer->gridPositionsOfVertices = (uint32_t*)PushSize(gameState, (returnPointer->vertexDataEnd - returnPointer->vertexData) * 2 * sizeof(uint32_t));
+    returnPointer->gridPositionOfVerticesSize = returnPointer->vertexDataEnd - returnPointer->vertexData;
     CalibrateEntityWithGrid(gameState, returnPointer);
     
     return returnPointer;
 }
 
 void CalibrateEntityWithGrid(GameState* gameState, Entity* e) {
-    for (int i = 0; i < e->gridIdxesSize; i++) {
-        uint32_t rowIdx = *(e->gridIdxes + (i * 2)), columnIdx = *(e->gridIdxes + (i * 2) + 1);
+    for (int i = 0; i < e->gridPositionOfVerticesSize; i++) {
+        uint32_t rowIdx = *(e->gridPositionsOfVertices + (i * 2)), columnIdx = *(e->gridPositionsOfVertices + (i * 2) + 1);
         if (rowIdx > 40000 || columnIdx > 40000) { continue; }
 		uint32_t* cellArray = gameState->spatialGrid + ((rowIdx * gameState->gridDimentions[0] + columnIdx) * gameState->gridDimentions[2]);
 		for (int j = 0; j < gameState->gridDimentions[2]; j++) {
@@ -88,8 +88,8 @@ void CalibrateEntityWithGrid(GameState* gameState, Entity* e) {
 		vertex.position.y += e->centerPosition.y;
 		if ((vertex.position.x < 0 || vertex.position.x >= gameState->WINDOW_WIDTH) || (vertex.position.y < 0 || vertex.position.y >= gameState->WINDOW_HEIGHT)) {
 			//even though unsigned int can't be -1 this still works because it gets a crazy big value
-            *(e->gridIdxes + (i * 2)) = -1;
-            *(e->gridIdxes + (i * 2) + 1) = -1;
+            *(e->gridPositionsOfVertices + (i * 2)) = -1;
+            *(e->gridPositionsOfVertices + (i * 2) + 1) = -1;
 			continue;
 		}
 		int gridRowIdx = (int)vertex.position.y / gameState->gridSquareEdgeLength;
@@ -99,8 +99,8 @@ void CalibrateEntityWithGrid(GameState* gameState, Entity* e) {
 		for (int j = 0; j < gameState->gridDimentions[2]; j++) {
 			if (cellArray[j] == 0 && numOfEntitiesIdInCell == 0) {
 				cellArray[j] = e->id;
-				*(e->gridIdxes + (i * 2)) = gridRowIdx;
-				*(e->gridIdxes + (i * 2) + 1) = gridColumnIdx;
+				*(e->gridPositionsOfVertices + (i * 2)) = gridRowIdx;
+				*(e->gridPositionsOfVertices + (i * 2) + 1) = gridColumnIdx;
                 break;
 			}
 		}
@@ -129,7 +129,8 @@ void DrawEntity(Entity* player) {
 
 void DrawEntityForceLine(Entity* entity) {
     Color colorOfTheLine = {0, 00, 255, 255};
-    DrawLine(entity->centerPosition.x, entity->centerPosition.y, entity->centerPosition.x + entity->netForce.x, entity->centerPosition.y + entity->netForce.y, colorOfTheLine);
+    int drawingMultiplier = 80;
+    DrawLine(entity->centerPosition.x, entity->centerPosition.y, entity->centerPosition.x + entity->forcesMultipliedByAppliedTime.x * drawingMultiplier, entity->centerPosition.y + entity->forcesMultipliedByAppliedTime.y * drawingMultiplier, colorOfTheLine);
 }
 
 bool IsCounterClockwise(Vector2 v1, Vector2 v2, Vector2 v3) {
@@ -193,6 +194,8 @@ void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, floa
     entity->physicsVelocity.y += entity->acceleration.y * deltaTime;
     entity->forceAppliedToAccelerationAndVelocity.x += force.x;
     entity->forceAppliedToAccelerationAndVelocity.y += force.y;
+    entity->forcesMultipliedByAppliedTime.x += force.x * deltaTime;
+    entity->forcesMultipliedByAppliedTime.y += force.y * deltaTime;
 }
 
 float square(float f1) {

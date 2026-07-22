@@ -158,6 +158,8 @@ int main() {
 						float deltaTime = GetDeltaTime();
 						entity->physicsVelocity.x += entity->acceleration.x * iterationTimeStep;
 						entity->physicsVelocity.y += entity->acceleration.y * iterationTimeStep;
+						entity->forcesMultipliedByAppliedTime.x += entity->netForce.x * deltaTime;
+						entity->forcesMultipliedByAppliedTime.y += entity->netForce.y * deltaTime;
 						entity->netForce.x += entity->forceAppliedToAccelerationAndVelocity.x;
 						entity->netForce.y += entity->forceAppliedToAccelerationAndVelocity.y;
 
@@ -180,6 +182,7 @@ int main() {
 				DrawEntityForceLine(entity);
 				entity->netForce = { 0, 0 };
 				entity->forceAppliedToAccelerationAndVelocity = { 0, 0 };
+				entity->forcesMultipliedByAppliedTime = { 0, 0 };
 			}
 
 			for (int i = 0; i < gameState->addedEntities; i++) {

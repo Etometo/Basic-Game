@@ -21,7 +21,6 @@ enum {
 };
 
 typedef struct Entity {
-	bool isPlayer = false;
 	Vector2 centerPosition = {-100, -100};
 	Color color = {255, 255, 255, 255};
 	VertexData* vertexData;
@@ -34,8 +33,8 @@ typedef struct Entity {
 
 	float elasticity = 0;
 	float mass = 0;
-	bool gravityApplied;
 	Vector2 forceAppliedToAccelerationAndVelocity;
+	Vector2 forcesMultipliedByAppliedTime;
 	Vector2 netForce = { 0, 0 };
 	Vector2 acceleration = { 0, 0 };
 	//amount the object was moved directly to prevent penetrations
@@ -45,9 +44,11 @@ typedef struct Entity {
 	float frictionCons = 0;
 
 	//two dimentional, contains pair elements the first one being the row index the second one being the column index
-	uint32_t* gridIdxes; 
-	uint32_t gridIdxesSize;
+	uint32_t* gridPositionsOfVertices; 
+	uint32_t gridPositionOfVerticesSize;
 
+	bool isPlayer = false;
+	bool gravityApplied;
 	bool stoppedByFriction;
 };
 
