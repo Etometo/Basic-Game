@@ -125,15 +125,15 @@ int main() {
 
 				float deltaTime = GetDeltaTime();
 
+				if ((entity->flags & GRAVITY_FLAG) > 0) {
+					ApplyForceToEntitiesVelocityImmediately(entity, { 0, entity->mass * gameState->gravityConstant }, deltaTime);
+					entity->gravityApplied = true;
+				}
+				if (entity->isPlayer && inputGiven) {
+					ApplyForceToEntitiesVelocityImmediately(entity, inputForce, deltaTime);
+				}
 				for(int k = 0; k < gameState->SOLVER_ITERATIONS; k++){
 					float iterationTimeStep = deltaTime / gameState->SOLVER_ITERATIONS;
-					if ((entity->flags & GRAVITY_FLAG) > 0) {
-						ApplyForceToEntitiesVelocityImmediately(entity, { 0, entity->mass * gameState->gravityConstant }, iterationTimeStep);
-						entity->gravityApplied = true;
-					}
-					if (entity->isPlayer && inputGiven) {
-						ApplyForceToEntitiesVelocityImmediately(entity, inputForce, iterationTimeStep);
-					}
 
 					for (int j = 0; j < numOfRelevantEntities; j++) {
 						Entity* relevantEntity = relevantEntities[j];
@@ -143,7 +143,6 @@ int main() {
 							Vector2 impulse = { 0, 0 }, relativeVel = {0, 0};
 
 							CalculateAndApplyImpulse(gameState, entity, relevantEntity, collInfo, impulse, relativeVel, iterationTimeStep);
-
 							HandleFriction(gameState, entity, relevantEntity, collInfo, impulse, relativeVel, iterationTimeStep);
 						}
 					}
@@ -162,13 +161,9 @@ int main() {
 						entity->netForce.x += entity->forceAppliedToAccelerationAndVelocity.x;
 						entity->netForce.y += entity->forceAppliedToAccelerationAndVelocity.y;
 
-						MoveEntity(entity, iterationTimeStep);
-						CalibrateEntityWithGrid(gameState, entity);
 
 					}
 					if (k != gameState->SOLVER_ITERATIONS - 1) {
-						entity->netForce = { 0, 0 };
-						entity->forceAppliedToAccelerationAndVelocity = { 0, 0 };
 					}
 				}
 				if (entity->flags & PLAYER_FLAG && entity->netForce.y < -1) {
@@ -178,8 +173,13 @@ int main() {
 					std::cout << "Num of relevant entities: " << numOfRelevantEntities << std::endl;
 				}
 
+				MoveEntity(entity, deltaTime);
+				CalibrateEntityWithGrid(gameState, entity);
+
 				DrawEntity(entity);
 				DrawEntityForceLine(entity);
+				entity->netForce = { 0, 0 };
+				entity->forceAppliedToAccelerationAndVelocity = { 0, 0 };
 			}
 
 			for (int i = 0; i < gameState->addedEntities; i++) {

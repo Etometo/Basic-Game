@@ -13,6 +13,7 @@
 
 constexpr float BAUMGARTE_BETA = 0.2f; 
 constexpr float PENETRATION_SLOP = 0.5f;           
+constexpr float EPSILON = 1e-5f;           
 
 float GetDeltaTime() {
     float frameTime = GetFrameTime();
@@ -687,9 +688,9 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
             e1->stoppedByFriction = false;
         }
 
-        if (impulseMagnitude > gameState->EPSILON && (abs(relativeVelOnFrictionAxis) > gameState->EPSILON || abs(relativeForceOnFrictionAxis) > gameState->EPSILON)) {
+        if (impulseMagnitude > EPSILON && (abs(relativeVelOnFrictionAxis) > EPSILON || abs(relativeForceOnFrictionAxis) > EPSILON)) {
             frictionMagnitude = (impulseMagnitude / deltaTime) * frictionConst;
-            if (abs(relativeVelOnFrictionAxis) > gameState->EPSILON) {
+            if (abs(relativeVelOnFrictionAxis) > EPSILON) {
 				frictionDir = -relativeVelOnFrictionAxis / abs(relativeVelOnFrictionAxis);
                 std::cout << "e1 and e2 speed: ";
                 PrintVector(e1->physicsVelocity);
@@ -699,7 +700,7 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
                 PrintVector(relativeVelocity);
                 std::cout << relativeVelOnFrictionAxis << std::endl;
             }
-            else if (abs(relativeForceOnFrictionAxis) > gameState->EPSILON) {
+            else if (abs(relativeForceOnFrictionAxis) > EPSILON) {
 				frictionDir = -relativeForceOnFrictionAxis / abs(relativeForceOnFrictionAxis);
             }
 
@@ -739,7 +740,7 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
         bool frictionBiggerThanNetForceOnFrictionAxis = false;
         if(objectIsntMovingOnFrictionAxis) {
             float currentNetForceOnFrictionAxis = DotProduct(normalizedFrictionAxis, e->netForce);
-            if (abs(currentNetForceOnFrictionAxis) <= frictionMagnitude) {
+            if (abs(currentNetForceOnFrictionAxis) <= frictionMagnitude && abs(currentNetForceOnFrictionAxis) > EPSILON) {
                 frictionBiggerThanNetForceOnFrictionAxis = true;
             }
         }
@@ -769,7 +770,7 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
             netForce.z = 0;
 
             float currentPenetrationVelocityOnFrictionAxis = DotProduct(normalizedFrictionAxis, e->penetrationVelocity);
-            float impulseScalar = -(currentSpeedOnFrictionAxis)*e->mass;
+            float impulseScalar = -(currentSpeedOnFrictionAxis) * e->mass;
             Vector2 requiredImpulseForNewSpeed = { impulseScalar * normalizedFrictionAxis.x, impulseScalar * normalizedFrictionAxis.y };
             ApplyForceToEntitiesVelocityImmediately(e, { requiredImpulseForNewSpeed.x / deltaTime, requiredImpulseForNewSpeed.y / deltaTime }, deltaTime);
 			std::cout << "Player stopped" << std::endl;
@@ -794,7 +795,8 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
             if (frictionMagnitude > 1000) {
                 std::cout << " ";
             }
-            ApplyForceToEntity(e, { normalizedFrictionAxis.x * frictionMagnitude * frictionDir, normalizedFrictionAxis.y * frictionMagnitude * frictionDir });
+            ApplyForceToEntitiesVelocityImmediately(e, { normalizedFrictionAxis.x * frictionMagnitude * frictionDir, normalizedFrictionAxis.y * frictionMagnitude * frictionDir }, deltaTime);
+
         }
 }
 

@@ -94,6 +94,6 @@ void ApplyGravityCalculatePhysicsAndMoveEntity(GameState* gameState, Entity* ent
 
 unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sumOfInsiderVerticesPositions);
 
-void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDirection);
+void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDirection, float deltaTime);
 
 #endif
