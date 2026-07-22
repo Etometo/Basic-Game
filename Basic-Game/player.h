@@ -43,6 +43,11 @@ typedef struct Entity {
 	Vector2 lastSpeed;
 	float frictionCons = 0;
 
+	float inertia;
+	float torque;
+	float rotationalVelocity;
+
+
 	//two dimentional, contains pair elements the first one being the row index the second one being the column index
 	uint32_t* gridPositionsOfVertices; 
 	uint32_t gridPositionOfVerticesSize;

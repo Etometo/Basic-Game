@@ -186,6 +186,9 @@ void ApplyForceToEntity(Entity* player, Vector2 mov) {
 }
 
 void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, float deltaTime) {
+    if (entity->flags & NON_MOVING_FLAG) {
+        return;
+    }
     entity->netForce.x += force.x;
     entity->netForce.y += force.y;
     entity->acceleration.x = force.x / entity->mass;
@@ -590,14 +593,8 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
     float push = collInfo.minOverlap - PENETRATION_SLOP;
     float penetrationBias = 0;
 
-    if (collInfo.minOverlap > PENETRATION_SLOP) {
-        penetrationBias = (BAUMGARTE_BETA / deltaTime) * (collInfo.minOverlap - PENETRATION_SLOP);
-    }
-
     if (e2->gravityApplied == false && ((e2->flags & NON_MOVING_FLAG) == 0)) {
-        Vector2 e2NewSpeed = e2->physicsVelocity;
-        float accelerationOnY = gameState->gravityConstant;
-        float speedChangeInY = accelerationOnY * deltaTime;
+        float speedChangeInY = gameState->gravityConstant * deltaTime;
         relativeVelocity.x = (e1->physicsVelocity.x) - (e2->physicsVelocity.x);
         relativeVelocity.y = (e1->physicsVelocity.y) - (e2->physicsVelocity.y + speedChangeInY);
     }
@@ -606,10 +603,15 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
         relativeVelocity.y = (e1->physicsVelocity.y) - (e2->physicsVelocity.y);
     }
 
-    float velAlongNormal = DotProduct(collInfo.normalizedOverlapLine, relativeVelocity);
-    if (velAlongNormal < 0) {
-        return;
+    if (collInfo.minOverlap > PENETRATION_SLOP) {
+        float relativeVelOnCollisionLine = DotProduct(collInfo.normalizedOverlapLine, relativeVelocity);
+        if (relativeVelOnCollisionLine < collInfo.minOverlap) {
+			penetrationBias = (BAUMGARTE_BETA * 3) * (collInfo.minOverlap - PENETRATION_SLOP) / GetFrameTime();
+        }
     }
+
+
+    float velAlongNormal = DotProduct(collInfo.normalizedOverlapLine, relativeVelocity);
 
     float e;
     if ((e1->flags | e2->flags) & NON_MOVING_FLAG) {
@@ -627,6 +629,9 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
 	}
 
     float j = (-(1.0 + e) * velAlongNormal) - penetrationBias;
+    if (j > EPSILON) {
+        j = 0;
+    }
     j /= sumOfInverseMasses;
 
 
@@ -716,7 +721,6 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
     return;
 }
 
-
 void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDir, float deltaTime) {
         Vector2 netForceAfterFriction = {0, 0};
         Vector3 currentSpeed = { e->physicsVelocity.x, e->physicsVelocity.y, 0 };
@@ -799,7 +803,6 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
                 std::cout << " ";
             }
             ApplyForceToEntitiesVelocityImmediately(e, { normalizedFrictionAxis.x * frictionMagnitude * frictionDir, normalizedFrictionAxis.y * frictionMagnitude * frictionDir }, deltaTime);
-
         }
 }
 

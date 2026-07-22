@@ -132,23 +132,21 @@ int main() {
 				if (entity->isPlayer && inputGiven) {
 					ApplyForceToEntitiesVelocityImmediately(entity, inputForce, deltaTime);
 				}
-				for(int k = 0; k < gameState->SOLVER_ITERATIONS; k++){
+				for (int j = 0; j < numOfRelevantEntities; j++) {
 					float iterationTimeStep = deltaTime / gameState->SOLVER_ITERATIONS;
+					Entity* relevantEntity = relevantEntities[j];
+					CollisionInfo collInfo = DetectCollisionWithEntity(entity, relevantEntity);
+					float totalMass = entity->mass + relevantEntity->mass;
 
-					for (int j = 0; j < numOfRelevantEntities; j++) {
-						Entity* relevantEntity = relevantEntities[j];
-						CollisionInfo collInfo = DetectCollisionWithEntity(entity, relevantEntity);
-						float totalMass = entity->mass + relevantEntity->mass;
+					std::cout << "entity " << entity->id << " and " << relevantEntity->id << "collision" << std::endl;
+					for(int k = 0; k < gameState->SOLVER_ITERATIONS; k++){
 						if (collInfo.minOverlap > 0) {
 							Vector2 impulse = { 0, 0 }, relativeVel = {0, 0};
 
 							CalculateAndApplyImpulse(gameState, entity, relevantEntity, collInfo, impulse, relativeVel, iterationTimeStep);
 							HandleFriction(gameState, entity, relevantEntity, collInfo, impulse, relativeVel, iterationTimeStep);
 						}
-					}
-
-					if ((entity->flags & NON_MOVING_FLAG) == 0) {
-
+					
 						//because we apply gravity at the start of the loop for these calculations we get rid of it
 						entity->netForce.x -= entity->forceAppliedToAccelerationAndVelocity.x;
 						entity->netForce.y -= entity->forceAppliedToAccelerationAndVelocity.y;
@@ -162,10 +160,6 @@ int main() {
 						entity->forcesMultipliedByAppliedTime.y += entity->netForce.y * deltaTime;
 						entity->netForce.x += entity->forceAppliedToAccelerationAndVelocity.x;
 						entity->netForce.y += entity->forceAppliedToAccelerationAndVelocity.y;
-
-
-					}
-					if (k != gameState->SOLVER_ITERATIONS - 1) {
 					}
 				}
 				if (entity->flags & PLAYER_FLAG && entity->netForce.y < -1) {
