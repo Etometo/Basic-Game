@@ -156,8 +156,8 @@ int main() {
 						float deltaTime = GetDeltaTime();
 						entity->physicsVelocity.x += entity->acceleration.x * iterationTimeStep;
 						entity->physicsVelocity.y += entity->acceleration.y * iterationTimeStep;
-						entity->forcesMultipliedByAppliedTime.x += entity->netForce.x * deltaTime;
-						entity->forcesMultipliedByAppliedTime.y += entity->netForce.y * deltaTime;
+						entity->forcesMultipliedByAppliedTime.x += entity->netForce.x * iterationTimeStep;
+						entity->forcesMultipliedByAppliedTime.y += entity->netForce.y * iterationTimeStep;
 						entity->netForce.x += entity->forceAppliedToAccelerationAndVelocity.x;
 						entity->netForce.y += entity->forceAppliedToAccelerationAndVelocity.y;
 					}

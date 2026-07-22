@@ -606,7 +606,7 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
     if (collInfo.minOverlap > PENETRATION_SLOP) {
         float relativeVelOnCollisionLine = DotProduct(collInfo.normalizedOverlapLine, relativeVelocity);
         if (relativeVelOnCollisionLine < collInfo.minOverlap) {
-			penetrationBias = (BAUMGARTE_BETA * 3) * (collInfo.minOverlap - PENETRATION_SLOP) / GetFrameTime();
+			penetrationBias = (BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP) / GetFrameTime();
         }
     }
 
