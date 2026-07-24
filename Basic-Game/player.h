@@ -43,8 +43,10 @@ typedef struct Entity {
 	Vector2 lastSpeed;
 	float frictionCons = 0;
 
+	//inside the screen is positive
 	float inertia;
 	float torque;
+	float rotationalAcceleration;
 	float rotationalVelocity;
 
 
@@ -66,6 +68,10 @@ struct CollisionInfo {
 
 float GetDeltaTime();
 
+void PrintVector(Vector2 vec);
+
+void PrintVector(Vector3 vec);
+
 Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags, Vector2 centerPos);
 
 void CalibrateEntityWithGrid(GameState* gameState, Entity* e);
@@ -84,22 +90,24 @@ void MoveEntity(Entity* player, float deltaTime);
 
 void ApplyForceToEntity(Entity* player, Vector2 movement);
 
-void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, float deltaTime);
+void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, float deltaTime, Vector2 forceApplicationPoint);
 
 int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** relevanEntities, int offset);
 
 CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2);
 
+Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2);
+
 float ResolvePenetrationAndReturnThePush(Entity* e1, Entity* e2, CollisionInfo collInfo, float sumOfInverseMasses, Vector2 &impulse);
 
-void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2& impulse, Vector2& relativeVelocity, float deltaTime);
+void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2& impulse, Vector2& relativeVelocity, Vector2 forceApplicationPoint, float deltaTime);
 
-void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2 &impulse, Vector2 &relativeVel, float deltaTime);
+void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2 &impulse, Vector2 &relativeVel, Vector2 forceApplicationPoint, float deltaTime);
 
 void ApplyGravityCalculatePhysicsAndMoveEntity(GameState* gameState, Entity* entity);
 
 unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sumOfInsiderVerticesPositions);
 
-void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDirection, float deltaTime);
+void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDirection, float deltaTime, Vector2 &relativeVelocity, Vector2 forceApplicationPoint);
 
 #endif
