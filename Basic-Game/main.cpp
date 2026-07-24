@@ -71,10 +71,10 @@ int main() {
 	//spatial grid gets  filled with the same values for the entire cell at some point
 	uint32_t playerFlags = GRAVITY_FLAG | PLAYER_FLAG | GROUND_COLLISION_FLAG;
 	Vector2 playerCenterPos = { 450, 350 };
-	Entity* player = InitializeAndPushEntity(gameState, tri2Data, tri2DataEnd, 10, playerFlags, playerCenterPos);
+	Entity* player = InitializeAndPushEntity(gameState, tri2Data, tri2DataEnd, 1000, playerFlags, playerCenterPos);
 	player->isPlayer = true;
 	Vector2 player2CenterPos = { 500, 100 };
-	Entity* player2 = InitializeAndPushEntity(gameState, triData, triDataEnd, 10, GRAVITY_FLAG | GROUND_COLLISION_FLAG, player2CenterPos);
+	Entity* player2 = InitializeAndPushEntity(gameState, triData, triDataEnd, 1000, GRAVITY_FLAG | GROUND_COLLISION_FLAG, player2CenterPos);
 	player2->frictionCons = 200.9;
 	player2->elasticity = 0;
 	
@@ -106,15 +106,15 @@ int main() {
 			}
 			if (IsKeyDown(KEY_S)) {
 				inputGiven = true;
-				inputForce.y += 20 * player->mass;
+				inputForce.y += 200 * player->mass;
 			}
 			if (IsKeyDown(KEY_A)) {
 				inputGiven = true;
-				inputForce.x += -20 * player->mass;
+				inputForce.x += -200 * player->mass;
 			}
 			if (IsKeyDown(KEY_D)) {
 				inputGiven = true;
-				inputForce.x += 20 * player->mass;
+				inputForce.x += 200 * player->mass;
 			}
 			if (IsKeyPressed(KEY_E)) {
 			}

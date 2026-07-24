@@ -38,7 +38,6 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
 
     int vertexCount = vertexDataEnd - vertexData;
     float inertia = 0;
-    float massPerVertex = mass / (vertexDataEnd - vertexData);
     Vector2 centerOfTheShape = {0, 0};
     for (int i = 0; i < vertexCount; i++) {
         centerOfTheShape.x += vertexData[i].position.x;
@@ -55,8 +54,9 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
     returnPointer->flags |= flags;
     returnPointer->id = gameState->nextAvailableId++;
 
+    float massPerVertex = returnPointer->mass / vertexCount;
     for (int i = 1; i < vertexCount; i++) {
-        returnPointer->inertia += returnPointer->mass * (pow(vertexData[i].position.x - centerOfTheShape.x, 2) + pow(vertexData[i].position.y - centerOfTheShape.y, 2));
+        returnPointer->inertia += massPerVertex * (pow(vertexData[i].position.x - centerOfTheShape.x, 2) + pow(vertexData[i].position.y - centerOfTheShape.y, 2));
     }
 
 	return returnPointer;
@@ -133,7 +133,7 @@ void DrawEntity(Entity* player) {
 
 void DrawEntityForceLine(Entity* entity) {
     Color colorOfTheLine = {0, 00, 255, 255};
-    int drawingMultiplier = 80;
+    int drawingMultiplier = 1;
     DrawLine(entity->centerPosition.x, entity->centerPosition.y, entity->centerPosition.x + entity->forcesMultipliedByAppliedTime.x * drawingMultiplier, entity->centerPosition.y + entity->forcesMultipliedByAppliedTime.y * drawingMultiplier, colorOfTheLine);
 }
 
@@ -206,7 +206,7 @@ void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, floa
     if (entity->id == 2) {
         std::cout << " ";
     }
-    if (forceApplicationPointFromTheCenter.x < EPSILON && forceApplicationPointFromTheCenter.y < EPSILON) {
+    if (abs(forceApplicationPointFromTheCenter.x) < EPSILON && abs(forceApplicationPointFromTheCenter.y < EPSILON)) {
         torque = 0;
     }
     else {
@@ -611,12 +611,12 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
     float push = collInfo.minOverlap - PENETRATION_SLOP;
     float penetrationBias = 0;
 
-    Vector3 distanceOfForceApplicationPointFromE1Center = { forceApplicationPoint.x - e1->centerPosition.x, forceApplicationPoint.y - e1->centerPosition.y };
-    Vector3 distanceOfForceApplicationPointFromE2Center = { forceApplicationPoint.x - e2->centerPosition.x, forceApplicationPoint.y - e2->centerPosition.y };
+    Vector3 distanceVectorOfForceApplicationPointFromE1Center = { forceApplicationPoint.x - e1->centerPosition.x, forceApplicationPoint.y - e1->centerPosition.y };
+    Vector3 distanceVectorOfForceApplicationPointFromE2Center = { forceApplicationPoint.x - e2->centerPosition.x, forceApplicationPoint.y - e2->centerPosition.y };
     Vector3 velocityOfE1CausedByRotationalVelocity, velocityOfE2CausedByRotationalVelocity;
-    Vector3 rotationalVelocityOfE1 = { 0, 0, -e1->rotationalVelocity }, rotationalVelocityOfE2 = { 0, 0, -e2->rotationalVelocity };
-    CrossProduct(rotationalVelocityOfE1, distanceOfForceApplicationPointFromE1Center, velocityOfE1CausedByRotationalVelocity);
-    CrossProduct(rotationalVelocityOfE2, distanceOfForceApplicationPointFromE2Center, velocityOfE2CausedByRotationalVelocity);
+    Vector3 rotationalVelocityOfE1 = { 0, 0, e1->rotationalVelocity }, rotationalVelocityOfE2 = { 0, 0, e2->rotationalVelocity };
+    CrossProduct(rotationalVelocityOfE1, distanceVectorOfForceApplicationPointFromE1Center, velocityOfE1CausedByRotationalVelocity);
+    CrossProduct(rotationalVelocityOfE2, distanceVectorOfForceApplicationPointFromE2Center, velocityOfE2CausedByRotationalVelocity);
 
     if (e2->gravityApplied == false && ((e2->flags & NON_MOVING_FLAG) == 0)) {
         float speedChangeInY = gameState->gravityConstant * deltaTime;
@@ -634,9 +634,7 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
 
     if (collInfo.minOverlap > PENETRATION_SLOP) {
         float relativeVelOnCollisionLine = DotProduct(collInfo.normalizedOverlapLine, relativeVelocityOfForceApplicationPoint);
-        if (relativeVelOnCollisionLine < collInfo.minOverlap) {
-            penetrationBias = (BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP) / GetFrameTime();
-        }
+        penetrationBias = (BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP) / GetFrameTime();
     }
 
 
@@ -649,10 +647,18 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
     else {
         e = e1->elasticity > e2->elasticity ? e1->elasticity : e2->elasticity;
     }
+    float r1CrossN = distanceVectorOfForceApplicationPointFromE1Center.x * collInfo.normalizedOverlapLine.y - distanceVectorOfForceApplicationPointFromE1Center.y * collInfo.normalizedOverlapLine.x;
+    float r2CrossN = distanceVectorOfForceApplicationPointFromE2Center.x * collInfo.normalizedOverlapLine.y - distanceVectorOfForceApplicationPointFromE2Center.y * collInfo.normalizedOverlapLine.x;
+
+    float inv1Inertia = e1->flags & NON_MOVING_FLAG ? 0 : (1 / e1->inertia);
+    float inv2Inertia = e2->flags & NON_MOVING_FLAG ? 0 : (1 / e2->inertia);
+
+    float rotationalMass1 = (r1CrossN * r1CrossN) * inv1Inertia;
+    float rotationalMass2 = (r2CrossN * r2CrossN) * inv2Inertia;
 
     float inv1mass = e1->flags & NON_MOVING_FLAG ? 0 : (1 / e1->mass);
     float inv2mass = e2->flags & NON_MOVING_FLAG ? 0 : (1 / e2->mass);
-    float sumOfInverseMasses = inv1mass + inv2mass;
+    float sumOfInverseMasses = inv1mass + inv2mass + rotationalMass1 + rotationalMass2;
     if (sumOfInverseMasses == 0.0f) {
 		return;
 	}
@@ -679,7 +685,7 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
     Vector3 distanceOfForceApplicationPointFromE1Center = { forceApplicationPoint.x - e1->centerPosition.x, forceApplicationPoint.y - e1->centerPosition.y };
     Vector3 distanceOfForceApplicationPointFromE2Center = { forceApplicationPoint.x - e2->centerPosition.x, forceApplicationPoint.y - e2->centerPosition.y };
     Vector3 velocityOfE1CausedByRotationalVelocity, velocityOfE2CausedByRotationalVelocity;
-    Vector3 rotationalVelocityOfE1 = { 0, 0, -e1->rotationalVelocity }, rotationalVelocityOfE2 = { 0, 0, -e2->rotationalVelocity };
+    Vector3 rotationalVelocityOfE1 = { 0, 0, e1->rotationalVelocity }, rotationalVelocityOfE2 = { 0, 0, e2->rotationalVelocity };
     CrossProduct(rotationalVelocityOfE1, distanceOfForceApplicationPointFromE1Center, velocityOfE1CausedByRotationalVelocity);
     CrossProduct(rotationalVelocityOfE2, distanceOfForceApplicationPointFromE2Center, velocityOfE2CausedByRotationalVelocity);
 
