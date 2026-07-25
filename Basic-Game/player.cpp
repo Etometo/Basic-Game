@@ -55,7 +55,7 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
     returnPointer->id = gameState->nextAvailableId++;
 
     float massPerVertex = returnPointer->mass / vertexCount;
-    for (int i = 1; i < vertexCount; i++) {
+    for (int i = 0; i < vertexCount; i++) {
         returnPointer->inertia += massPerVertex * (pow(vertexData[i].position.x - centerOfTheShape.x, 2) + pow(vertexData[i].position.y - centerOfTheShape.y, 2));
     }
 
