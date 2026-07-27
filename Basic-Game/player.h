@@ -77,6 +77,8 @@ void PrintVector(Vector3 vec);
 
 bool CheckIfAPointIsInsideAShape(Vector2 positionOfPoint, Entity* entity);
 
+int MakeAnArrayFullOfUniqueItems(GameState* gameState, char* arrayStart, char* arrayEnd, uint32_t numOfElements, uint32_t typeSize);
+
 Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags, Vector2 centerPos);
 
 void CalibrateEntityWithGrid(GameState* gameState, Entity* e);

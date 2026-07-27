@@ -36,12 +36,6 @@ int main() {
 	gameState->gridDimentions[1] = numberOfPartitionsOnWidthAxis;
 	gameState->gridDimentions[2] = numOfIdsPerCell;
 	
-	for (int i = 0; i < numberOfPartitionsOnWidthAxis; i++) {
-		for (int j = 0; j < numberOfPartitionsOnHeightAxis; j++) {
-
-		}
-	}
-
 	VertexData* rectData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
 	VertexData* rectDataEnd = rectData;
 	*(rectDataEnd++) = VertexData{ 50, 50 };
@@ -49,12 +43,14 @@ int main() {
 	*(rectDataEnd++) = VertexData{ -50, -50 };
 	*(rectDataEnd++) = VertexData{ -50, 50 };
 
-	VertexData* floorRectData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
+	VertexData* floorRectData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 6);
 	VertexData* floorRectDataEnd = floorRectData;
-	*(floorRectDataEnd++) = VertexData{ 150, 50 };
-	*(floorRectDataEnd++) = VertexData{ 150, -50 };
-	*(floorRectDataEnd++) = VertexData{ -150, -50 };
-	*(floorRectDataEnd++) = VertexData{ -150, 50 };
+	*(floorRectDataEnd++) = VertexData{ 400, 50 };
+	*(floorRectDataEnd++) = VertexData{ 400, -50 };
+	*(floorRectDataEnd++) = VertexData{ 0, -50 };
+	*(floorRectDataEnd++) = VertexData{ -400, -50 };
+	*(floorRectDataEnd++) = VertexData{ -400, 50 };
+	*(floorRectDataEnd++) = VertexData{ 0, 50 };
 
 	VertexData* triData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 3);
 	VertexData* triDataEnd = triData;
@@ -70,84 +66,71 @@ int main() {
 
 	//spatial grid gets  filled with the same values for the entire cell at some point
 	uint32_t playerFlags = GRAVITY_FLAG | PLAYER_FLAG | GROUND_COLLISION_FLAG | PHYSICS_FLAG;
-	Vector2 playerCenterPos = { 450, 350 };
-	Entity* player = InitializeAndPushEntity(gameState, tri2Data, tri2DataEnd, 1000, playerFlags, playerCenterPos);
-	player->isPlayer = true;
-	Vector2 player2CenterPos = { 500, 100 };
-	Entity* player2 = InitializeAndPushEntity(gameState, triData, triDataEnd, 1000, GRAVITY_FLAG | GROUND_COLLISION_FLAG | PHYSICS_FLAG, player2CenterPos);
-	player2->frictionCons = 200.9;
-	player2->elasticity = 0;
 	
-	Vector2 floorCenterPos = { 400, 600 };
+	Vector2 floorCenterPos = { 400, 750 };
 	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, NON_MOVING_FLAG | GROUND_COLLISION_FLAG | PHYSICS_FLAG, floorCenterPos);
 	floor->frictionCons = 0.1;
-
-	VertexData* buttonRectData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
-	VertexData* buttonRectDataEnd = buttonRectData;
-	*(buttonRectDataEnd++) = VertexData{ 50, 50 };
-	*(buttonRectDataEnd++) = VertexData{ 50, -50 };
-	*(buttonRectDataEnd++) = VertexData{ -50, -50 };
-	*(buttonRectDataEnd++) = VertexData{ -50, 50 };
-
-	Entity* button = (Entity*)InitializeAndPushEntity(gameState, buttonRectData, buttonRectDataEnd, 0, BUTTON_FLAG, { 100, 100 });
-
 
 	//throw std::runtime_error("do the rotation stuff and fix the very little impulses preventing objects from staying on top of each other");
 	InitWindow(gameState->WINDOW_WIDTH, gameState->WINDOW_HEIGHT, "asd");
 	SetTargetFPS(gameState->goalFps);
-	Entity** relevantEntities = (Entity**)PushSize(gameState, sizeof(Entity*) * 20);
-	int numOfRelevantEntities = CalculateRelevantEntitiesForEntity(gameState, player, relevantEntities, 0);
-	std::cout << numOfRelevantEntities << " is the number of importants first importants ";
+	Entity** relevantEntities = (Entity**)PushSize(gameState, sizeof(Entity*) * 50);
+	int numOfRelevantEntities;
 
 	bool inputGiven = false;
 	Vector2 inputForce = { 0, 0 };
 
+	bool mouseLeftBeingHeld = false;
+	Vector2 cuttingLineStartPosition, cuttingLineEndPosition;
+
+	bool readyForNewEntityInitialization = true;
+	bool entityInitialized = false;
+
 	while (!WindowShouldClose()) {
-		std::cout << "Frame number " << gameState->frameCount << "is starting" << std::endl << std::endl;
+		//std::cout << "Frame number " << gameState->frameCount << "is starting" << std::endl << std::endl;
 		BeginDrawing();
 			ClearBackground(RAYWHITE);
-			if (IsKeyPressed(KEY_W)) {
-				float jumpForce = (float)(-10000 * player->mass * GetFPS() / 65);
-				if (GetFPS() > 165) {
-					jumpForce = (float)(-1000 * 165 / 65);
-				}
-				inputGiven = true;
-				inputForce.y += jumpForce;
-			}
-			if (IsKeyDown(KEY_S)) {
-				inputGiven = true;
-				inputForce.y += 200 * player->mass;
-			}
-			if (IsKeyDown(KEY_A)) {
-				inputGiven = true;
-				inputForce.x += -200 * player->mass;
-			}
-			if (IsKeyDown(KEY_D)) {
-				inputGiven = true;
-				inputForce.x += 200 * player->mass;
-			}
-			if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-				Vector2 mousePos = GetMousePosition();
-				numOfRelevantEntities = CalculateRelevantEntitiesForPosition(gameState, mousePos, relevantEntities);
-				for (int i = 0; i < numOfRelevantEntities; i++) {
-					Entity* relevantEntity = relevantEntities[i];
-					bool buttonClicked = false;
-					if (relevantEntity->flags & BUTTON_FLAG) {
-						buttonClicked = CheckIfAPointIsInsideAShape(mousePos, relevantEntity);
-					}
-					if (buttonClicked) {
-						std::cout << "button clicked";
-					}
-					std::cout << "mouse clicked";
-				}
 
+			if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+				Vector2 mousePos = GetMousePosition();
+				if (mouseLeftBeingHeld) {
+					std::cout << "mouseBeingHeld" << std::endl;
+					DrawLine(cuttingLineStartPosition.x, cuttingLineStartPosition.y, mousePos.x, mousePos.y, RED);
+				}
+				else {
+					std::cout << "mouse clicked";
+					mouseLeftBeingHeld = true;
+					cuttingLineStartPosition = mousePos;
+				}
+			}
+			else {
+				if (mouseLeftBeingHeld) {
+					Vector2 mousePos = GetMousePosition();
+					mouseLeftBeingHeld = false;
+					cuttingLineEndPosition = mousePos;
+
+					int numOfCheckpoints = 4;
+					Vector2 lineVector = { cuttingLineEndPosition.x - cuttingLineStartPosition.x, cuttingLineEndPosition.y - cuttingLineStartPosition.y };
+					Entity** relevantEntitiesEnd = relevantEntities;
+					float inverseNumOfCheckpoints = 1 / (float)numOfCheckpoints;
+					for (int i = 0; i < numOfCheckpoints + 1; i++) {
+						Vector2 positionOnLine = cuttingLineStartPosition;
+						positionOnLine.x += lineVector.x * i * inverseNumOfCheckpoints;
+						positionOnLine.y += lineVector.y * i * inverseNumOfCheckpoints;
+						int numOfRelevantEntitiesForThisPoint = CalculateRelevantEntitiesForPosition(gameState, positionOnLine, relevantEntitiesEnd);
+						relevantEntitiesEnd += (numOfRelevantEntitiesForThisPoint);
+					}
+
+				}
+			}
+
+			if (readyForNewEntityInitialization) {
+				Entity* newEntity = (Entity*)InitializeAndPushEntity(gameState, rectData, rectDataEnd, 10, BEING_CUT_FLAG, { 400, 100 });
+				readyForNewEntityInitialization = false;
+				entityInitialized = true;
 			}
 
 			float deltaTime = GetDeltaTime();
-			if (inputGiven) {
-				ApplyForceToEntitiesVelocityImmediately(player, inputForce, deltaTime, player->centerPosition);
-			}
-
 			for (int i = 0; i < gameState->addedEntities; i++) {
 				Entity* entity = gameState->entities + i;
 				numOfRelevantEntities = CalculateRelevantEntitiesForEntity(gameState, entity, relevantEntities, i);
@@ -204,8 +187,7 @@ int main() {
 			inputForce = { 0, 0 };
 
 		EndDrawing();
-		std::cout << "Frame number " << gameState->frameCount++ << "has ended" << std::endl << std::endl;
-		//throw std::runtime_error("asd");
+		//std::cout << "Frame number " << gameState->frameCount++ << "has ended" << std::endl << std::endl;
 	}
 	RetractSize(gameState, sizeof(Entity*) * 20);
 	CloseWindow();

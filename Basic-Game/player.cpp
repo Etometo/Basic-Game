@@ -282,6 +282,49 @@ bool CheckIfAPointIsInsideAShape(Vector2 positionOfPoint, Entity* entity) {
     }
 }
 
+int MakeAnArrayFullOfUniqueItems(GameState* gameState, char* arrayStart, char* arrayEnd, uint32_t numOfElements, uint32_t typeSize) {
+    uint32_t totalAllocatedSize = (numOfElements) * typeSize;
+    char* uniqueItems = (char*)PushSize(gameState, totalAllocatedSize);
+    uint32_t numOfUniqueItems = 0;
+
+    char* item = (char*)PushSize(gameState, typeSize);
+    for (int i = 0; i < numOfElements; i++) {
+        item = arrayStart + (i * typeSize);
+        uint32_t count = 0;
+        for (int j = 0; j < numOfUniqueItems; j++) {
+            char* itemInUniqueItems = uniqueItems + (j * typeSize);
+            bool bytesAreIdentical = true;
+            for (int b = 0; b < typeSize; b++) {
+                if (*(itemInUniqueItems + b) != *(item + b)) {
+                    bytesAreIdentical = false;
+                    break;
+                }
+            }
+            if (bytesAreIdentical) {
+                count++;
+                break;
+            }
+        }
+        if (count == 0) {
+            for (int b = 0; b < typeSize; b++) {
+                *(uniqueItems + (numOfUniqueItems * typeSize) + b) = *(item + b);
+            }
+            numOfUniqueItems++;
+        }
+    }
+    RetractSize(gameState, typeSize);
+
+    arrayEnd = arrayStart;
+    for (int b = 0; b < numOfUniqueItems * typeSize; b++) {
+        *(arrayEnd) = uniqueItems[b];
+        arrayEnd++;
+    }
+
+    RetractSize(gameState, totalAllocatedSize);
+
+    return numOfUniqueItems;
+}
+
 int CalculateRelevantEntitiesForPosition(GameState* gameState, Vector2 position, Entity** relevanEntities) {
     if ((position.x < 0 || position.x >= gameState->WINDOW_WIDTH) || (position.y < 0 || position.y >= gameState->WINDOW_HEIGHT)) {
 		return -1;
