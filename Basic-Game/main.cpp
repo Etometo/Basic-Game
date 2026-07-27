@@ -69,24 +69,34 @@ int main() {
 	*(tri2DataEnd++) = VertexData{ 66.6667f, -33.3333f };
 
 	//spatial grid gets  filled with the same values for the entire cell at some point
-	uint32_t playerFlags = GRAVITY_FLAG | PLAYER_FLAG | GROUND_COLLISION_FLAG;
+	uint32_t playerFlags = GRAVITY_FLAG | PLAYER_FLAG | GROUND_COLLISION_FLAG | PHYSICS_FLAG;
 	Vector2 playerCenterPos = { 450, 350 };
 	Entity* player = InitializeAndPushEntity(gameState, tri2Data, tri2DataEnd, 1000, playerFlags, playerCenterPos);
 	player->isPlayer = true;
 	Vector2 player2CenterPos = { 500, 100 };
-	Entity* player2 = InitializeAndPushEntity(gameState, triData, triDataEnd, 1000, GRAVITY_FLAG | GROUND_COLLISION_FLAG, player2CenterPos);
+	Entity* player2 = InitializeAndPushEntity(gameState, triData, triDataEnd, 1000, GRAVITY_FLAG | GROUND_COLLISION_FLAG | PHYSICS_FLAG, player2CenterPos);
 	player2->frictionCons = 200.9;
 	player2->elasticity = 0;
 	
 	Vector2 floorCenterPos = { 400, 600 };
-	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, NON_MOVING_FLAG | GROUND_COLLISION_FLAG, floorCenterPos);
+	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, NON_MOVING_FLAG | GROUND_COLLISION_FLAG | PHYSICS_FLAG, floorCenterPos);
 	floor->frictionCons = 0.1;
+
+	VertexData* buttonRectData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
+	VertexData* buttonRectDataEnd = buttonRectData;
+	*(buttonRectDataEnd++) = VertexData{ 50, 50 };
+	*(buttonRectDataEnd++) = VertexData{ 50, -50 };
+	*(buttonRectDataEnd++) = VertexData{ -50, -50 };
+	*(buttonRectDataEnd++) = VertexData{ -50, 50 };
+
+	Entity* button = (Entity*)InitializeAndPushEntity(gameState, buttonRectData, buttonRectDataEnd, 0, BUTTON_FLAG, { 100, 100 });
+
 
 	//throw std::runtime_error("do the rotation stuff and fix the very little impulses preventing objects from staying on top of each other");
 	InitWindow(gameState->WINDOW_WIDTH, gameState->WINDOW_HEIGHT, "asd");
 	SetTargetFPS(gameState->goalFps);
 	Entity** relevantEntities = (Entity**)PushSize(gameState, sizeof(Entity*) * 20);
-	int numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, player, relevantEntities, 0);
+	int numOfRelevantEntities = CalculateRelevantEntitiesForEntity(gameState, player, relevantEntities, 0);
 	std::cout << numOfRelevantEntities << " is the number of importants first importants ";
 
 	bool inputGiven = false;
@@ -116,58 +126,65 @@ int main() {
 				inputGiven = true;
 				inputForce.x += 200 * player->mass;
 			}
-			if (IsKeyPressed(KEY_E)) {
+			if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+				Vector2 mousePos = GetMousePosition();
+				numOfRelevantEntities = CalculateRelevantEntitiesForPosition(gameState, mousePos, relevantEntities);
+				for (int i = 0; i < numOfRelevantEntities; i++) {
+					Entity* relevantEntity = relevantEntities[i];
+					bool buttonClicked = false;
+					if (relevantEntity->flags & BUTTON_FLAG) {
+						buttonClicked = CheckIfAPointIsInsideAShape(mousePos, relevantEntity);
+					}
+					if (buttonClicked) {
+						std::cout << "button clicked";
+					}
+					std::cout << "mouse clicked";
+				}
+
+			}
+
+			float deltaTime = GetDeltaTime();
+			if (inputGiven) {
+				ApplyForceToEntitiesVelocityImmediately(player, inputForce, deltaTime, player->centerPosition);
 			}
 
 			for (int i = 0; i < gameState->addedEntities; i++) {
 				Entity* entity = gameState->entities + i;
-				numOfRelevantEntities = CalculateRelevantEntitiesFor(gameState, entity, relevantEntities, i);
-
-				float deltaTime = GetDeltaTime();
-
-				if ((entity->flags & GRAVITY_FLAG) > 0) {
-					float forcePerVertex = (entity->mass * gameState->gravityConstant) / (entity->vertexDataEnd - entity->vertexData);
-					for (int v = 0; v < entity->vertexDataEnd - entity->vertexData; v++) {
-						Vector2 vertexPos = entity->centerPosition;
-						vertexPos.x += entity->vertexData[v].position.x;
-						vertexPos.y += entity->vertexData[v].position.y;
-						ApplyForceToEntitiesVelocityImmediately(entity, { 0, forcePerVertex}, deltaTime, vertexPos);
-					}
-					entity->gravityApplied = true;
-				}
-				if (entity->isPlayer && inputGiven) {
-					ApplyForceToEntitiesVelocityImmediately(entity, inputForce, deltaTime, entity->centerPosition);
-				}
-				for (int j = 0; j < numOfRelevantEntities; j++) {
-					float iterationTimeStep = deltaTime / gameState->SOLVER_ITERATIONS;
-					Entity* relevantEntity = relevantEntities[j];
-					CollisionInfo collInfo = DetectCollisionWithEntity(entity, relevantEntity);
-					float totalMass = entity->mass + relevantEntity->mass;
-
-					std::cout << "entity " << entity->id << " and " << relevantEntity->id << "collision" << std::endl;
-					if (collInfo.minOverlap > 0) {
-						Vector2 forceApplicationPoint = CalculateForceApplicationPoint(entity, relevantEntity);
-						std::cout << "Force application point is ";
-						PrintVector(forceApplicationPoint);
-						std::cout << std::endl;
-						if (forceApplicationPoint.x == 0 && forceApplicationPoint.y == 0) {
-							forceApplicationPoint = entity->centerPosition;
+				numOfRelevantEntities = CalculateRelevantEntitiesForEntity(gameState, entity, relevantEntities, i);
+				float solverIterationTimeStep = deltaTime / gameState->SOLVER_ITERATIONS;
+				if ((entity->flags & PHYSICS_FLAG)) {
+					if ((entity->flags & GRAVITY_FLAG) > 0) {
+						float forcePerVertex = (entity->mass * gameState->gravityConstant) / (entity->vertexDataEnd - entity->vertexData);
+						for (int v = 0; v < entity->vertexDataEnd - entity->vertexData; v++) {
+							Vector2 vertexPos = entity->centerPosition;
+							vertexPos.x += entity->vertexData[v].position.x;
+							vertexPos.y += entity->vertexData[v].position.y;
+							ApplyForceToEntitiesVelocityImmediately(entity, { 0, forcePerVertex}, deltaTime, vertexPos);
 						}
-						for(int k = 0; k < gameState->SOLVER_ITERATIONS; k++){
-							Vector2 impulse = { 0, 0 }, relativeVelocityOfForceApplicationPoint = {0, 0};
+						entity->gravityApplied = true;
+					}
+					for (int j = 0; j < numOfRelevantEntities; j++) {
+						Entity* relevantEntity = relevantEntities[j];
+						if ((relevantEntity->flags & PHYSICS_FLAG) == 0) {
+							continue;
+						}
+						CollisionInfo collInfo = DetectCollisionWithEntity(entity, relevantEntity);
+						float totalMass = entity->mass + relevantEntity->mass;
 
-							CalculateAndApplyImpulse(gameState, entity, relevantEntity, collInfo, impulse, relativeVelocityOfForceApplicationPoint, forceApplicationPoint, iterationTimeStep);
-							HandleFriction(gameState, entity, relevantEntity, collInfo, impulse, relativeVelocityOfForceApplicationPoint, forceApplicationPoint, iterationTimeStep);
+						if (collInfo.minOverlap > 0) {
+							Vector2 forceApplicationPoint = CalculateForceApplicationPoint(entity, relevantEntity);
+							if (forceApplicationPoint.x == 0 && forceApplicationPoint.y == 0) {
+								forceApplicationPoint = entity->centerPosition;
+							}
+							
+							for(int k = 0; k < gameState->SOLVER_ITERATIONS; k++){
+								Vector2 impulse = { 0, 0 }, relativeVelocityOfForceApplicationPoint = {0, 0};
+								CalculateAndApplyImpulse(gameState, entity, relevantEntity, collInfo, impulse, relativeVelocityOfForceApplicationPoint, forceApplicationPoint, solverIterationTimeStep);
+								HandleFriction(gameState, entity, relevantEntity, collInfo, impulse, relativeVelocityOfForceApplicationPoint, forceApplicationPoint, solverIterationTimeStep);
+							}
 						}
 					}
 				}
-				if (entity->flags & PLAYER_FLAG && entity->netForce.y < -1) {
-					//std::cout << "Net force on the player: (" << entity->netForce.x << ", " << entity->netForce.y << ") " << std::endl;
-					//std::cout << "FPS: " << GetFPS() << std::endl;
-					//std::cout << "grid pos of the player(row, column): " << entity->gridRowIdx << ", " << entity->gridColumnIdx << std::endl;
-					std::cout << "Num of relevant entities: " << numOfRelevantEntities << std::endl;
-				}
-
 				MoveEntity(entity, deltaTime);
 				CalibrateEntityWithGrid(gameState, entity);
 

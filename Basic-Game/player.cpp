@@ -179,19 +179,12 @@ void MoveEntity(Entity* player, float deltaTime) {
         player->penetrationVelocity = { 0, 0 };
 
         RotateEntity(player, deltaTime);
-        std::cout << "Entity " << player->id << "'s torque: " << player->torque << std::endl;
     }
 }
 
 void ApplyForceToEntity(Entity* player, Vector2 mov) {
     player->netForce.x += mov.x;
     player->netForce.y += mov.y;
-    /*if ((player->flags & PLAYER_FLAG) && mov.y < -800) {
-        std::cout << "Force applied on the player: ";
-        PrintVector(mov);
-        std::cout << std::endl;
-        //throw std::runtime_error("sad");
-    }*/
 }
 
 void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, float deltaTime, Vector2 forceApplicationPoint) {
@@ -212,7 +205,6 @@ void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, floa
     else {
 		Vector2 torqueAxis = { -forceApplicationPointFromTheCenter.y, forceApplicationPointFromTheCenter.x };
 		torque = DotProduct(force, torqueAxis);
-        std::cout << "torque is: " << torque << std::endl;
     }
 
     entity->netForce.x += force.x;
@@ -240,7 +232,108 @@ float distance(Vector2 v1, Vector2 v2) {
     return sqrtf(square(v1.x - v2.x) + square(v1.y - v2.y));
 }
 
-int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** relevanEntities, int startOffset) {
+bool CheckIfAPointIsInsideAShape(Vector2 positionOfPoint, Entity* entity) {
+    float minX = FLT_MAX, minY = FLT_MAX;
+    float maxX = FLT_MIN, maxY = FLT_MIN;
+    int vertexCount = entity->vertexDataEnd - entity->vertexData;
+    for (int i = 0; i < vertexCount; i++) {
+        Vector2 vertexPos = entity->vertexData[i].position;
+        vertexPos.x += entity->centerPosition.x;
+        vertexPos.y += entity->centerPosition.y;
+		minX = vertexPos.x < minX ? vertexPos.x : minX;
+		minY = vertexPos.y < minY ? vertexPos.y : minY;
+		maxX = vertexPos.x > maxX ? vertexPos.x : maxX;
+		maxY = vertexPos.y > maxY ? vertexPos.y : maxY;
+	}
+
+	if (positionOfPoint.x < minX || positionOfPoint.x > maxX || positionOfPoint.y < minY || positionOfPoint.y > maxY){
+        return false;
+	} 
+
+	Vector2 raycastStartingPoint = positionOfPoint;
+	Vector2 raycastDirection = { 1, 0 };
+	Vector2 vertex1Pos, vertex2Pos;
+	unsigned int numberOfIntersections = 0;
+	for (int j = 0; j < vertexCount - 1; j++) {
+		vertex1Pos = { entity->vertexData[j].position.x + entity->centerPosition.x, entity->vertexData[j].position.y + entity->centerPosition.y };
+		vertex2Pos = { entity->vertexData[j + 1].position.x + entity->centerPosition.x, entity->vertexData[j + 1].position.y + entity->centerPosition.y };
+		if ((raycastStartingPoint.y < vertex1Pos.y && raycastStartingPoint.y < vertex2Pos.y) || (raycastStartingPoint.y > vertex1Pos.y && raycastStartingPoint.y > vertex2Pos.y)) {
+			continue;
+		}
+		if ((vertex2Pos.x - vertex1Pos.x) == 0) {
+			if (vertex1Pos.x < raycastStartingPoint.x) {
+				continue;
+			}
+		}
+		float slopeOfThePair = (vertex2Pos.y - vertex1Pos.y) / (vertex2Pos.x - vertex1Pos.x);
+		float xValueOfRaycastsYValueIntersection = (raycastStartingPoint.y - vertex1Pos.y + vertex1Pos.x * slopeOfThePair) / slopeOfThePair;
+		if (xValueOfRaycastsYValueIntersection < raycastStartingPoint.x) {
+			continue;
+		}
+		else {
+			numberOfIntersections += 1;
+		}
+	}
+	if (numberOfIntersections & 1) {
+        return true;
+	}
+    else {
+        return false;
+    }
+}
+
+int CalculateRelevantEntitiesForPosition(GameState* gameState, Vector2 position, Entity** relevanEntities) {
+    if ((position.x < 0 || position.x >= gameState->WINDOW_WIDTH) || (position.y < 0 || position.y >= gameState->WINDOW_HEIGHT)) {
+		return -1;
+	}
+    int gridRowIdx = (int)position.y / gameState->gridSquareEdgeLength;
+    int gridColumnIdx = (int)position.x / gameState->gridSquareEdgeLength;
+
+    Entity* entities = gameState->entities;
+    Entity** relevantEntitiesEnd = relevanEntities;
+
+    for (int i = -2; i < 3; i++) {
+        for (int j = -2; j < 3; j++) {
+            if (gridRowIdx + i < 0 || gridRowIdx + i >= gameState->gridDimentions[0] || gridColumnIdx + j < 0 || gridColumnIdx + j >= gameState->gridDimentions[1]) {
+                continue;
+            }
+            uint32_t* cellArray = gameState->spatialGrid + (((gridRowIdx + i) * gameState->gridDimentions[0] + (gridColumnIdx + j)) * gameState->gridDimentions[2]);
+            for (int k = 0; k < gameState->gridDimentions[2]; k++) {
+                if (cellArray[k] != 0) {
+					*(relevantEntitiesEnd++) = entities + (cellArray[k] - 1);
+                }
+            }
+        }
+    }
+    uint32_t totalAllocatedSize = (relevantEntitiesEnd - relevanEntities) * sizeof(uint32_t);
+    Entity** uniqueItems = (Entity**)PushSize(gameState, totalAllocatedSize);
+    uint32_t numOfUniqueItems = 0;
+
+    for (int i = 0; i < relevantEntitiesEnd - relevanEntities; i++) {
+        Entity* item = relevanEntities[i];
+        uint32_t count = 0;
+        for (int j = 0; j < numOfUniqueItems; j++) {
+            if (uniqueItems[j] == item) {
+                count++;
+            }
+        }
+        if (count == 0) {
+            uniqueItems[numOfUniqueItems] = item;
+            numOfUniqueItems++;
+        }
+    }
+
+    relevantEntitiesEnd = relevanEntities;
+    for (int j = 0; j < numOfUniqueItems; j++) {
+        *(relevantEntitiesEnd++) = uniqueItems[j];
+    }
+
+    RetractSize(gameState, totalAllocatedSize);
+
+    return relevantEntitiesEnd - relevanEntities;
+}
+
+int CalculateRelevantEntitiesForEntity(GameState* gameState, Entity* entity, Entity** relevanEntities, int startOffset) {
     Entity* entities = gameState->entities;
     Entity** relevantEntitiesEnd = relevanEntities;
 
@@ -367,11 +460,6 @@ CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2) {
             if (projectedLen < player1Down) {
                 player1Down = projectedLen;
             }
-            /*std::cout << "on line: ";
-            PrintVector(normal);
-            std::cout << "\nProjected len for vertex: ";
-            PrintVector(posVector);
-            std::cout << " is : " << projectedLen << std::endl;*/
         }
 
         for (int j = 0; j < e2NumOfVertices; j++) {
@@ -388,13 +476,6 @@ CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2) {
                 player2Down = projectedLen;
             }
         }
-
-        /*std::cout << std::endl << "Normal: ";
-        PrintVector(normal);
-        std::cout << "Players up and downs: " << std::endl;
-        std::cout << "Player1Up: " << player1Up << " player1Down: " << player1Down << std::endl;
-        std::cout << "Player2Up: " << player2Up << " player2Down: " << player2Down << std::endl;*/
-
 
         if (player1Up <= player2Down || player2Up <= player1Down) {
             minOverlap = 0;
@@ -462,11 +543,9 @@ CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2) {
         Vector3 normalizedOverlapLine = { overlapLine.x / overlapLineLength, overlapLine.y / overlapLineLength , 0 };
 
         if (DotProduct(diffOfPositions, overlapLine) < 0) {
-            //minOverlap *= -1;
             normalizedOverlapLine.x *= -1;
             normalizedOverlapLine.y *= -1;
             normalizedOverlapLine.z *= -1;
-            //std::cout << "OVERLAP LINE DIRECTION CHANGED" << std::endl;
         }
 
         collInfo.normalizedOverlapLine = normalizedOverlapLine;
@@ -556,55 +635,12 @@ unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sum
 			centerOfVerticesInsideE2.x += vertexPos.x;
 			centerOfVerticesInsideE2.y += vertexPos.y;
 			numberOfVerticesInsideE2++;
-            std::cout << "Vertex of entity " << e1->id << " with position ";
-            PrintVector(vertexPos);
-            std::cout << " is inside entity " << e2->id << std::endl;
 		}
 	}
     sumOfInsiderPointsPositions.x = centerOfVerticesInsideE2.x;
     sumOfInsiderPointsPositions.y = centerOfVerticesInsideE2.y;
 
     return numberOfVerticesInsideE2;
-}
-
-
-float ResolvePenetrationAndReturnThePush(Entity* e1, Entity* e2, CollisionInfo collInfo, float sumOfInverseMasses, Vector2& impulse) {
-    float push = collInfo.minOverlap - PENETRATION_SLOP;
-    float totalMass = e1->mass + e2->mass;
-    float penetrationBias = 0;
-
-    if (collInfo.minOverlap > PENETRATION_SLOP) {
-        //penetrationBias = (BAUMGARTE_BETA / deltaTime) * (collInfo.minOverlap - PENETRATION_SLOP);
-    }
-    float j = penetrationBias;
-    j /= sumOfInverseMasses;
-    //we don't wanna be pushing them into each other
-    if (j > 0) {
-        j = 0;
-    }
-
-    impulse.x += j * collInfo.normalizedOverlapLine.x;
-    impulse.y += j * collInfo.normalizedOverlapLine.y;
-
-    /*
-    if (e1->mass + e2->mass > 0.0f && push > 0) {
-        float push1 = (e2->mass / totalMass) * (push);
-        float push2 = (e1->mass / totalMass) * (push);
-
-        if ((e1->flags & NON_MOVING_FLAG) == 0) {
-            e1->centerPosition.x -= collInfo.normalizedOverlapLine.x * push1;
-            e1->centerPosition.y -= collInfo.normalizedOverlapLine.y * push1;
-            e1->penetrationVelocity.x -= collInfo.normalizedOverlapLine.x * push1;
-            e1->penetrationVelocity.y -= collInfo.normalizedOverlapLine.y * push1;
-        }
-        if ((e2->flags & NON_MOVING_FLAG) == 0) {
-            e2->centerPosition.x += collInfo.normalizedOverlapLine.x * push2;
-            e2->centerPosition.y += collInfo.normalizedOverlapLine.y * push2;
-            e2->penetrationVelocity.x += collInfo.normalizedOverlapLine.x * push2;
-            e2->penetrationVelocity.y += collInfo.normalizedOverlapLine.y * push2;
-        }
-    }*/
-    return push;
 }
 
 void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2& impulse, Vector2& relativeVelocityOfForceApplicationPoint, Vector2 forceApplicationPoint, float deltaTime) {
@@ -703,46 +739,45 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
         relativeVelocityOfForceApplicationPoint.y += (velocityOfE1CausedByRotationalVelocity.y - velocityOfE2CausedByRotationalVelocity.y);
     }
 
-    Vector2 relativeForce;
-    relativeForce.x = e1->netForce.x - e2->netForce.x;
-    relativeForce.y = e1->netForce.y - e2->netForce.y;
+    Vector3 k = { 0, 0, 1 };
+    Vector3 frictionAxis;
+    CrossProduct(collInfo.normalizedOverlapLine, k, frictionAxis);
 
-    float frictionAxisMagnitude;
-    float relativeVelOnFrictionAxis;
-    int frictionDir;
-    float frictionMagnitude;
-    float relativeForceOnFrictionAxis;
-    if (e1->frictionCons != 0 || e2->frictionCons != 0) {
+    // Get the relative speed along the friction tangent
+    float relativeVelOnFrictionAxis = DotProduct(frictionAxis, relativeVelocityOfForceApplicationPoint);
+
+    // Calculate rotational mass specifically for the friction axis
+    float r1CrossT = distanceOfForceApplicationPointFromE1Center.x * frictionAxis.y - distanceOfForceApplicationPointFromE1Center.y * frictionAxis.x;
+    float r2CrossT = distanceOfForceApplicationPointFromE2Center.x * frictionAxis.y - distanceOfForceApplicationPointFromE2Center.y * frictionAxis.x;
+
+    float inv1Inertia = e1->flags & NON_MOVING_FLAG ? 0 : (1 / e1->inertia);
+    float inv2Inertia = e2->flags & NON_MOVING_FLAG ? 0 : (1 / e2->inertia);
+    float inv1mass = e1->flags & NON_MOVING_FLAG ? 0 : (1 / e1->mass);
+    float inv2mass = e2->flags & NON_MOVING_FLAG ? 0 : (1 / e2->mass);
+
+    float rotationalMass1T = (r1CrossT * r1CrossT) * inv1Inertia;
+    float rotationalMass2T = (r2CrossT * r2CrossT) * inv2Inertia;
+    float sumOfInverseMassesT = inv1mass + inv2mass + rotationalMass1T + rotationalMass2T;
+
+    if (sumOfInverseMassesT > EPSILON) {
+        // Calculate theoretical friction impulse needed to stop sliding perfectly
+        float jt = -relativeVelOnFrictionAxis / sumOfInverseMassesT;
+
+        // Coulomb's Law: limit friction based on normal impulse (j_n) and friction constant (mu)
         float frictionConst = e1->frictionCons > e2->frictionCons ? e1->frictionCons : e2->frictionCons;
-        Vector3 k = { 0, 0, 1 };
-        Vector3 frictionAxis;
-        CrossProduct(collInfo.normalizedOverlapLine, k, frictionAxis);
-        frictionAxisMagnitude = sqrt(pow(frictionAxis.x, 2) + pow(frictionAxis.y, 2));
-        frictionAxis.x /= frictionAxisMagnitude;
-        frictionAxis.y /= frictionAxisMagnitude;
-        relativeVelOnFrictionAxis = DotProduct(frictionAxis, relativeVelocityOfForceApplicationPoint);
-
-        relativeForce.x = e1->netForce.x - e2->netForce.x;
-        relativeForce.y = e1->netForce.y - e2->netForce.y;
-        relativeForceOnFrictionAxis = DotProduct(frictionAxis, relativeForce);
-
         float impulseMagnitude = sqrt(pow(impulse.x, 2) + pow(impulse.y, 2));
+        float maxFriction = frictionConst * impulseMagnitude;
 
-        if (e1->stoppedByFriction) {
-            e1->stoppedByFriction = false;
-        }
+        // Clamp the friction impulse
+        if (jt > maxFriction) jt = maxFriction;
+        if (jt < -maxFriction) jt = -maxFriction;
 
-        if (impulseMagnitude > EPSILON && (abs(relativeVelOnFrictionAxis) > EPSILON || abs(relativeForceOnFrictionAxis) > EPSILON)) {
-            frictionMagnitude = (impulseMagnitude / deltaTime) * frictionConst;
-            if (abs(relativeVelOnFrictionAxis) > EPSILON) {
-				frictionDir = -relativeVelOnFrictionAxis / abs(relativeVelOnFrictionAxis);
-            }
-            else if (abs(relativeForceOnFrictionAxis) > EPSILON) {
-				frictionDir = -relativeForceOnFrictionAxis / abs(relativeForceOnFrictionAxis);
-            }
+        Vector2 frictionImpulseForce = { (jt * frictionAxis.x) / deltaTime, (jt * frictionAxis.y) / deltaTime };
 
-            ApplyFrictionToEntity(e1, frictionAxis, frictionMagnitude, frictionDir, deltaTime, relativeVelocityOfForceApplicationPoint, forceApplicationPoint);
-            ApplyFrictionToEntity(e2, frictionAxis, frictionMagnitude, -frictionDir, deltaTime, relativeVelocityOfForceApplicationPoint, forceApplicationPoint);
+        // Apply forces!
+        ApplyForceToEntitiesVelocityImmediately(e1, frictionImpulseForce, deltaTime, forceApplicationPoint);
+        if (!(e2->flags & NON_MOVING_FLAG)) {
+            ApplyForceToEntitiesVelocityImmediately(e2, { -frictionImpulseForce.x, -frictionImpulseForce.y }, deltaTime, forceApplicationPoint);
         }
     }
     //throw std::runtime_error("look at the videos for the jumping bug");
@@ -1415,12 +1450,6 @@ void Triangulate2DPoints(VertexData* begin, size_t numOfPoints, GameState* gameS
 	*indices = d.triangles;
 	*indicesEnd = d.trianglesEnd;
 
-	/*for (int i = 0; i < numOfIndices - 2; i += 3) {
-		std::cout << "(X: " << (*(begin + indices[i])).x << ", Y: " << (*(begin + indices[i])).y << std::endl;
-		std::cout << "(X: " << (*(begin + indices[i+1])).x << ", Y: " << (*(begin + indices[i+1])).y << std::endl;
-		std::cout << "(X: " << (*(begin + indices[i+2])).x << ", Y: " << (*(begin + indices[i+2])).y << std::endl;
-		std::cout << std::endl;
-	}*/
 };
 
 void ApplyGravityCalculatePhysicsAndMoveEntity(GameState* gameState, Entity* entity) {

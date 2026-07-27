@@ -18,6 +18,9 @@ enum {
 	GROUND_COLLISION_FLAG = 8,
 	ENTITY_COLLISION_FLAG = 16,
 	COLLISION_FLAGS = GROUND_COLLISION_FLAG + ENTITY_COLLISION_FLAG,
+	PHYSICS_FLAG = 32,
+	BUTTON_FLAG = 64,
+	BEING_CUT_FLAG = 128,
 };
 
 typedef struct Entity {
@@ -72,6 +75,8 @@ void PrintVector(Vector2 vec);
 
 void PrintVector(Vector3 vec);
 
+bool CheckIfAPointIsInsideAShape(Vector2 positionOfPoint, Entity* entity);
+
 Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags, Vector2 centerPos);
 
 void CalibrateEntityWithGrid(GameState* gameState, Entity* e);
@@ -92,13 +97,13 @@ void ApplyForceToEntity(Entity* player, Vector2 movement);
 
 void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, float deltaTime, Vector2 forceApplicationPoint);
 
-int CalculateRelevantEntitiesFor(GameState* gameState, Entity* entity, Entity** relevanEntities, int offset);
+int CalculateRelevantEntitiesForEntity(GameState* gameState, Entity* entity, Entity** relevanEntities, int offset);
+
+int CalculateRelevantEntitiesForPosition(GameState* gameState, Vector2 position, Entity** relevanEntities);
 
 CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2);
 
 Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2);
-
-float ResolvePenetrationAndReturnThePush(Entity* e1, Entity* e2, CollisionInfo collInfo, float sumOfInverseMasses, Vector2 &impulse);
 
 void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2& impulse, Vector2& relativeVelocity, Vector2 forceApplicationPoint, float deltaTime);
 
