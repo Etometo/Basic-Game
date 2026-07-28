@@ -198,14 +198,21 @@ int main() {
 					VertexData* vertexData1End = vertexData1;
 					VertexData* vertexData2 = (VertexData*)PushSize(gameState, (vertexCount + intersectionCount) * sizeof(VertexData));
 					VertexData* vertexData2End = vertexData2;
+					Vector2 vertexData1center = entityBeingCut->centerPosition;
+					Vector2 vertexData2center = entityBeingCut->centerPosition;
 					for (int i = 0; i < intersectionCount; i++) {
 						(*vertexData1End).position = intersectionPoints[i];
 						(*vertexData1End).position.x -= entityBeingCut->centerPosition.x;
 						(*vertexData1End).position.y -= entityBeingCut->centerPosition.y;
+						vertexData1center.x += intersectionPoints[i].x;
+						vertexData1center.y += intersectionPoints[i].y;
 
 						(*vertexData2End).position = intersectionPoints[i];
 						(*vertexData2End).position.x -= entityBeingCut->centerPosition.x;
 						(*vertexData2End).position.y -= entityBeingCut->centerPosition.y;
+						vertexData2center.x += intersectionPoints[i].x;
+						vertexData2center.y += intersectionPoints[i].y;
+
 						vertexData1End++;
 						vertexData2End++;
 					}
@@ -226,14 +233,25 @@ int main() {
 						if (sideOfThePoint < 0) {
 							(*vertexData1End).position = entityBeingCut->vertexData[i].position;
 							vertexData1End++;
+							vertexData1center.x += entityBeingCut->vertexData[i].position.x;
+							vertexData1center.y += entityBeingCut->vertexData[i].position.y;
 						}
 						else {
 							(*vertexData2End).position = entityBeingCut->vertexData[i].position;
 							vertexData2End++;
+							vertexData2center.x += entityBeingCut->vertexData[i].position.x;
+							vertexData2center.y += entityBeingCut->vertexData[i].position.y;
 						}
 					}
+					vertexData1center.x /= vertexData1End - vertexData1;
+					vertexData1center.y /= vertexData1End - vertexData1;
 
-					//Entity* newEntity1 = (Entity*) InitializeAndPushEntity(gameState, vertexData1, vertexData1End, 10, )
+					vertexData2center.x /= vertexData2End - vertexData2;
+					vertexData2center.y /= vertexData2End - vertexData2;
+
+					uint32_t entityFlags = GRAVITY_FLAG | PHYSICS_FLAG | GROUND_COLLISION_FLAG;
+					Entity* newEntity1 = (Entity*)InitializeAndPushEntity(gameState, vertexData1, vertexData1End, 10, entityFlags, entityBeingCut->centerPosition);
+					Entity* newEntity2 = (Entity*)InitializeAndPushEntity(gameState, vertexData2, vertexData2End, 10, entityFlags, entityBeingCut->centerPosition);
 				}
 			}
 
