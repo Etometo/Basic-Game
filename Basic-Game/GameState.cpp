@@ -10,9 +10,7 @@ void* PushSize(GameState* state, size_t sizeInBytes) {
 } 
 
 Entity* PushEntity(GameState* state) {
-	if (state->addedEntities < state->entitiesCapacity) {
-		return;
-	}
+	assert(state->addedEntities < state->entitiesCapacity);
 	return (state->entities + state->addedEntities++);
 }
 
@@ -21,9 +19,7 @@ void RetractSize(GameState* state, size_t sizeInBytes) {
 }
 
 void* PushTemporarySize(GameState* state, uint32_t sizeInBytes) {
-	if (state->arena.capacity - state->arena.usableCapacity - state->arena.usedTemporary < sizeInBytes) {
-		return;
-	}
+	assert(state->arena.capacity - state->arena.usableCapacity - state->arena.usedTemporary > sizeInBytes);
 	state->arena.usedTemporary += sizeInBytes;
 	return state->arena.base + state->arena.capacity - state->arena.usedTemporary;
 }

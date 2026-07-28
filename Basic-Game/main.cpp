@@ -14,6 +14,7 @@ int main() {
 	if (gameState->isInitialized == false) {
 		gameState->arena.base = (uint8_t*)rawMemory + sizeof(GameState);
 		gameState->arena.used = 0;
+		gameState->arena.usedTemporary = 0;
 		gameState->arena.capacity = 150 * 1024 - sizeof(GameState);
 		gameState->arena.usableCapacity = gameState->arena.capacity - 1024;
 		gameState->entitiesCapacity = 100;
@@ -85,9 +86,14 @@ int main() {
 	Vector2 cuttingLineStartPosition, cuttingLineEndPosition;
 
 	Entity* entityBeingCut;
-	bool readyForNewEntityInitialization = true;
+	bool readyForNewEntityInitialization = false;
 	bool entityInitialized = false;
 	uint32_t idOfEntityBeingCut = 0;
+
+	entityBeingCut = (Entity*)InitializeAndPushEntity(gameState, rectData, rectDataEnd, 10, BEING_CUT_FLAG, { 400, 100 });
+	readyForNewEntityInitialization = false;
+	entityInitialized = true;
+	idOfEntityBeingCut = entityBeingCut->id;
 
 	while (!WindowShouldClose()) {
 		//std::cout << "Frame number " << gameState->frameCount << "is starting" << std::endl << std::endl;
@@ -119,21 +125,58 @@ int main() {
 					mouseLeftBeingHeld = false;
 					cuttingLineEndPosition = mousePos;
 					uint16_t vertexCount = entityBeingCut->vertexDataEnd - entityBeingCut->vertexData;
-					float cuttingLineSlope = (cuttingLineEndPosition.y - cuttingLineStartPosition.y) / (cuttingLineEndPosition.x - cuttingLineStartPosition.x);
+
+					bool cutIsVertical = false, edgeIsVertical = false;
+					float cutDx = cuttingLineEndPosition.x - cuttingLineStartPosition.x;
+					float cuttingLineSlope;
+					if (cutDx < FLT_EPSILON) {
+						cutIsVertical = true;
+					}
+					if (!cutIsVertical) {
+						cuttingLineSlope = (cuttingLineEndPosition.y - cuttingLineStartPosition.y) / (cutDx);
+					}
 					Vector2* intersectionPoints = (Vector2*)PushTemporarySize(gameState, (vertexCount - 1) * sizeof(Vector2));
 					Vector2* intersectionPointsEnd = intersectionPoints;
 					uint32_t* indicesOfPointOnLineIntersections = (uint32_t*)PushTemporarySize(gameState, vertexCount * sizeof(uint32_t));
 					uint32_t* indicesOfPointOnLineIntersectionsEnd = indicesOfPointOnLineIntersections;
-					for (int i = 0; i < vertexCount - 1; i++) {
+
+					for (int i = 0; i < vertexCount; i++) {
 						Vector2 vertex1Pos = entityBeingCut->vertexData[i].position;
-						Vector2 vertex2Pos = entityBeingCut->vertexData[i+1].position;
+						Vector2 vertex2Pos;
+						if (i + 1 >= vertexCount) {
+							vertex2Pos = entityBeingCut->vertexData[0].position;
+						}
+						else {
+							vertex2Pos = entityBeingCut->vertexData[i+1].position;
+						}
 						vertex1Pos.x += entityBeingCut->centerPosition.x;
 						vertex2Pos.x += entityBeingCut->centerPosition.x;
 						vertex1Pos.y += entityBeingCut->centerPosition.y;
 						vertex2Pos.y += entityBeingCut->centerPosition.y;
-						float edgeSlope = (vertex2Pos.y - vertex1Pos.y) / (vertex2Pos.x - vertex1Pos.x);
-						float xValueOfIntersection = (cuttingLineSlope * cuttingLineStartPosition.x - edgeSlope * vertex1Pos.x + vertex1Pos.y - cuttingLineStartPosition.y) / (cuttingLineSlope - edgeSlope);
-						float yValueOfIntersection = cuttingLineSlope * (xValueOfIntersection - cuttingLineStartPosition.x) + cuttingLineStartPosition.y;
+
+						float edgeDx = vertex2Pos.x - vertex1Pos.x;
+						edgeIsVertical = edgeDx < FLT_EPSILON ? true : false;
+						float edgeSlope;
+
+						float xValueOfIntersection;
+						float yValueOfIntersection;
+						if (cutIsVertical && edgeIsVertical) {
+							continue;
+						}
+						else if (cutIsVertical) {
+							edgeSlope = (vertex2Pos.y - vertex1Pos.y) / edgeDx;
+							xValueOfIntersection = cuttingLineStartPosition.x;
+							yValueOfIntersection = edgeSlope * (xValueOfIntersection - vertex1Pos.x) + vertex1Pos.y;
+						}
+						else if (edgeIsVertical) {
+							xValueOfIntersection = vertex1Pos.x;
+							yValueOfIntersection = cuttingLineSlope * (xValueOfIntersection - cuttingLineStartPosition.x) + cuttingLineStartPosition.y;
+						}
+						else {
+							edgeSlope = (vertex2Pos.y - vertex1Pos.y) / edgeDx;
+							xValueOfIntersection = (cuttingLineSlope * cuttingLineStartPosition.x - edgeSlope * vertex1Pos.x + vertex1Pos.y - cuttingLineStartPosition.y) / (cuttingLineSlope - edgeSlope);
+							yValueOfIntersection = cuttingLineSlope * (xValueOfIntersection - cuttingLineStartPosition.x) + cuttingLineStartPosition.y;
+						}
 						Vector2 positionFromVertex1 = { xValueOfIntersection - vertex1Pos.x, yValueOfIntersection - vertex1Pos.y };
 						Vector2 positionFromVertex2 = { xValueOfIntersection - vertex2Pos.x, yValueOfIntersection - vertex2Pos.y };
 						if (DotProduct(positionFromVertex1, positionFromVertex2) <= 0) {
@@ -148,19 +191,49 @@ int main() {
 								indicesOfPointOnLineIntersectionsEnd++;
 							}
 						}
+						std::cout << " ";
 					}
-					VertexData* vertexData1 = (VertexData*)PushSize(gameState, vertexCount * sizeof(VertexData));
+					unsigned int intersectionCount = intersectionPointsEnd - intersectionPoints;
+					VertexData* vertexData1 = (VertexData*)PushSize(gameState, (vertexCount + intersectionCount) * sizeof(VertexData));
 					VertexData* vertexData1End = vertexData1;
-					VertexData* vertexData2 = (VertexData*)PushSize(gameState, vertexCount * sizeof(VertexData));
+					VertexData* vertexData2 = (VertexData*)PushSize(gameState, (vertexCount + intersectionCount) * sizeof(VertexData));
 					VertexData* vertexData2End = vertexData2;
-					for (int i = 0; i < intersectionPointsEnd - intersectionPoints; i++) {
+					for (int i = 0; i < intersectionCount; i++) {
 						(*vertexData1End).position = intersectionPoints[i];
+						(*vertexData1End).position.x -= entityBeingCut->centerPosition.x;
+						(*vertexData1End).position.y -= entityBeingCut->centerPosition.y;
+
 						(*vertexData2End).position = intersectionPoints[i];
+						(*vertexData2End).position.x -= entityBeingCut->centerPosition.x;
+						(*vertexData2End).position.y -= entityBeingCut->centerPosition.y;
 						vertexData1End++;
 						vertexData2End++;
 					}
+					for (int i = 0; i < vertexCount; i++) {
+						bool thisVertexAlreadyAdded = false;
+						for (int j = 0; j < indicesOfPointOnLineIntersectionsEnd - indicesOfPointOnLineIntersections; j++) {
+							if (i == indicesOfPointOnLineIntersections[j]) {
+								thisVertexAlreadyAdded = true;
+							}
+						}
+						if (thisVertexAlreadyAdded) {
+							continue;
+						}
+						Vector2 vertexPos = entityBeingCut->vertexData[i].position;
+						vertexPos.x += entityBeingCut->centerPosition.x;
+						vertexPos.y += entityBeingCut->centerPosition.y;
+						float sideOfThePoint = (cuttingLineEndPosition.x - cuttingLineStartPosition.x) * (vertexPos.y - cuttingLineStartPosition.y) - (cuttingLineEndPosition.y - cuttingLineStartPosition.y) * (vertexPos.x - cuttingLineStartPosition.x);
+						if (sideOfThePoint < 0) {
+							(*vertexData1End).position = entityBeingCut->vertexData[i].position;
+							vertexData1End++;
+						}
+						else {
+							(*vertexData2End).position = entityBeingCut->vertexData[i].position;
+							vertexData2End++;
+						}
+					}
 
-
+					//Entity* newEntity1 = (Entity*) InitializeAndPushEntity(gameState, vertexData1, vertexData1End, 10, )
 				}
 			}
 
