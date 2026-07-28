@@ -160,6 +160,17 @@ double DotProduct(Vector2& vec1, Vector2& vec2) {
     return vec1.x * vec2.x + vec1.y * vec2.y;
 }
 
+float square(float f1) {
+    return f1 * f1;
+}
+
+float distance(Vector2 v1, Vector2 v2) {
+    return sqrtf(square(v1.x - v2.x) + square(v1.y - v2.y));
+}
+
+float magnitude(Vector2 v) {
+    return sqrtf(square(v.x) + square(v.y));
+}
 void RotateEntity(Entity* player, float deltaTime) {
     float rotationalChange = player->rotationalVelocity * deltaTime;
     float sin = sinf(rotationalChange);
@@ -224,13 +235,6 @@ void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, floa
     entity->forcesMultipliedByAppliedTime.y += force.y * deltaTime;
 }
 
-float square(float f1) {
-    return f1 * f1;
-}
-
-float distance(Vector2 v1, Vector2 v2) {
-    return sqrtf(square(v1.x - v2.x) + square(v1.y - v2.y));
-}
 
 bool CheckIfAPointIsInsideAShape(Vector2 positionOfPoint, Entity* entity) {
     float minX = FLT_MAX, minY = FLT_MAX;

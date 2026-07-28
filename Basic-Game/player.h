@@ -75,6 +75,12 @@ void PrintVector(Vector2 vec);
 
 void PrintVector(Vector3 vec);
 
+double DotProduct(Vector2& vec1, Vector2& vec2);
+
+float distance(Vector2 v1, Vector2 v2);
+
+float magnitude(Vector2 v);
+
 bool CheckIfAPointIsInsideAShape(Vector2 positionOfPoint, Entity* entity);
 
 int MakeAnArrayFullOfUniqueItems(GameState* gameState, char* arrayStart, char* arrayEnd, uint32_t numOfElements, uint32_t typeSize);

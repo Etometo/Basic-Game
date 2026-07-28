@@ -15,6 +15,7 @@ int main() {
 		gameState->arena.base = (uint8_t*)rawMemory + sizeof(GameState);
 		gameState->arena.used = 0;
 		gameState->arena.capacity = 150 * 1024 - sizeof(GameState);
+		gameState->arena.usableCapacity = gameState->arena.capacity - 1024;
 		gameState->entitiesCapacity = 100;
 		gameState->goalFps = 60;
 		gameState->isInitialized = true;
@@ -83,13 +84,22 @@ int main() {
 	bool mouseLeftBeingHeld = false;
 	Vector2 cuttingLineStartPosition, cuttingLineEndPosition;
 
+	Entity* entityBeingCut;
 	bool readyForNewEntityInitialization = true;
 	bool entityInitialized = false;
+	uint32_t idOfEntityBeingCut = 0;
 
 	while (!WindowShouldClose()) {
 		//std::cout << "Frame number " << gameState->frameCount << "is starting" << std::endl << std::endl;
 		BeginDrawing();
 			ClearBackground(RAYWHITE);
+
+			if (readyForNewEntityInitialization) {
+				entityBeingCut = (Entity*)InitializeAndPushEntity(gameState, rectData, rectDataEnd, 10, BEING_CUT_FLAG, { 400, 100 });
+				readyForNewEntityInitialization = false;
+				entityInitialized = true;
+				idOfEntityBeingCut = entityBeingCut->id;
+			}
 
 			if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
 				Vector2 mousePos = GetMousePosition();
@@ -108,27 +118,52 @@ int main() {
 					Vector2 mousePos = GetMousePosition();
 					mouseLeftBeingHeld = false;
 					cuttingLineEndPosition = mousePos;
-
-					int numOfCheckpoints = 4;
-					Vector2 lineVector = { cuttingLineEndPosition.x - cuttingLineStartPosition.x, cuttingLineEndPosition.y - cuttingLineStartPosition.y };
-					Entity** relevantEntitiesEnd = relevantEntities;
-					float inverseNumOfCheckpoints = 1 / (float)numOfCheckpoints;
-					for (int i = 0; i < numOfCheckpoints + 1; i++) {
-						Vector2 positionOnLine = cuttingLineStartPosition;
-						positionOnLine.x += lineVector.x * i * inverseNumOfCheckpoints;
-						positionOnLine.y += lineVector.y * i * inverseNumOfCheckpoints;
-						int numOfRelevantEntitiesForThisPoint = CalculateRelevantEntitiesForPosition(gameState, positionOnLine, relevantEntitiesEnd);
-						relevantEntitiesEnd += (numOfRelevantEntitiesForThisPoint);
+					uint16_t vertexCount = entityBeingCut->vertexDataEnd - entityBeingCut->vertexData;
+					float cuttingLineSlope = (cuttingLineEndPosition.y - cuttingLineStartPosition.y) / (cuttingLineEndPosition.x - cuttingLineStartPosition.x);
+					Vector2* intersectionPoints = (Vector2*)PushTemporarySize(gameState, (vertexCount - 1) * sizeof(Vector2));
+					Vector2* intersectionPointsEnd = intersectionPoints;
+					uint32_t* indicesOfPointOnLineIntersections = (uint32_t*)PushTemporarySize(gameState, vertexCount * sizeof(uint32_t));
+					uint32_t* indicesOfPointOnLineIntersectionsEnd = indicesOfPointOnLineIntersections;
+					for (int i = 0; i < vertexCount - 1; i++) {
+						Vector2 vertex1Pos = entityBeingCut->vertexData[i].position;
+						Vector2 vertex2Pos = entityBeingCut->vertexData[i+1].position;
+						vertex1Pos.x += entityBeingCut->centerPosition.x;
+						vertex2Pos.x += entityBeingCut->centerPosition.x;
+						vertex1Pos.y += entityBeingCut->centerPosition.y;
+						vertex2Pos.y += entityBeingCut->centerPosition.y;
+						float edgeSlope = (vertex2Pos.y - vertex1Pos.y) / (vertex2Pos.x - vertex1Pos.x);
+						float xValueOfIntersection = (cuttingLineSlope * cuttingLineStartPosition.x - edgeSlope * vertex1Pos.x + vertex1Pos.y - cuttingLineStartPosition.y) / (cuttingLineSlope - edgeSlope);
+						float yValueOfIntersection = cuttingLineSlope * (xValueOfIntersection - cuttingLineStartPosition.x) + cuttingLineStartPosition.y;
+						Vector2 positionFromVertex1 = { xValueOfIntersection - vertex1Pos.x, yValueOfIntersection - vertex1Pos.y };
+						Vector2 positionFromVertex2 = { xValueOfIntersection - vertex2Pos.x, yValueOfIntersection - vertex2Pos.y };
+						if (DotProduct(positionFromVertex1, positionFromVertex2) <= 0) {
+							*(intersectionPointsEnd) = { xValueOfIntersection, yValueOfIntersection };
+							intersectionPointsEnd++;
+							if (magnitude(positionFromVertex1) < FLT_EPSILON) {
+								*indicesOfPointOnLineIntersectionsEnd = i;
+								indicesOfPointOnLineIntersectionsEnd++;
+							}
+							if (magnitude(positionFromVertex2) < FLT_EPSILON) {
+								*indicesOfPointOnLineIntersectionsEnd = i + 1;
+								indicesOfPointOnLineIntersectionsEnd++;
+							}
+						}
 					}
+					VertexData* vertexData1 = (VertexData*)PushSize(gameState, vertexCount * sizeof(VertexData));
+					VertexData* vertexData1End = vertexData1;
+					VertexData* vertexData2 = (VertexData*)PushSize(gameState, vertexCount * sizeof(VertexData));
+					VertexData* vertexData2End = vertexData2;
+					for (int i = 0; i < intersectionPointsEnd - intersectionPoints; i++) {
+						(*vertexData1End).position = intersectionPoints[i];
+						(*vertexData2End).position = intersectionPoints[i];
+						vertexData1End++;
+						vertexData2End++;
+					}
+
 
 				}
 			}
 
-			if (readyForNewEntityInitialization) {
-				Entity* newEntity = (Entity*)InitializeAndPushEntity(gameState, rectData, rectDataEnd, 10, BEING_CUT_FLAG, { 400, 100 });
-				readyForNewEntityInitialization = false;
-				entityInitialized = true;
-			}
 
 			float deltaTime = GetDeltaTime();
 			for (int i = 0; i < gameState->addedEntities; i++) {
