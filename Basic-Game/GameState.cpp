@@ -11,11 +11,31 @@ void* PushSize(GameState* state, size_t sizeInBytes) {
 
 Entity* PushEntity(GameState* state) {
 	assert(state->addedEntities < state->entitiesCapacity);
-	return (state->entities + state->addedEntities++);
+	Entity* placeToBeGiven = state->nextEmptyPlaceForEntity;
+	if ((placeToBeGiven + 1)->id == 0) {
+		state->nextEmptyPlaceForEntity++;
+	}
+	else {
+		for (int i = 0; i < state->entitiesCapacity; i++) {
+			if ((state->entities + i)->id == 0) {
+				state->nextEmptyPlaceForEntity = (state->entities + i);
+			}
+		}
+	}
+	state->addedEntities++;
+	return placeToBeGiven;
 }
 
 void RetractSize(GameState* state, size_t sizeInBytes) {
 	state->arena.used -= sizeInBytes;
+}
+
+void DeleteEntity(GameState* state, Entity* entity) {
+	std::memset((void*)entity, 0, sizeof(Entity));
+	state->addedEntities -= 1;
+	if ((state->nextEmptyPlaceForEntity - entity) > 0) {
+		state->nextEmptyPlaceForEntity = entity;
+	}
 }
 
 void* PushTemporarySize(GameState* state, uint32_t sizeInBytes) {

@@ -13,7 +13,8 @@ typedef struct GameState {
 	bool isInitialized = false;
 	MemoryArena arena;
 	unsigned int goalFps = 60;
-	Entity entities[100];
+	Entity entities[2000];
+	Entity* nextEmptyPlaceForEntity;
 	unsigned int addedEntities = 0;
 	unsigned int entitiesCapacity = 100;
 	float gravityConstant = 0.098;

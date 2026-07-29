@@ -8,8 +8,8 @@
 
 
 int main() {
-	void* rawMemory = new uint8_t[150 * 1024];
-	memset(rawMemory, 0, 150 * 1024);
+	void* rawMemory = new uint8_t[150 * 1024 * 1024];
+	memset(rawMemory, 0, 150 * 1024 * 1024);
 	GameState* gameState = (GameState*)rawMemory;
 	if (gameState->isInitialized == false) {
 		gameState->arena.base = (uint8_t*)rawMemory + sizeof(GameState);
@@ -17,7 +17,8 @@ int main() {
 		gameState->arena.usedTemporary = 0;
 		gameState->arena.capacity = 150 * 1024 - sizeof(GameState);
 		gameState->arena.usableCapacity = gameState->arena.capacity - 1024;
-		gameState->entitiesCapacity = 100;
+		gameState->entitiesCapacity = 2000;
+		gameState->nextEmptyPlaceForEntity = gameState->entities;
 		gameState->goalFps = 60;
 		gameState->isInitialized = true;
 		gameState->gravityConstant = 98 * 4;
@@ -47,11 +48,11 @@ int main() {
 
 	VertexData* floorRectData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 6);
 	VertexData* floorRectDataEnd = floorRectData;
-	*(floorRectDataEnd++) = VertexData{ 400, 50 };
-	*(floorRectDataEnd++) = VertexData{ 400, -50 };
+	*(floorRectDataEnd++) = VertexData{ 399, 50 };
+	*(floorRectDataEnd++) = VertexData{ 399, -50 };
 	*(floorRectDataEnd++) = VertexData{ 0, -50 };
-	*(floorRectDataEnd++) = VertexData{ -400, -50 };
-	*(floorRectDataEnd++) = VertexData{ -400, 50 };
+	*(floorRectDataEnd++) = VertexData{ -399, -50 };
+	*(floorRectDataEnd++) = VertexData{ -399, 50 };
 	*(floorRectDataEnd++) = VertexData{ 0, 50 };
 
 	VertexData* triData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 3);
@@ -135,7 +136,8 @@ int main() {
 					if (!cutIsVertical) {
 						cuttingLineSlope = (cuttingLineEndPosition.y - cuttingLineStartPosition.y) / (cutDx);
 					}
-					Vector2* intersectionPoints = (Vector2*)PushTemporarySize(gameState, (vertexCount - 1) * sizeof(Vector2));
+					uint32_t totalAllocatedTemporarySize = vertexCount * sizeof(Vector2) + vertexCount * sizeof(uint32_t);
+					Vector2* intersectionPoints = (Vector2*)PushTemporarySize(gameState, (vertexCount) * sizeof(Vector2));
 					Vector2* intersectionPointsEnd = intersectionPoints;
 					uint32_t* indicesOfPointOnLineIntersections = (uint32_t*)PushTemporarySize(gameState, vertexCount * sizeof(uint32_t));
 					uint32_t* indicesOfPointOnLineIntersectionsEnd = indicesOfPointOnLineIntersections;
@@ -269,6 +271,8 @@ int main() {
 						uint32_t entityFlags = GRAVITY_FLAG | PHYSICS_FLAG | GROUND_COLLISION_FLAG;
 						Entity* newEntity1 = (Entity*)InitializeAndPushEntity(gameState, vertexData1, vertexData1End, 10, entityFlags, vertexData1center);
 						Entity* newEntity2 = (Entity*)InitializeAndPushEntity(gameState, vertexData2, vertexData2End, 10, entityFlags, vertexData2center);
+
+						RetractTemporarySize(gameState, totalAllocatedTemporarySize);
 					}
 				}
 			}
