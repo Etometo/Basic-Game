@@ -21,6 +21,12 @@ enum {
 	PHYSICS_FLAG = 32,
 	BUTTON_FLAG = 64,
 	BEING_CUT_FLAG = 128,
+	BEING_CHOSEN_FLAG = 256,
+};
+
+enum {
+	ENTITY_WAS_CUT = 1,
+	ENTITY_WASNT_CUT = 0
 };
 
 typedef struct Entity {
@@ -87,9 +93,13 @@ int MakeAnArrayFullOfUniqueItems(GameState* gameState, char* arrayStart, char* a
 
 Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags, Vector2 centerPos);
 
+int CutEntityIntoTwoPiecesByALine(GameState* gameState, Entity* entity, Vector2 cutStart, Vector2 cutEnd, uint32_t entityFlags, Entity* &newE1, Entity* &newE2);
+
 void CalibrateEntityWithGrid(GameState* gameState, Entity* e);
 
 void DrawEntity(Entity* player);
+
+void DrawEntityOutline(Entity* entity);
 
 void DrawEntityForceLine(Entity* entity);
 

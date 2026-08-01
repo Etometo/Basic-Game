@@ -69,11 +69,170 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
     returnPointer->gridPositionsOfVertices = (uint32_t*)PushSize(gameState, (returnPointer->vertexDataEnd - returnPointer->vertexData) * 2 * sizeof(uint32_t));
     returnPointer->gridPositionOfVerticesSize = returnPointer->vertexDataEnd - returnPointer->vertexData;
     CalibrateEntityWithGrid(gameState, returnPointer);
+
+    if (returnPointer->triangulationIndices[0] > 10000) {
+        throw std::runtime_error("nahh ");
+    }
     
     return returnPointer;
 }
 
-void CalibrateEntityWithGrid(GameState* gameState, Entity* e) {
+int CutEntityIntoTwoPiecesByALine(GameState* gameState, Entity* entity, Vector2 cutStart, Vector2 cutEnd, uint32_t entityFlags, Entity* &newE1, Entity* &newE2) {
+	uint16_t vertexCount = entity->vertexDataEnd - entity->vertexData;
+	bool cutIsVertical = false, edgeIsVertical = false;
+	float cutDx = cutEnd.x - cutStart.x;
+	float cuttingLineSlope;
+	if (abs(cutDx) < FLT_EPSILON) {
+		cutIsVertical = true;
+	}
+	if (!cutIsVertical) {
+		cuttingLineSlope = (cutEnd.y - cutStart.y) / (cutDx);
+	}
+	uint32_t totalAllocatedTemporarySize = vertexCount * sizeof(Vector2) + vertexCount * sizeof(uint32_t);
+	Vector2* intersectionPoints = (Vector2*)PushTemporarySize(gameState, (vertexCount) * sizeof(Vector2));
+	Vector2* intersectionPointsEnd = intersectionPoints;
+	uint32_t* indicesOfPointOnLineIntersections = (uint32_t*)PushTemporarySize(gameState, vertexCount * sizeof(uint32_t));
+	uint32_t* indicesOfPointOnLineIntersectionsEnd = indicesOfPointOnLineIntersections;
+
+	for (int i = 0; i < vertexCount; i++) {
+		Vector2 vertex1Pos = entity->vertexData[i].position;
+		Vector2 vertex2Pos;
+		if (i + 1 >= vertexCount) {
+			vertex2Pos = entity->vertexData[0].position;
+		}
+		else {
+			vertex2Pos = entity->vertexData[i+1].position;
+		}
+		vertex1Pos.x += entity->centerPosition.x;
+		vertex2Pos.x += entity->centerPosition.x;
+		vertex1Pos.y += entity->centerPosition.y;
+		vertex2Pos.y += entity->centerPosition.y;
+
+		float edgeDx = vertex2Pos.x - vertex1Pos.x;
+		edgeIsVertical = abs(edgeDx) < FLT_EPSILON ? true : false;
+		float edgeSlope;
+
+		float xValueOfIntersection;
+		float yValueOfIntersection;
+		if (cutIsVertical && edgeIsVertical) {
+			continue;
+		}
+		else if (cutIsVertical) {
+			edgeSlope = (vertex2Pos.y - vertex1Pos.y) / edgeDx;
+			xValueOfIntersection = cutStart.x;
+			yValueOfIntersection = edgeSlope * (xValueOfIntersection - vertex1Pos.x) + vertex1Pos.y;
+		}
+		else if (edgeIsVertical) {
+			xValueOfIntersection = vertex1Pos.x;
+			yValueOfIntersection = cuttingLineSlope * (xValueOfIntersection - cutStart.x) + cutStart.y;
+		}
+		else {
+			edgeSlope = (vertex2Pos.y - vertex1Pos.y) / edgeDx;
+			xValueOfIntersection = (cuttingLineSlope * cutStart.x - edgeSlope * vertex1Pos.x + vertex1Pos.y - cutStart.y) / (cuttingLineSlope - edgeSlope);
+			yValueOfIntersection = cuttingLineSlope * (xValueOfIntersection - cutStart.x) + cutStart.y;
+		}
+		Vector2 positionFromVertex1 = { xValueOfIntersection - vertex1Pos.x, yValueOfIntersection - vertex1Pos.y };
+		Vector2 positionFromVertex2 = { xValueOfIntersection - vertex2Pos.x, yValueOfIntersection - vertex2Pos.y };
+		if (DotProduct(positionFromVertex1, positionFromVertex2) <= 0) {
+			*(intersectionPointsEnd) = { xValueOfIntersection, yValueOfIntersection };
+			intersectionPointsEnd++;
+			if (magnitude(positionFromVertex1) < FLT_EPSILON) {
+				*indicesOfPointOnLineIntersectionsEnd = i;
+				indicesOfPointOnLineIntersectionsEnd++;
+			}
+			if (magnitude(positionFromVertex2) < FLT_EPSILON) {
+				*indicesOfPointOnLineIntersectionsEnd = i + 1;
+				indicesOfPointOnLineIntersectionsEnd++;
+			}
+		}
+		std::cout << " ";
+	}
+
+	unsigned int intersectionCount = intersectionPointsEnd - intersectionPoints;
+    if (intersectionCount > 0) {
+        VertexData* vertexData1 = (VertexData*)PushSize(gameState, (vertexCount + intersectionCount) * sizeof(VertexData));
+        VertexData* vertexData1End = vertexData1;
+        VertexData* vertexData2 = (VertexData*)PushSize(gameState, (vertexCount + intersectionCount) * sizeof(VertexData));
+        VertexData* vertexData2End = vertexData2;
+        Vector2 vertexData1center = { 0, 0 };
+        Vector2 vertexData2center = { 0, 0 };
+        for (int i = 0; i < intersectionCount; i++) {
+            (*vertexData1End).position = intersectionPoints[i];
+            (*vertexData1End).position.x -= entity->centerPosition.x;
+            (*vertexData1End).position.y -= entity->centerPosition.y;
+            vertexData1center.x += (*vertexData1End).position.x;
+            vertexData1center.y += (*vertexData1End).position.y;
+
+            (*vertexData2End).position = intersectionPoints[i];
+            (*vertexData2End).position.x -= entity->centerPosition.x;
+            (*vertexData2End).position.y -= entity->centerPosition.y;
+            vertexData2center.x += (*vertexData2End).position.x;
+            vertexData2center.y += (*vertexData2End).position.y;
+
+            vertexData1End++;
+            vertexData2End++;
+        }
+        for (int i = 0; i < vertexCount; i++) {
+            bool thisVertexAlreadyAdded = false;
+            for (int j = 0; j < indicesOfPointOnLineIntersectionsEnd - indicesOfPointOnLineIntersections; j++) {
+                if (i == indicesOfPointOnLineIntersections[j]) {
+                    thisVertexAlreadyAdded = true;
+                }
+            }
+            if (thisVertexAlreadyAdded) {
+                continue;
+            }
+            Vector2 vertexPos = entity->vertexData[i].position;
+            vertexPos.x += entity->centerPosition.x;
+            vertexPos.y += entity->centerPosition.y;
+            float sideOfThePoint = (cutEnd.x - cutStart.x) * (vertexPos.y - cutStart.y) - (cutEnd.y - cutStart.y) * (vertexPos.x - cutStart.x);
+            if (sideOfThePoint < 0) {
+                (*vertexData1End).position = entity->vertexData[i].position;
+                vertexData1End++;
+                vertexData1center.x += entity->vertexData[i].position.x;
+                vertexData1center.y += entity->vertexData[i].position.y;
+            }
+            else {
+                (*vertexData2End).position = entity->vertexData[i].position;
+                vertexData2End++;
+                vertexData2center.x += entity->vertexData[i].position.x;
+                vertexData2center.y += entity->vertexData[i].position.y;
+            }
+        }
+        vertexData1center.x /= vertexData1End - vertexData1;
+        vertexData1center.y /= vertexData1End - vertexData1;
+
+        vertexData2center.x /= vertexData2End - vertexData2;
+        vertexData2center.y /= vertexData2End - vertexData2;
+
+        for (int i = 0; i < vertexData1End - vertexData1; i++) {
+            vertexData1[i].position.x -= vertexData1center.x;
+            vertexData1[i].position.y -= vertexData1center.y;
+        }
+        for (int i = 0; i < vertexData2End - vertexData2; i++) {
+            vertexData2[i].position.x -= vertexData2center.x;
+            vertexData2[i].position.y -= vertexData2center.y;
+        }
+
+        vertexData1center.x += entity->centerPosition.x;
+        vertexData1center.y += entity->centerPosition.y;
+
+        vertexData2center.x += entity->centerPosition.x;
+        vertexData2center.y += entity->centerPosition.y;
+
+        newE1 = (Entity*)InitializeAndPushEntity(gameState, vertexData1, vertexData1End, 10, entityFlags, vertexData1center);
+        newE2 = (Entity*)InitializeAndPushEntity(gameState, vertexData2, vertexData2End, 10, entityFlags, vertexData2center);
+
+        RetractTemporarySize(gameState, totalAllocatedTemporarySize);
+        return ENTITY_WAS_CUT;
+    }
+    else {
+		return ENTITY_WASNT_CUT;
+    }
+}
+
+void CalibrateEntityWithGrid(GameState* gameState, Entity* e) 
+{
     for (int i = 0; i < e->gridPositionOfVerticesSize; i++) {
         uint32_t rowIdx = *(e->gridPositionsOfVertices + (i * 2)), columnIdx = *(e->gridPositionsOfVertices + (i * 2) + 1);
         if (rowIdx > 40000 || columnIdx > 40000) { continue; }
@@ -129,6 +288,26 @@ void DrawEntity(Entity* player) {
             DrawTriangle(v1, v3, v2, player->color);
         }
 	}
+}
+
+void DrawEntityOutline(Entity* entity) {
+    int vertexCount = entity->vertexDataEnd - entity->vertexData;
+    for (int i = 0; i < vertexCount - 1; i++) {
+        Vector2 vertex1Pos = entity->vertexData[i].position;
+        Vector2 vertex2Pos = entity->vertexData[i + 1].position;
+        vertex1Pos.x += entity->centerPosition.x;
+        vertex1Pos.y += entity->centerPosition.y;
+        vertex2Pos.x += entity->centerPosition.x;
+        vertex2Pos.y += entity->centerPosition.y;
+        DrawLine(vertex1Pos.x, vertex1Pos.y, vertex1Pos.x, vertex1Pos.y, YELLOW);
+    }
+	Vector2 vertex1Pos = entity->vertexData[vertexCount - 1].position;
+	Vector2 vertex2Pos = entity->vertexData[0].position;
+	vertex1Pos.x += entity->centerPosition.x;
+	vertex1Pos.y += entity->centerPosition.y;
+	vertex2Pos.x += entity->centerPosition.x;
+	vertex2Pos.y += entity->centerPosition.y;
+	DrawLine(vertex1Pos.x, vertex1Pos.y, vertex1Pos.x, vertex1Pos.y, YELLOW);
 }
 
 void DrawEntityForceLine(Entity* entity) {
