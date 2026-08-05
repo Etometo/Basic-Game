@@ -12,15 +12,17 @@ typedef struct MemoryArena {
 typedef struct GameState {
 	bool isInitialized = false;
 	MemoryArena arena;
-	unsigned int goalFps = 60;
+	unsigned int goalFps;
 	Entity entities[2000];
 	Entity* nextEmptyPlaceForEntity;
-	unsigned int addedEntities = 0;
-	unsigned int entitiesCapacity = 100;
-	float gravityConstant = 0.098;
+	Entity* lastEntityOnEntities;
+	unsigned int addedEntities;
+	unsigned int entitiesCapacity;
+	float gravityConstant;
 	float EPSILON;
 	int SOLVER_ITERATIONS;
-	uint32_t nextAvailableId = 1;
+	uint32_t ClickThresholdFrames;
+	uint32_t nextAvailableId;
 
 	uint64_t frameCount = 0;
 
@@ -37,6 +39,8 @@ void* PushSize(GameState* state, size_t sizeInBytes);
 void RetractSize(GameState* state, size_t sizeInBytes);
 
 Entity* PushEntity(GameState* state);
+
+void DeleteEntity(GameState* state, Entity* entity);
 
 void* PushTemporarySize(GameState* state, uint32_t sizeInBytes);
 

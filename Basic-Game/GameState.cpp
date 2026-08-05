@@ -22,6 +22,9 @@ Entity* PushEntity(GameState* state) {
 			}
 		}
 	}
+	if ((placeToBeGiven - state->lastEntityOnEntities) > 0) {
+		state->lastEntityOnEntities = placeToBeGiven;
+	}
 	state->addedEntities++;
 	return placeToBeGiven;
 }
@@ -35,6 +38,14 @@ void DeleteEntity(GameState* state, Entity* entity) {
 	state->addedEntities -= 1;
 	if ((state->nextEmptyPlaceForEntity - entity) > 0) {
 		state->nextEmptyPlaceForEntity = entity;
+	}
+	if (entity == state->lastEntityOnEntities) {
+		for (int i = 0; i < state->entitiesCapacity; i++) {
+			Entity* entity = state->entities + state->entitiesCapacity - i;
+			if (entity->id != 0) {
+				state->lastEntityOnEntities = entity;
+			}
+		}
 	}
 }
 

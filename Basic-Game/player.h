@@ -30,27 +30,28 @@ enum {
 };
 
 typedef struct Entity {
+	Vector2 temporaryPositionChange;
 	Vector2 centerPosition = {-100, -100};
 	Color color = {255, 255, 255, 255};
 	VertexData* vertexData;
 	VertexData* vertexDataEnd;
-	unsigned int* triangulationIndices = nullptr;
-	unsigned int* triangulationIndicesEnd = nullptr;
+	unsigned int* triangulationIndices;
+	unsigned int* triangulationIndicesEnd;
 
 	uint32_t id;
-	uint32_t flags = 0;
+	uint32_t flags;
 
-	float elasticity = 0;
-	float mass = 0;
+	float elasticity;
+	float mass;
 	Vector2 forceAppliedToAccelerationAndVelocity;
 	Vector2 forcesMultipliedByAppliedTime;
-	Vector2 netForce = { 0, 0 };
-	Vector2 acceleration = { 0, 0 };
+	Vector2 netForce;
+	Vector2 acceleration;
 	//amount the object was moved directly to prevent penetrations
 	Vector2 penetrationVelocity;
-	Vector2 physicsVelocity = {0, 0};
+	Vector2 physicsVelocity;
 	Vector2 lastSpeed;
-	float frictionCons = 0;
+	float frictionCons;
 
 	//inside the screen is positive
 	float inertia;
@@ -87,7 +88,7 @@ float distance(Vector2 v1, Vector2 v2);
 
 float magnitude(Vector2 v);
 
-bool CheckIfAPointIsInsideAShape(Vector2 positionOfPoint, Entity* entity);
+bool CheckIfAPointIsInsideAnEntity(Vector2 positionOfPoint, Entity* entity);
 
 int MakeAnArrayFullOfUniqueItems(GameState* gameState, char* arrayStart, char* arrayEnd, uint32_t numOfElements, uint32_t typeSize);
 

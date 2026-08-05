@@ -19,10 +19,12 @@ int main() {
 		gameState->arena.usableCapacity = gameState->arena.capacity - 1024;
 		gameState->entitiesCapacity = 2000;
 		gameState->nextEmptyPlaceForEntity = gameState->entities;
+		gameState->lastEntityOnEntities = gameState->entities;
 		gameState->goalFps = 60;
 		gameState->isInitialized = true;
 		gameState->gravityConstant = 98 * 4;
 		gameState->EPSILON = 1e-5f;
+		gameState->ClickThresholdFrames = gameState->goalFps / 3;
 		gameState->nextAvailableId = 1;
 		gameState->WINDOW_HEIGHT = 800;
 		gameState->WINDOW_WIDTH = 800;
@@ -77,13 +79,14 @@ int main() {
 	//throw std::runtime_error("do the rotation stuff and fix the very little impulses preventing objects from staying on top of each other");
 	InitWindow(gameState->WINDOW_WIDTH, gameState->WINDOW_HEIGHT, "asd");
 	SetTargetFPS(gameState->goalFps);
-	Entity** relevantEntities = (Entity**)PushSize(gameState, sizeof(Entity*) * 50);
+	Entity** relevantEntities = (Entity**)PushSize(gameState, sizeof(Entity*) * 500);
 	int numOfRelevantEntities;
 
 	bool inputGiven = false;
 	Vector2 inputForce = { 0, 0 };
 
 	bool mouseLeftBeingHeld = false;
+	uint64_t mouseLeftHoldFramesCount = 0;
 	Vector2 cuttingLineStartPosition, cuttingLineEndPosition;
 
 	Entity* entityBeingCut;
@@ -95,8 +98,8 @@ int main() {
 	readyForNewEntityInitialization = false;
 	entityInitialized = true;
 	idOfEntityBeingCut = entityBeingCut->id;
-	Entity* cutEntityPiece1;
-	Entity* cutEntityPiece2;
+	Entity* cutEntityPiece1 = nullptr;
+	Entity* cutEntityPiece2 = nullptr;
 
 	while (!WindowShouldClose()) {
 		//std::cout << "Frame number " << gameState->frameCount << "is starting" << std::endl << std::endl;
@@ -112,6 +115,7 @@ int main() {
 
 			if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
 				Vector2 mousePos = GetMousePosition();
+				mouseLeftHoldFramesCount++;
 				if (mouseLeftBeingHeld) {
 					std::cout << "mouseBeingHeld" << std::endl;
 					DrawLine(cuttingLineStartPosition.x, cuttingLineStartPosition.y, mousePos.x, mousePos.y, RED);
@@ -123,24 +127,53 @@ int main() {
 				}
 			}
 			else {
-				if (mouseLeftBeingHeld) {
+				if (mouseLeftBeingHeld && mouseLeftHoldFramesCount > gameState->ClickThresholdFrames) {
 					Vector2 mousePos = GetMousePosition();
-					mouseLeftBeingHeld = false;
 					cuttingLineEndPosition = mousePos;
 					Entity* newEntity1 = 0;
 					Entity* newEntity2 = 0;
-					uint32_t newEntityFlags = BEING_CHOSEN_FLAG | PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG;
+					uint32_t newEntityFlags = BEING_CHOSEN_FLAG;
 					int operationStatus = CutEntityIntoTwoPiecesByALine(gameState, entityBeingCut, cuttingLineStartPosition, cuttingLineEndPosition, newEntityFlags, newEntity1, newEntity2);
 					if (operationStatus == ENTITY_WAS_CUT) {
 						cutEntityPiece1 = newEntity1;
 						cutEntityPiece2 = newEntity2;
+						cutEntityPiece1->centerPosition.x -= 100;
+						cutEntityPiece1->temporaryPositionChange.x = -100;
+						cutEntityPiece2->centerPosition.x += 100;
+						cutEntityPiece2->temporaryPositionChange.x = 100;
 					}
 				}
+				if (mouseLeftBeingHeld && mouseLeftHoldFramesCount < gameState->ClickThresholdFrames) {
+					Vector2 mousePos = GetMousePosition();
+					int numOfCloseEntities = CalculateRelevantEntitiesForPosition(gameState, mousePos, relevantEntities);
+					for (int i = 0; i < numOfCloseEntities; i++) {
+						Entity* entity = relevantEntities[i];
+						bool pointIsInsideEntity = CheckIfAPointIsInsideAnEntity(mousePos, entity);
+						if (pointIsInsideEntity && (entity->flags & BEING_CHOSEN_FLAG)) {
+
+							if (entity->id == cutEntityPiece1->id) {
+								DeleteEntity(gameState, cutEntityPiece2);
+								cutEntityPiece1->flags &= !BEING_CHOSEN_FLAG;
+								cutEntityPiece1->flags |= (PHYSICS_FLAG | GRAVITY_FLAG);
+								cutEntityPiece1->centerPosition.x -= cutEntityPiece1->temporaryPositionChange.x;
+								cutEntityPiece1->centerPosition.y -= cutEntityPiece1->temporaryPositionChange.y;
+							}
+							else if (entity->id == cutEntityPiece2->id) {
+								DeleteEntity(gameState, cutEntityPiece1);
+								cutEntityPiece2->flags &= !BEING_CHOSEN_FLAG;
+								cutEntityPiece2->flags |= (PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG);
+								cutEntityPiece2->centerPosition.x -= cutEntityPiece2->temporaryPositionChange.x;
+								cutEntityPiece2->centerPosition.y -= cutEntityPiece2->temporaryPositionChange.y;
+							}
+						}
+					}
+				}
+				mouseLeftHoldFramesCount = 0;
+				mouseLeftBeingHeld = false;
 			}
 
-
 			float deltaTime = GetDeltaTime();
-			for (int i = 0; i < gameState->addedEntities; i++) {
+			for (int i = 0; i < gameState->lastEntityOnEntities + 1 - gameState->entities; i++) {
 				Entity* entity = gameState->entities + i;
 				numOfRelevantEntities = CalculateRelevantEntitiesForEntity(gameState, entity, relevantEntities, i);
 				float solverIterationTimeStep = deltaTime / gameState->SOLVER_ITERATIONS;

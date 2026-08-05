@@ -299,7 +299,7 @@ void DrawEntityOutline(Entity* entity) {
         vertex1Pos.y += entity->centerPosition.y;
         vertex2Pos.x += entity->centerPosition.x;
         vertex2Pos.y += entity->centerPosition.y;
-        DrawLine(vertex1Pos.x, vertex1Pos.y, vertex1Pos.x, vertex1Pos.y, YELLOW);
+        DrawLineEx(vertex1Pos, vertex2Pos, 10, YELLOW);
     }
 	Vector2 vertex1Pos = entity->vertexData[vertexCount - 1].position;
 	Vector2 vertex2Pos = entity->vertexData[0].position;
@@ -307,7 +307,7 @@ void DrawEntityOutline(Entity* entity) {
 	vertex1Pos.y += entity->centerPosition.y;
 	vertex2Pos.x += entity->centerPosition.x;
 	vertex2Pos.y += entity->centerPosition.y;
-	DrawLine(vertex1Pos.x, vertex1Pos.y, vertex1Pos.x, vertex1Pos.y, YELLOW);
+    DrawLineEx(vertex1Pos, vertex2Pos, 10, YELLOW);
 }
 
 void DrawEntityForceLine(Entity* entity) {
@@ -415,7 +415,7 @@ void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, floa
 }
 
 
-bool CheckIfAPointIsInsideAShape(Vector2 positionOfPoint, Entity* entity) {
+bool CheckIfAPointIsInsideAnEntity(Vector2 positionOfPoint, Entity* entity) {
     float minX = FLT_MAX, minY = FLT_MAX;
     float maxX = FLT_MIN, maxY = FLT_MIN;
     int vertexCount = entity->vertexDataEnd - entity->vertexData;
