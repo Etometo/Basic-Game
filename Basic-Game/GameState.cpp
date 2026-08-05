@@ -22,6 +22,7 @@ Entity* PushEntity(GameState* state) {
 			}
 		}
 	}
+
 	if ((placeToBeGiven - state->lastEntityOnEntities) > 0) {
 		state->lastEntityOnEntities = placeToBeGiven;
 	}

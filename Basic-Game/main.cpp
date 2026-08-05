@@ -141,6 +141,8 @@ int main() {
 						cutEntityPiece1->temporaryPositionChange.x = -100;
 						cutEntityPiece2->centerPosition.x += 100;
 						cutEntityPiece2->temporaryPositionChange.x = 100;
+
+						DeleteEntity(gameState, entityBeingCut);
 					}
 				}
 				if (mouseLeftBeingHeld && mouseLeftHoldFramesCount < gameState->ClickThresholdFrames) {
@@ -150,7 +152,6 @@ int main() {
 						Entity* entity = relevantEntities[i];
 						bool pointIsInsideEntity = CheckIfAPointIsInsideAnEntity(mousePos, entity);
 						if (pointIsInsideEntity && (entity->flags & BEING_CHOSEN_FLAG)) {
-
 							if (entity->id == cutEntityPiece1->id) {
 								DeleteEntity(gameState, cutEntityPiece2);
 								cutEntityPiece1->flags &= !BEING_CHOSEN_FLAG;
@@ -165,6 +166,9 @@ int main() {
 								cutEntityPiece2->centerPosition.x -= cutEntityPiece2->temporaryPositionChange.x;
 								cutEntityPiece2->centerPosition.y -= cutEntityPiece2->temporaryPositionChange.y;
 							}
+							cutEntityPiece1 = nullptr;
+							cutEntityPiece2 = nullptr;
+							readyForNewEntityInitialization = true;
 						}
 					}
 				}
