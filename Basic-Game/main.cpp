@@ -180,6 +180,9 @@ int main() {
 			float deltaTime = GetDeltaTime();
 			for (int i = 0; i < gameState->lastEntityOnEntities + 1 - gameState->entities; i++) {
 				Entity* entity = gameState->entities + i;
+				if (entity->id == 0) {
+					continue;
+				}
 				numOfRelevantEntities = CalculateRelevantEntitiesForEntity(gameState, entity, relevantEntities, i);
 				float solverIterationTimeStep = deltaTime / gameState->SOLVER_ITERATIONS;
 				if ((entity->flags & PHYSICS_FLAG)) {

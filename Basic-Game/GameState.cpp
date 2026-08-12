@@ -20,6 +20,7 @@ Entity* PushEntity(GameState* state) {
 		for (int i = 0; i < state->entitiesCapacity; i++) {
 			if ((state->entities + i)->id == 0) {
 				state->nextEmptyPlaceForEntity = (state->entities + i);
+				break;
 			}
 		}
 	}
@@ -28,7 +29,7 @@ Entity* PushEntity(GameState* state) {
 		state->lastEntityOnEntities = placeToBeGiven;
 	}
 	state->addedEntities++;
-	placeToBeGiven->id = placeToBeGiven - state->entities + 1;
+	placeToBeGiven->id = (placeToBeGiven - state->entities) + 1;
 	return placeToBeGiven;
 }
 
@@ -44,9 +45,11 @@ void DeleteEntity(GameState* state, Entity* entity) {
 	}
 	if (entity == state->lastEntityOnEntities) {
 		for (int i = 0; i < state->entitiesCapacity; i++) {
-			Entity* entity = state->entities + state->entitiesCapacity - i;
+			Entity* entity = state->entities + (state->entitiesCapacity - 1 - i);
 			if (entity->id != 0) {
 				state->lastEntityOnEntities = entity;
+				std::cout << " ";
+				break;
 			}
 		}
 	}
