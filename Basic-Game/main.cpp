@@ -117,11 +117,9 @@ int main() {
 				Vector2 mousePos = GetMousePosition();
 				mouseLeftHoldFramesCount++;
 				if (mouseLeftBeingHeld) {
-					std::cout << "mouseBeingHeld" << std::endl;
 					DrawLine(cuttingLineStartPosition.x, cuttingLineStartPosition.y, mousePos.x, mousePos.y, RED);
 				}
 				else {
-					std::cout << "mouse clicked";
 					mouseLeftBeingHeld = true;
 					cuttingLineStartPosition = mousePos;
 				}
@@ -151,6 +149,9 @@ int main() {
 					for (int i = 0; i < numOfCloseEntities; i++) {
 						Entity* entity = relevantEntities[i];
 						bool pointIsInsideEntity = CheckIfAPointIsInsideAnEntity(mousePos, entity);
+						if (pointIsInsideEntity) {
+							std::cout << "Entity " << entity->id << " clicked" << std::endl;
+						}
 						if (pointIsInsideEntity && (entity->flags & BEING_CHOSEN_FLAG)) {
 							if (entity->id == cutEntityPiece1->id) {
 								DeleteEntity(gameState, cutEntityPiece2);

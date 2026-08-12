@@ -10,6 +10,7 @@ void* PushSize(GameState* state, size_t sizeInBytes) {
 } 
 
 Entity* PushEntity(GameState* state) {
+	//give preallocated memory space to entity and give it an id
 	assert(state->addedEntities < state->entitiesCapacity);
 	Entity* placeToBeGiven = state->nextEmptyPlaceForEntity;
 	if ((placeToBeGiven + 1)->id == 0) {
@@ -27,6 +28,7 @@ Entity* PushEntity(GameState* state) {
 		state->lastEntityOnEntities = placeToBeGiven;
 	}
 	state->addedEntities++;
+	placeToBeGiven->id = placeToBeGiven - state->entities + 1;
 	return placeToBeGiven;
 }
 

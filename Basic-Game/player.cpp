@@ -52,7 +52,6 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
     returnPointer->color = { 255, 0, 0, 255 };
     returnPointer->mass = mass;
     returnPointer->flags |= flags;
-    returnPointer->id = gameState->nextAvailableId++;
 
     float massPerVertex = returnPointer->mass / vertexCount;
     for (int i = 0; i < vertexCount; i++) {
@@ -525,8 +524,8 @@ int CalculateRelevantEntitiesForPosition(GameState* gameState, Vector2 position,
             }
             uint32_t* cellArray = gameState->spatialGrid + (((gridRowIdx + i) * gameState->gridDimentions[0] + (gridColumnIdx + j)) * gameState->gridDimentions[2]);
             for (int k = 0; k < gameState->gridDimentions[2]; k++) {
-                if (cellArray[k] != 0) {
-					*(relevantEntitiesEnd++) = entities + (cellArray[k] - 1);
+                if (cellArray[k] != 0){
+                    *(relevantEntitiesEnd++) = entities + (cellArray[k] - 1);
                 }
             }
         }
