@@ -556,22 +556,25 @@ int CalculateRelevantEntitiesForEntity(GameState* gameState, Entity* entity, Ent
     Entity* entities = gameState->entities;
     Entity** relevantEntitiesEnd = relevanEntities;
 
-    int centerRowPosition = (int)entity->centerPosition.y / (int)gameState->gridSquareEdgeLength;
-    int centerColumnPosition = (int)entity->centerPosition.x / (int)gameState->gridSquareEdgeLength;
-    for (int i = -2; i < 3; i++) {
-        for (int j = -2; j < 3; j++) {
-            if (centerRowPosition + i < 0 || centerRowPosition + i >= gameState->gridDimentions[0] || centerColumnPosition + j < 0 || centerColumnPosition + j >= gameState->gridDimentions[1]) {
-                continue;
-            }
-            uint32_t* cellArray = gameState->spatialGrid + (((centerRowPosition + i) * gameState->gridDimentions[0] + (centerColumnPosition + j)) * gameState->gridDimentions[2]);
-            for (int k = 0; k < gameState->gridDimentions[2]; k++) {
-                //the ids are one added to their indexes on entities array
-                if (cellArray[k] != 0 && cellArray[k] != entity->id && (cellArray[k] - 1) >= startOffset) {
-                    *(relevantEntitiesEnd++) = entities + (cellArray[k] - 1);
+    for (int v = 0; v < entity->vertexDataEnd - entity->vertexData; v++) {
+		int centerRowPosition = (int)(entity->centerPosition.y + entity->vertexData[v].position.y) / (int)gameState->gridSquareEdgeLength;
+		int centerColumnPosition = (int)(entity->centerPosition.x + entity->vertexData[v].position.x) / (int)gameState->gridSquareEdgeLength;
+        for (int i = -2; i < 3; i++) {
+            for (int j = -2; j < 3; j++) {
+                if (centerRowPosition + i < 0 || centerRowPosition + i >= gameState->gridDimentions[0] || centerColumnPosition + j < 0 || centerColumnPosition + j >= gameState->gridDimentions[1]) {
+                    continue;
+                }
+                uint32_t* cellArray = gameState->spatialGrid + (((centerRowPosition + i) * gameState->gridDimentions[0] + (centerColumnPosition + j)) * gameState->gridDimentions[2]);
+                for (int k = 0; k < gameState->gridDimentions[2]; k++) {
+                    //the ids are one added to their indexes on entities array
+                    if (cellArray[k] != 0 && cellArray[k] != entity->id && (cellArray[k] - 1) >= startOffset) {
+                        *(relevantEntitiesEnd++) = entities + (cellArray[k] - 1);
+                    }
                 }
             }
         }
     }
+    
     uint32_t totalAllocatedSize = (relevantEntitiesEnd - relevanEntities) * sizeof(uint32_t);
     Entity** uniqueItems = (Entity**)PushSize(gameState, totalAllocatedSize);
     uint32_t numOfUniqueItems = 0;
