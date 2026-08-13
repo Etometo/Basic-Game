@@ -286,6 +286,9 @@ void DrawEntity(Entity* player) {
             DrawTriangle(v1, v3, v2, player->color);
         }
 	}
+    char idStr[10];
+    snprintf(idStr, sizeof(idStr), "%d", player->id);
+    DrawText(idStr, player->centerPosition.x, player->centerPosition.y, 30, BLACK);
 }
 
 void DrawEntityOutline(Entity* entity) {
@@ -415,7 +418,7 @@ void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, floa
 
 bool CheckIfAPointIsInsideAnEntity(Vector2 positionOfPoint, Entity* entity) {
     float minX = FLT_MAX, minY = FLT_MAX;
-    float maxX = FLT_MIN, maxY = FLT_MIN;
+    float maxX = -FLT_MAX, maxY = -FLT_MAX;
     int vertexCount = entity->vertexDataEnd - entity->vertexData;
     for (int i = 0; i < vertexCount; i++) {
         Vector2 vertexPos = entity->vertexData[i].position;
@@ -431,36 +434,28 @@ bool CheckIfAPointIsInsideAnEntity(Vector2 positionOfPoint, Entity* entity) {
         return false;
 	} 
 
-	Vector2 raycastStartingPoint = positionOfPoint;
-	Vector2 raycastDirection = { 1, 0 };
-	Vector2 vertex1Pos, vertex2Pos;
-	unsigned int numberOfIntersections = 0;
-	for (int j = 0; j < vertexCount - 1; j++) {
-		vertex1Pos = { entity->vertexData[j].position.x + entity->centerPosition.x, entity->vertexData[j].position.y + entity->centerPosition.y };
-		vertex2Pos = { entity->vertexData[j + 1].position.x + entity->centerPosition.x, entity->vertexData[j + 1].position.y + entity->centerPosition.y };
-		if ((raycastStartingPoint.y < vertex1Pos.y && raycastStartingPoint.y < vertex2Pos.y) || (raycastStartingPoint.y > vertex1Pos.y && raycastStartingPoint.y > vertex2Pos.y)) {
-			continue;
-		}
-		if ((vertex2Pos.x - vertex1Pos.x) == 0) {
-			if (vertex1Pos.x < raycastStartingPoint.x) {
-				continue;
-			}
-		}
-		float slopeOfThePair = (vertex2Pos.y - vertex1Pos.y) / (vertex2Pos.x - vertex1Pos.x);
-		float xValueOfRaycastsYValueIntersection = (raycastStartingPoint.y - vertex1Pos.y + vertex1Pos.x * slopeOfThePair) / slopeOfThePair;
-		if (xValueOfRaycastsYValueIntersection < raycastStartingPoint.x) {
-			continue;
-		}
-		else {
-			numberOfIntersections += 1;
-		}
-	}
-	if (numberOfIntersections & 1) {
-        return true;
-	}
-    else {
-        return false;
-    }
+    bool isInside = false;
+    Vector2 vertex1Pos, vertex2Pos;
+
+    for (int j = 0; j < vertexCount; j++) {
+        vertex1Pos = { entity->vertexData[j].position.x + entity->centerPosition.x, entity->vertexData[j].position.y + entity->centerPosition.y };
+
+        // Wrap around to close the polygon
+        int nextIndex = (j + 1) < vertexCount ? (j + 1) : 0;
+        vertex2Pos = { entity->vertexData[nextIndex].position.x + entity->centerPosition.x, entity->vertexData[nextIndex].position.y + entity->centerPosition.y };
+
+        // 1. Asymmetric Y-bounds check prevents double-counting vertices and ignores horizontal lines
+        if ((vertex1Pos.y > positionOfPoint.y) != (vertex2Pos.y > positionOfPoint.y)) {
+
+            // 2. Direct intersection math (Only divides by Delta Y, which is guaranteed non-zero by the above IF statement)
+            float xValueOfRaycastsIntersection = (vertex2Pos.x - vertex1Pos.x) * (positionOfPoint.y - vertex1Pos.y) / (vertex2Pos.y - vertex1Pos.y) + vertex1Pos.x;
+
+            // 3. Count intersection if it happens to the right of our point
+            if (positionOfPoint.x < xValueOfRaycastsIntersection) {
+                isInside = !isInside; // Toggle parity instead of incrementing an integer
+            }
+        }
+    }	
 }
 
 int MakeAnArrayFullOfUniqueItems(GameState* gameState, char* arrayStart, char* arrayEnd, uint32_t numOfElements, uint32_t typeSize) {

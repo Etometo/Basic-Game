@@ -31,6 +31,7 @@ int main() {
 		gameState->gridSquareEdgeLength = 100;
 		gameState->SOLVER_ITERATIONS = 5;
 	}
+	//initialize the spatial grid
 	int numberOfPartitionsOnWidthAxis = gameState->WINDOW_WIDTH / gameState->gridSquareEdgeLength;
 	int numberOfPartitionsOnHeightAxis = gameState->WINDOW_HEIGHT / gameState->gridSquareEdgeLength;
 	if (gameState->WINDOW_HEIGHT % gameState->gridSquareEdgeLength != 0) { numberOfPartitionsOnHeightAxis++; }
@@ -125,6 +126,7 @@ int main() {
 				}
 			}
 			else {
+				//hold and release
 				if (mouseLeftBeingHeld && mouseLeftHoldFramesCount > gameState->ClickThresholdFrames) {
 					Vector2 mousePos = GetMousePosition();
 					cuttingLineEndPosition = mousePos;
@@ -143,9 +145,12 @@ int main() {
 						DeleteEntity(gameState, entityBeingCut);
 					}
 				}
+				//click
 				if (mouseLeftBeingHeld && mouseLeftHoldFramesCount < gameState->ClickThresholdFrames) {
+					std::cout << "click" << std::endl;
 					Vector2 mousePos = GetMousePosition();
 					int numOfCloseEntities = CalculateRelevantEntitiesForPosition(gameState, mousePos, relevantEntities);
+					bool selectedAnEntity = false;
 					for (int i = 0; i < numOfCloseEntities; i++) {
 						Entity* entity = relevantEntities[i];
 						bool pointIsInsideEntity = CheckIfAPointIsInsideAnEntity(mousePos, entity);
@@ -159,6 +164,7 @@ int main() {
 								cutEntityPiece1->flags |= (PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG);
 								cutEntityPiece1->centerPosition.x -= cutEntityPiece1->temporaryPositionChange.x;
 								cutEntityPiece1->centerPosition.y -= cutEntityPiece1->temporaryPositionChange.y;
+								selectedAnEntity = true;
 							}
 							else if (entity->id == cutEntityPiece2->id) {
 								DeleteEntity(gameState, cutEntityPiece1);
@@ -166,11 +172,15 @@ int main() {
 								cutEntityPiece2->flags |= (PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG);
 								cutEntityPiece2->centerPosition.x -= cutEntityPiece2->temporaryPositionChange.x;
 								cutEntityPiece2->centerPosition.y -= cutEntityPiece2->temporaryPositionChange.y;
+								selectedAnEntity = true;
 							}
 							cutEntityPiece1 = nullptr;
 							cutEntityPiece2 = nullptr;
 							readyForNewEntityInitialization = true;
 						}
+					}
+					if (selectedAnEntity == false) {
+						std::cout << " ";
 					}
 				}
 				mouseLeftHoldFramesCount = 0;
@@ -226,9 +236,6 @@ int main() {
 					entity->torque = 0;
 				}
 				DrawEntity(entity);
-				if (entity->flags & BEING_CHOSEN_FLAG) {
-					DrawEntityOutline(entity);
-				}
 			}
 
 			for (int i = 0; i < gameState->addedEntities; i++) {
