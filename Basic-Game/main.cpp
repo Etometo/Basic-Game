@@ -156,7 +156,7 @@ int main() {
 							if (entity->id == cutEntityPiece1->id) {
 								DeleteEntity(gameState, cutEntityPiece2);
 								cutEntityPiece1->flags &= !BEING_CHOSEN_FLAG;
-								cutEntityPiece1->flags |= (PHYSICS_FLAG | GRAVITY_FLAG);
+								cutEntityPiece1->flags |= (PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG);
 								cutEntityPiece1->centerPosition.x -= cutEntityPiece1->temporaryPositionChange.x;
 								cutEntityPiece1->centerPosition.y -= cutEntityPiece1->temporaryPositionChange.y;
 							}

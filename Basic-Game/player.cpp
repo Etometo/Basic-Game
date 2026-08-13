@@ -29,7 +29,6 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
 	}
 	Entity* returnPointer = (Entity*)PushEntity(gameState);
 
-    std::cout << gameState->addedEntities;
 	returnPointer->vertexData = vertexData;
     returnPointer->vertexDataEnd = vertexDataEnd;
 	unsigned int* indices;

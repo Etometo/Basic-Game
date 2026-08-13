@@ -17,7 +17,7 @@ Entity* PushEntity(GameState* state) {
 		state->nextEmptyPlaceForEntity++;
 	}
 	else {
-		for (int i = 0; i < state->entitiesCapacity; i++) {
+		for (int i = placeToBeGiven - state->entities + 1; i < state->entitiesCapacity; i++) {
 			if ((state->entities + i)->id == 0) {
 				state->nextEmptyPlaceForEntity = (state->entities + i);
 				break;
