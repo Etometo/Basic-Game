@@ -55,10 +55,11 @@ typedef struct GameState {
 enum MOUSE_INPUT_TYPE{
 	NONE = 0,
 	LEFT_CLICK = 1,
-	LEFT_HOLD = 2
 };
 struct MouseInputInfo {
 	MOUSE_INPUT_TYPE inputType;
+	bool mouseReleasedThisFrame;
+	uint32_t inputDurationFrames;
 	Vector2 inputPositions[2];
 };
 

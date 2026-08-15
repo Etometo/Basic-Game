@@ -15,8 +15,8 @@ int main() {
 		gameState->arena.base = (uint8_t*)rawMemory + sizeof(GameState);
 		gameState->arena.used = 0;
 		gameState->arena.usedTemporary = 0;
-		gameState->arena.capacity = 150 * 1024 - sizeof(GameState);
-		gameState->arena.temporaryCapacity = 10 * 1024;
+		gameState->arena.capacity = 150 * 1024 * 1024 - sizeof(GameState);
+		gameState->arena.temporaryCapacity = 100 * 1024;
 		gameState->arena.usableCapacity = gameState->arena.capacity - gameState->arena.temporaryCapacity;
 		gameState->entitiesCapacity = 2000;
 		gameState->nextEmptyPlaceForEntity = gameState->entities;
@@ -81,14 +81,10 @@ int main() {
 	*(tri2DataEnd++) = VertexData{ -33.3333f,  66.6667f };
 	*(tri2DataEnd++) = VertexData{ 66.6667f, -33.3333f };
 
-	//spatial grid gets  filled with the same values for the entire cell at some point
-	uint32_t playerFlags = GRAVITY_FLAG | PLAYER_FLAG | GROUND_COLLISION_FLAG | PHYSICS_FLAG;
-	
 	Vector2 floorCenterPos = { 400, 750 };
 	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, NON_MOVING_FLAG | GROUND_COLLISION_FLAG | PHYSICS_FLAG, floorCenterPos);
 	floor->frictionCons = 0.1;
 
-	//throw std::runtime_error("do the rotation stuff and fix the very little impulses preventing objects from staying on top of each other");
 	InitWindow(gameState->WINDOW_WIDTH, gameState->WINDOW_HEIGHT, "asd");
 	SetTargetFPS(gameState->goalFps);
 
@@ -96,12 +92,35 @@ int main() {
 
 	bool inputGiven = false;
 	Vector2 inputForce = { 0, 0 };
-	MouseInputInfo mouseInputInfo = { NONE, {{0, 0}, {0, 0}}};
+	bool mouseLeftBeingHeld = false;
+	uint64_t mouseLeftHoldFramesCount = 0;
+	Vector2 cuttingLineStartPosition = { 0, 0 }, cuttingLineEndPosition = { 0, 0 };
+	MouseInputInfo mouseInputInfo = { NONE, false, 0, {{0, 0}, {0, 0}}};
 
 	while (!WindowShouldClose()) {
 		//std::cout << "Frame number " << gameState->frameCount << "is starting" << std::endl << std::endl;
 		BeginDrawing();
 			ClearBackground(RAYWHITE);
+
+			if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+				if(mouseInputInfo.inputType == NONE){
+					mouseInputInfo.inputType = LEFT_CLICK;
+					mouseInputInfo.inputPositions[0] = GetMousePosition();
+				}
+				mouseInputInfo.inputPositions[1] = GetMousePosition();
+				mouseInputInfo.inputDurationFrames++;
+			}
+			else {
+				if (!mouseInputInfo.mouseReleasedThisFrame && mouseInputInfo.inputType == LEFT_CLICK) {
+					mouseInputInfo.mouseReleasedThisFrame = true;
+					mouseInputInfo.inputPositions[1] = GetMousePosition();
+				}
+				else {
+					mouseInputInfo.inputType = NONE;
+					mouseInputInfo.inputDurationFrames = 0;
+					mouseInputInfo.mouseReleasedThisFrame = false;
+				}
+			}
 
 			switch (gameState->currentScreenCode) {
 			case GAMEPLAY_SCREEN:

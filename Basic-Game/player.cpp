@@ -574,31 +574,8 @@ int CalculateRelevantEntitiesForEntity(GameState* gameState, Entity* entity, Ent
             }
         }
     }
-    
-    uint32_t totalAllocatedSize = (relevantEntitiesEnd - relevanEntities) * sizeof(uint32_t);
-    Entity** uniqueItems = (Entity**)PushSize(gameState, totalAllocatedSize);
-    uint32_t numOfUniqueItems = 0;
 
-    for (int i = 0; i < relevantEntitiesEnd - relevanEntities; i++) {
-        Entity* item = relevanEntities[i];
-        uint32_t count = 0;
-        for (int j = 0; j < numOfUniqueItems; j++) {
-            if (uniqueItems[j] == item) {
-                count++;
-            }
-        }
-        if (count == 0) {
-            uniqueItems[numOfUniqueItems] = item;
-            numOfUniqueItems++;
-        }
-    }
-
-    relevantEntitiesEnd = relevanEntities;
-    for (int j = 0; j < numOfUniqueItems; j++) {
-        *(relevantEntitiesEnd++) = uniqueItems[j];
-    }
-
-    RetractSize(gameState, totalAllocatedSize);
+    MakeAnArrayFullOfUniqueItems(gameState, (char*)relevanEntities, (char*)relevantEntitiesEnd, relevantEntitiesEnd - relevanEntities, sizeof(Entity*));
 
     return relevantEntitiesEnd - relevanEntities;
 }

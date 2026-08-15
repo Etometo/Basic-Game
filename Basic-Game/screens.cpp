@@ -2,9 +2,6 @@
 #include <iostream>
 
 void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
-	bool mouseLeftBeingHeld = false;
-	uint64_t mouseLeftHoldFramesCount = 0;
-	Vector2 cuttingLineStartPosition = { 0, 0 }, cuttingLineEndPosition = { 0, 0 };
 
 	uint32_t relevantEntitiesSize = sizeof(Entity*) * 500;
 	Entity** relevantEntities = (Entity**)PushTemporarySize(gameState, relevantEntitiesSize);
@@ -15,27 +12,13 @@ void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
 		gameState->entityInitialized = true;
 	}
 
-	if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-		Vector2 mousePos = GetMousePosition();
-		mouseLeftHoldFramesCount++;
-		if (mouseLeftBeingHeld) {
-			DrawLine(cuttingLineStartPosition.x, cuttingLineStartPosition.y, mousePos.x, mousePos.y, RED);
-		}
-		else {
-			mouseLeftBeingHeld = true;
-			cuttingLineStartPosition = mousePos;
-		}
-	}
-	else {
+	if (mouseInput.mouseReleasedThisFrame) {
 		//hold and release
-		if (mouseLeftBeingHeld && mouseLeftHoldFramesCount > gameState->ClickThresholdFrames) {
-
-			Vector2 mousePos = GetMousePosition();
-			cuttingLineEndPosition = mousePos;
+		if (mouseInput.inputDurationFrames > gameState->ClickThresholdFrames) {
 			Entity* newEntity1 = 0;
 			Entity* newEntity2 = 0;
 			uint32_t newEntityFlags = BEING_CHOSEN_FLAG;
-			int operationStatus = CutEntityIntoTwoPiecesByALine(gameState, gameState->entityBeingCut, cuttingLineStartPosition, cuttingLineEndPosition, newEntityFlags, newEntity1, newEntity2);
+			int operationStatus = CutEntityIntoTwoPiecesByALine(gameState, gameState->entityBeingCut, mouseInput.inputPositions[0], mouseInput.inputPositions[1], newEntityFlags, newEntity1, newEntity2);
 			if (operationStatus == ENTITY_WAS_CUT) {
 				gameState->cutPiece1 = newEntity1;
 				gameState->cutPiece2 = newEntity2;
@@ -48,7 +31,7 @@ void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
 			}
 		}
 		//click
-		if (mouseLeftBeingHeld && mouseLeftHoldFramesCount < gameState->ClickThresholdFrames) {
+		if (mouseInput.inputDurationFrames < gameState->ClickThresholdFrames) {
 			std::cout << "click" << std::endl;
 			Vector2 mousePos = GetMousePosition();
 			int numOfCloseEntities = CalculateRelevantEntitiesForPosition(gameState, mousePos, relevantEntities);
@@ -85,8 +68,11 @@ void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
 				std::cout << " ";
 			}
 		}
-		mouseLeftHoldFramesCount = 0;
-		mouseLeftBeingHeld = false;
+	}
+	else {
+		if (mouseInput.inputType == LEFT_CLICK) {
+			DrawLine(mouseInput.inputPositions[0].x, mouseInput.inputPositions[0].y, mouseInput.inputPositions[1].x, mouseInput.inputPositions[1].y, RED);
+		}
 	}
 
 	float deltaTime = GetDeltaTime();
