@@ -60,7 +60,7 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
 	return returnPointer;
 }
 
-Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags, Vector2 centerPos) {
+Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags, Vector2 centerPos, SCREEN_CODES screenCode) {
     Entity* returnPointer = InitializeAndPushEntity(gameState, vertexData, vertexDataEnd, mass, flags);
     returnPointer->centerPosition.x += centerPos.x;
     returnPointer->centerPosition.y += centerPos.y;
@@ -68,10 +68,7 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
     returnPointer->gridPositionOfVerticesSize = returnPointer->vertexDataEnd - returnPointer->vertexData;
     CalibrateEntityWithGrid(gameState, returnPointer);
 
-    if (returnPointer->triangulationIndices[0] > 10000) {
-        throw std::runtime_error("nahh ");
-    }
-    
+    returnPointer->screenCode = screenCode;
     return returnPointer;
 }
 
@@ -218,8 +215,8 @@ int CutEntityIntoTwoPiecesByALine(GameState* gameState, Entity* entity, Vector2 
         vertexData2center.x += entity->centerPosition.x;
         vertexData2center.y += entity->centerPosition.y;
 
-        newE1 = (Entity*)InitializeAndPushEntity(gameState, vertexData1, vertexData1End, 10, entityFlags, vertexData1center);
-        newE2 = (Entity*)InitializeAndPushEntity(gameState, vertexData2, vertexData2End, 10, entityFlags, vertexData2center);
+        newE1 = (Entity*)InitializeAndPushEntity(gameState, vertexData1, vertexData1End, 10, entityFlags, vertexData1center, GAMEPLAY_SCREEN);
+        newE2 = (Entity*)InitializeAndPushEntity(gameState, vertexData2, vertexData2End, 10, entityFlags, vertexData2center, GAMEPLAY_SCREEN);
 
         RetractTemporarySize(gameState, totalAllocatedTemporarySize);
         return ENTITY_WAS_CUT;

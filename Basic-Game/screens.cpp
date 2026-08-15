@@ -1,13 +1,48 @@
 #include "GameState.h"
 #include <iostream>
 
-void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
+void InitializeGameplayScreen(GameState* gameState) {
+	VertexData* rectData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
+	VertexData* rectDataEnd = rectData;
+	*(rectDataEnd++) = VertexData{ 50, 50 };
+	*(rectDataEnd++) = VertexData{ 50, -50 };
+	*(rectDataEnd++) = VertexData{ -50, -50 };
+	*(rectDataEnd++) = VertexData{ -50, 50 };
+	gameState->rectData = rectData;
+	gameState->rectDataEnd = rectDataEnd;
 
+	VertexData* floorRectData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 6);
+	VertexData* floorRectDataEnd = floorRectData;
+	*(floorRectDataEnd++) = VertexData{ 399, 50 };
+	*(floorRectDataEnd++) = VertexData{ 399, -50 };
+	*(floorRectDataEnd++) = VertexData{ 0, -50 };
+	*(floorRectDataEnd++) = VertexData{ -399, -50 };
+	*(floorRectDataEnd++) = VertexData{ -399, 50 };
+	*(floorRectDataEnd++) = VertexData{ 0, 50 };
+
+	VertexData* triData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 3);
+	VertexData* triDataEnd = triData;
+	*(triDataEnd++) = VertexData{ 33.3333f,  33.3333f };
+	*(triDataEnd++) = VertexData{ 33.3333f, -66.6667f };
+	*(triDataEnd++) = VertexData{ -66.6667f,  33.3333f };
+
+	VertexData* tri2Data = (VertexData*)PushSize(gameState, sizeof(VertexData) * 3);
+	VertexData* tri2DataEnd = tri2Data;
+	*(tri2DataEnd++) = VertexData{ -33.3333f, -33.3333f };
+	*(tri2DataEnd++) = VertexData{ -33.3333f,  66.6667f };
+	*(tri2DataEnd++) = VertexData{ 66.6667f, -33.3333f };
+
+	Vector2 floorCenterPos = { 400, 750 };
+	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, NON_MOVING_FLAG | GROUND_COLLISION_FLAG | PHYSICS_FLAG, floorCenterPos, GAMEPLAY_SCREEN);
+	floor->frictionCons = 0.1;
+}
+
+void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
 	uint32_t relevantEntitiesSize = sizeof(Entity*) * 500;
 	Entity** relevantEntities = (Entity**)PushTemporarySize(gameState, relevantEntitiesSize);
 
 	if (gameState->readyForNewEntityInitialization) {
-		gameState->entityBeingCut = (Entity*)InitializeAndPushEntity(gameState, gameState->rectData, gameState->rectDataEnd, 10, BEING_CUT_FLAG, { 400, 100 });
+		gameState->entityBeingCut = (Entity*)InitializeAndPushEntity(gameState, gameState->rectData, gameState->rectDataEnd, 10, BEING_CUT_FLAG, { 400, 100 }, GAMEPLAY_SCREEN);
 		gameState->readyForNewEntityInitialization = false;
 		gameState->entityInitialized = true;
 	}
@@ -33,7 +68,7 @@ void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
 		//click
 		if (mouseInput.inputDurationFrames < gameState->ClickThresholdFrames) {
 			std::cout << "click" << std::endl;
-			Vector2 mousePos = GetMousePosition();
+			Vector2 mousePos = mouseInput.inputPositions[1];
 			int numOfCloseEntities = CalculateRelevantEntitiesForPosition(gameState, mousePos, relevantEntities);
 			bool selectedAnEntity = false;
 			for (int i = 0; i < numOfCloseEntities; i++) {
@@ -63,9 +98,6 @@ void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
 					gameState->cutPiece2 = nullptr;
 					gameState->readyForNewEntityInitialization = true;
 				}
-			}
-			if (selectedAnEntity == false) {
-				std::cout << " ";
 			}
 		}
 	}
@@ -117,13 +149,11 @@ void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
 			}
 			MoveEntity(entity, deltaTime);
 			CalibrateEntityWithGrid(gameState, entity);
-			DrawEntityForceLine(entity);
 			entity->netForce = { 0, 0 };
 			entity->forceAppliedToAccelerationAndVelocity = { 0, 0 };
 			entity->forcesMultipliedByAppliedTime = { 0, 0 };
 			entity->torque = 0;
 		}
-		DrawEntity(entity);
 	}
 
 	for (int i = 0; i < gameState->addedEntities; i++) {
@@ -134,5 +164,45 @@ void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
 
 }
 
+void ChangeScreenTo(GameState* gameState, SCREEN_CODES screenCode) {
+	gameState->currentScreenCode = screenCode;
+}
+void InitializeMainMenu(GameState* gameState) {
+	VertexData* buttonData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
+	VertexData* buttonDataEnd = buttonData;
+	*(buttonDataEnd++) = VertexData{ 60, 50 };
+	*(buttonDataEnd++) = VertexData{ 60, -50 };
+	*(buttonDataEnd++) = VertexData{ -60, -50 };
+	*(buttonDataEnd++) = VertexData{ -60, 50 };
+	Entity* playButton = InitializeAndPushEntity(gameState, buttonData, buttonDataEnd, 0, BUTTON_FLAG, { (float)gameState->WINDOW_HEIGHT / 2, (float)gameState->WINDOW_WIDTH / 2 }, MAIN_SCREEN);
+	playButton->buttonFunction = ChangeScreenTo;
+}
 
-
+void UpdateMainMenu(GameState* gameState, MouseInputInfo mouseInput) {
+	uint32_t relevantEntitiesSize = sizeof(Entity*) * 500;
+	Entity** relevantEntities = (Entity**)PushTemporarySize(gameState, relevantEntitiesSize);
+	if (mouseInput.mouseReleasedThisFrame) {
+		//click
+		if (mouseInput.inputDurationFrames < gameState->ClickThresholdFrames) {
+			Vector2 mousePos = mouseInput.inputPositions[1];
+			int numOfCloseEntities = CalculateRelevantEntitiesForPosition(gameState, mousePos, relevantEntities);
+			bool selectedAnEntity = false;
+			for (int i = 0; i < numOfCloseEntities; i++) {
+				Entity* entity = relevantEntities[i];
+				bool pointIsInsideEntity = CheckIfAPointIsInsideAnEntity(mousePos, entity);
+				if (pointIsInsideEntity) {
+					std::cout << "Entity " << entity->id << " clicked" << std::endl;
+				}
+				if (pointIsInsideEntity && (entity->flags & BUTTON_FLAG)) {
+					entity->buttonFunction(gameState, GAMEPLAY_SCREEN);
+				}
+			}
+		}
+	}
+	else {
+		if (mouseInput.inputType == LEFT_CLICK) {
+			DrawLine(mouseInput.inputPositions[0].x, mouseInput.inputPositions[0].y, mouseInput.inputPositions[1].x, mouseInput.inputPositions[1].y, RED);
+		}
+	}
+	RetractTemporarySize(gameState, relevantEntitiesSize);
+}

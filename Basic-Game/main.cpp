@@ -51,47 +51,15 @@ int main() {
 	gameState->gridDimentions[1] = numberOfPartitionsOnWidthAxis;
 	gameState->gridDimentions[2] = numOfIdsPerCell;
 	
-	VertexData* rectData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
-	VertexData* rectDataEnd = rectData;
-	*(rectDataEnd++) = VertexData{ 50, 50 };
-	*(rectDataEnd++) = VertexData{ 50, -50 };
-	*(rectDataEnd++) = VertexData{ -50, -50 };
-	*(rectDataEnd++) = VertexData{ -50, 50 };
-	gameState->rectData = rectData;
-	gameState->rectDataEnd = rectDataEnd;
-
-	VertexData* floorRectData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 6);
-	VertexData* floorRectDataEnd = floorRectData;
-	*(floorRectDataEnd++) = VertexData{ 399, 50 };
-	*(floorRectDataEnd++) = VertexData{ 399, -50 };
-	*(floorRectDataEnd++) = VertexData{ 0, -50 };
-	*(floorRectDataEnd++) = VertexData{ -399, -50 };
-	*(floorRectDataEnd++) = VertexData{ -399, 50 };
-	*(floorRectDataEnd++) = VertexData{ 0, 50 };
-
-	VertexData* triData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 3);
-	VertexData* triDataEnd = triData;
-	*(triDataEnd++) = VertexData{ 33.3333f,  33.3333f };
-	*(triDataEnd++) = VertexData{ 33.3333f, -66.6667f };
-	*(triDataEnd++) = VertexData{ -66.6667f,  33.3333f };
-
-	VertexData* tri2Data = (VertexData*)PushSize(gameState, sizeof(VertexData) * 3);
-	VertexData* tri2DataEnd = tri2Data;
-	*(tri2DataEnd++) = VertexData{ -33.3333f, -33.3333f };
-	*(tri2DataEnd++) = VertexData{ -33.3333f,  66.6667f };
-	*(tri2DataEnd++) = VertexData{ 66.6667f, -33.3333f };
-
-	Vector2 floorCenterPos = { 400, 750 };
-	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, NON_MOVING_FLAG | GROUND_COLLISION_FLAG | PHYSICS_FLAG, floorCenterPos);
-	floor->frictionCons = 0.1;
-
 	InitWindow(gameState->WINDOW_WIDTH, gameState->WINDOW_HEIGHT, "asd");
 	SetTargetFPS(gameState->goalFps);
 
-	gameState->currentScreenCode = GAMEPLAY_SCREEN;
+	gameState->currentScreenCode = MAIN_SCREEN;
 
-	bool inputGiven = false;
-	Vector2 inputForce = { 0, 0 };
+	InitializeMainMenu(gameState);
+	InitializeGameplayScreen(gameState);
+	gameState->gameplayScreenInitialized = true;
+
 	bool mouseLeftBeingHeld = false;
 	uint64_t mouseLeftHoldFramesCount = 0;
 	Vector2 cuttingLineStartPosition = { 0, 0 }, cuttingLineEndPosition = { 0, 0 };
@@ -123,14 +91,20 @@ int main() {
 			}
 
 			switch (gameState->currentScreenCode) {
-			case GAMEPLAY_SCREEN:
-				UpdateGameplayScreen(gameState, mouseInputInfo);
+				case MAIN_SCREEN:
+					UpdateMainMenu(gameState, mouseInputInfo);
+				case GAMEPLAY_SCREEN:
+					UpdateGameplayScreen(gameState, mouseInputInfo);
 			}
 
-			inputGiven = false;
-			inputForce = { 0, 0 };
+			for (int i = 0; i < gameState->lastEntityOnEntities + 1 - gameState->entities; i++) {
+				Entity* entity = gameState->entities + i;
+				if (entity->screenCode == gameState->currentScreenCode) {
+					DrawEntity(entity);
+				}
+			}
+
 		EndDrawing();
-		//std::cout << "Frame number " << gameState->frameCount++ << "has ended" << std::endl << std::endl;
 	}
 	RetractSize(gameState, sizeof(Entity*) * 20);
 	CloseWindow();

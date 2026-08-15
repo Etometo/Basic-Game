@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <stdint.h>
 #include "raylib.h"
+#include "screens.h"
 
 struct GameState;
 
@@ -40,6 +41,7 @@ typedef struct Entity {
 
 	uint32_t id;
 	uint32_t flags;
+	uint8_t screenCode;
 
 	float elasticity;
 	float mass;
@@ -64,9 +66,10 @@ typedef struct Entity {
 	uint32_t* gridPositionsOfVertices; 
 	uint32_t gridPositionOfVerticesSize;
 
-	bool isPlayer = false;
 	bool gravityApplied;
 	bool stoppedByFriction;
+
+	void(*buttonFunction)(GameState* gameState, SCREEN_CODES screenCode);
 };
 
 struct CollisionInfo {
@@ -92,7 +95,7 @@ bool CheckIfAPointIsInsideAnEntity(Vector2 positionOfPoint, Entity* entity);
 
 int MakeAnArrayFullOfUniqueItems(GameState* gameState, char* arrayStart, char* arrayEnd, uint32_t numOfElements, uint32_t typeSize);
 
-Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags, Vector2 centerPos);
+Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags, Vector2 centerPos, SCREEN_CODES screenCode);
 
 int CutEntityIntoTwoPiecesByALine(GameState* gameState, Entity* entity, Vector2 cutStart, Vector2 cutEnd, uint32_t entityFlags, Entity* &newE1, Entity* &newE2);
 

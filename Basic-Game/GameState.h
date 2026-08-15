@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include "screens.h"
 #include "player.h"
 
 typedef struct MemoryArena {
@@ -11,9 +12,6 @@ typedef struct MemoryArena {
 	uint8_t* base;
 };
 
-enum SCREEN_CODES : uint8_t{
-	GAMEPLAY_SCREEN = 0,
-};
 
 typedef struct GameState {
 	bool isInitialized = false;
