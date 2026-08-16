@@ -60,11 +60,7 @@ int main() {
 	InitializeGameplayScreen(gameState);
 	gameState->gameplayScreenInitialized = true;
 
-	bool mouseLeftBeingHeld = false;
-	uint64_t mouseLeftHoldFramesCount = 0;
-	Vector2 cuttingLineStartPosition = { 0, 0 }, cuttingLineEndPosition = { 0, 0 };
 	MouseInputInfo mouseInputInfo = { NONE, false, 0, {{0, 0}, {0, 0}}};
-
 	while (!WindowShouldClose()) {
 		//std::cout << "Frame number " << gameState->frameCount << "is starting" << std::endl << std::endl;
 		BeginDrawing();
@@ -99,7 +95,7 @@ int main() {
 
 			for (int i = 0; i < gameState->lastEntityOnEntities + 1 - gameState->entities; i++) {
 				Entity* entity = gameState->entities + i;
-				if (entity->screenCode == gameState->currentScreenCode) {
+				if (entity->id != 0 && entity->screenCode == gameState->currentScreenCode) {
 					DrawEntity(entity);
 				}
 			}
