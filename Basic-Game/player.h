@@ -6,6 +6,12 @@
 #include "raylib.h"
 #include "screens.h"
 
+constexpr float INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD = 1.9;
+constexpr float INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD = 0.2;
+
+constexpr float INSIGNIFICANT_DISPLACEMENT_THRESHOLD = 10;
+constexpr float INSIGNIFICANT_ANGULAR_DISPLACEMENT_THRESHOLD = 5;
+
 struct GameState;
 
 typedef struct VertexData {
@@ -60,7 +66,11 @@ typedef struct Entity {
 	float torque;
 	float rotationalAcceleration;
 	float rotationalVelocity;
+	float angle;
 
+	uint8_t framesWithConsequentialInsignificantMovement;
+	Vector2 positionWhenMovementBecameInsignificant;
+	float angleWhenMovementBecameInsignificant;
 
 	//two dimentional, contains pair elements the first one being the row index the second one being the column index
 	uint32_t* gridPositionsOfVertices; 
@@ -113,7 +123,7 @@ bool IsCounterClockwise(Vector2 v1, Vector2 v2, Vector2 v3);
 
 Vector2 AddVectors(Vector2& v1, Vector2& v2);
 
-void MoveEntity(Entity* player, float deltaTime);
+void MoveAndRotateEntity(Entity* player, float deltaTime);
 
 void ApplyForceToEntity(Entity* player, Vector2 movement);
 

@@ -108,7 +108,7 @@ void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
 	}
 
 	float deltaTime = GetDeltaTime();
-	for (int i = 0; i < gameState->lastEntityOnEntities + 1 - gameState->entities; i++) {
+	for (int i = 0; i <= (gameState->lastEntityOnEntities - gameState->entities); i++) {
 		Entity* entity = gameState->entities + i;
 		if (entity->id == 0) {
 			continue;
@@ -147,8 +147,40 @@ void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
 					}
 				}
 			}
-			MoveEntity(entity, deltaTime);
-			CalibrateEntityWithGrid(gameState, entity);
+			if (!(entity->flags & NON_MOVING_FLAG)){
+				MoveAndRotateEntity(entity, deltaTime);
+				CalibrateEntityWithGrid(gameState, entity);
+
+				if(magnitude(entity->physicsVelocity) < INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD && 
+					entity->rotationalVelocity < INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD) 
+				{
+					std::cout << "entity " << entity->id << "started stopping" << std::endl;
+					if (entity->framesWithConsequentialInsignificantMovement == 0) {
+						entity->positionWhenMovementBecameInsignificant.x = entity->centerPosition.x;
+						entity->positionWhenMovementBecameInsignificant.y = entity->centerPosition.y;
+						entity->angleWhenMovementBecameInsignificant = entity->angle;
+					}
+					else if (entity->framesWithConsequentialInsignificantMovement >= 10 
+						&& distance(entity->centerPosition, entity->positionWhenMovementBecameInsignificant) < INSIGNIFICANT_DISPLACEMENT_THRESHOLD 
+						&& abs(entity->angle - entity->angleWhenMovementBecameInsignificant) < INSIGNIFICANT_ANGULAR_DISPLACEMENT_THRESHOLD
+						) 
+					{
+						entity->flags |= NON_MOVING_FLAG;
+					}
+					entity->framesWithConsequentialInsignificantMovement++;
+				}
+				else {
+					if (entity->framesWithConsequentialInsignificantMovement > 0) {
+						if (magnitude(entity->physicsVelocity) > INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD) {
+							std::cout << "stopped because of normal speed" << std::endl;
+						}
+						if (entity->rotationalVelocity > INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD) {
+							std::cout << "stopped because of angular speed" << std::endl;
+						}
+					}
+					entity->framesWithConsequentialInsignificantMovement = 0;
+				}
+			}
 			entity->netForce = { 0, 0 };
 			entity->forceAppliedToAccelerationAndVelocity = { 0, 0 };
 			entity->forcesMultipliedByAppliedTime = { 0, 0 };

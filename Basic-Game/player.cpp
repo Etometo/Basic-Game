@@ -348,26 +348,25 @@ float distance(Vector2 v1, Vector2 v2) {
 float magnitude(Vector2 v) {
     return sqrtf(square(v.x) + square(v.y));
 }
-void RotateEntity(Entity* player, float deltaTime) {
-    float rotationalChange = player->rotationalVelocity * deltaTime;
+void RotateEntity(Entity* entity, float deltaTime) {
+    float rotationalChange = entity->rotationalVelocity * deltaTime;
     float sin = sinf(rotationalChange);
     float cos = cosf(rotationalChange);
-    for (int i = 0; i < player->vertexDataEnd - player->vertexData; i++) {
-        Vector2 vertexPos = player->vertexData[i].position;
-        player->vertexData[i].position.x = vertexPos.x * cos - vertexPos.y * sin;
-        player->vertexData[i].position.y = vertexPos.x * sin + vertexPos.y * cos;
+    for (int i = 0; i < entity->vertexDataEnd - entity->vertexData; i++) {
+        Vector2 vertexPos = entity->vertexData[i].position;
+        entity->vertexData[i].position.x = vertexPos.x * cos - vertexPos.y * sin;
+        entity->vertexData[i].position.y = vertexPos.x * sin + vertexPos.y * cos;
     }
+    entity->angle += rotationalChange;
 }
 
-void MoveEntity(Entity* player, float deltaTime) {
-    if ((player->flags & NON_MOVING_FLAG) == 0) {
-		player->centerPosition.x += player->physicsVelocity.x * deltaTime;
-		player->centerPosition.y += player->physicsVelocity.y * deltaTime;
-        player->lastSpeed = { player->physicsVelocity.x, player->physicsVelocity.y };
-        player->penetrationVelocity = { 0, 0 };
+void MoveAndRotateEntity(Entity* player, float deltaTime) {
+	player->centerPosition.x += player->physicsVelocity.x * deltaTime;
+	player->centerPosition.y += player->physicsVelocity.y * deltaTime;
+	player->lastSpeed = { player->physicsVelocity.x, player->physicsVelocity.y };
+	player->penetrationVelocity = { 0, 0 };
 
-        RotateEntity(player, deltaTime);
-    }
+	RotateEntity(player, deltaTime);
 }
 
 void ApplyForceToEntity(Entity* player, Vector2 mov) {
@@ -1652,6 +1651,6 @@ void ApplyGravityCalculatePhysicsAndMoveEntity(GameState* gameState, Entity* ent
     if((entity->flags & GRAVITY_FLAG) > 0){
         entity->netForce.y += gameState->gravityConstant * entity->mass;
     }
-    MoveEntity(entity, 0);
+    MoveAndRotateEntity(entity, 0);
     entity->physicsVelocity = { 0, 0 };
 }
