@@ -37,7 +37,7 @@ void InitializeGameplayScreen(GameState* gameState) {
 	floor->frictionCons = 0.1;
 }
 
-void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
+void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 	uint32_t relevantEntitiesSize = sizeof(Entity*) * 500;
 	Entity** relevantEntities = (Entity**)PushTemporarySize(gameState, relevantEntitiesSize);
 
@@ -47,13 +47,13 @@ void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
 		gameState->entityInitialized = true;
 	}
 
-	if (mouseInput.mouseReleasedThisFrame) {
+	if (inputInfo.mouseInputInfo.mouseReleasedThisFrame) {
 		//hold and release
-		if (mouseInput.inputDurationFrames > gameState->ClickThresholdFrames) {
+		if (inputInfo.mouseInputInfo.inputDurationFrames > gameState->ClickThresholdFrames) {
 			Entity* newEntity1 = 0;
 			Entity* newEntity2 = 0;
 			uint32_t newEntityFlags = BEING_CHOSEN_FLAG;
-			int operationStatus = CutEntityIntoTwoPiecesByALine(gameState, gameState->entityBeingCut, mouseInput.inputPositions[0], mouseInput.inputPositions[1], newEntityFlags, newEntity1, newEntity2);
+			int operationStatus = CutEntityIntoTwoPiecesByALine(gameState, gameState->entityBeingCut, inputInfo.mouseInputInfo.inputPositions[0], inputInfo.mouseInputInfo.inputPositions[1], newEntityFlags, newEntity1, newEntity2);
 			if (operationStatus == ENTITY_WAS_CUT) {
 				gameState->cutPiece1 = newEntity1;
 				gameState->cutPiece2 = newEntity2;
@@ -66,9 +66,9 @@ void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
 			}
 		}
 		//click
-		if (mouseInput.inputDurationFrames < gameState->ClickThresholdFrames) {
+		if (inputInfo.mouseInputInfo.inputDurationFrames < gameState->ClickThresholdFrames) {
 			std::cout << "click" << std::endl;
-			Vector2 mousePos = mouseInput.inputPositions[1];
+			Vector2 mousePos = inputInfo.mouseInputInfo.inputPositions[1];
 			int numOfCloseEntities = CalculateRelevantEntitiesForPosition(gameState, mousePos, relevantEntities);
 			bool selectedAnEntity = false;
 			for (int i = 0; i < numOfCloseEntities; i++) {
@@ -81,29 +81,48 @@ void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
 					if (entity->id == gameState->cutPiece1->id) {
 						DeleteEntity(gameState, gameState->cutPiece2);
 						gameState->cutPiece1->flags &= !BEING_CHOSEN_FLAG;
-						gameState->cutPiece1->flags |= (PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG);
+						gameState->cutPiece1->flags |= ADJUSTING_POSITION_FLAG;
 						gameState->cutPiece1->centerPosition.x -= gameState->cutPiece1->temporaryPositionChange.x;
 						gameState->cutPiece1->centerPosition.y -= gameState->cutPiece1->temporaryPositionChange.y;
+						gameState->chosenPiece = gameState->cutPiece1;
+						gameState->pieceWasChosen = true;
 						selectedAnEntity = true;
 					}
 					else if (entity->id == gameState->cutPiece2->id) {
 						DeleteEntity(gameState, gameState->cutPiece1);
 						gameState->cutPiece2->flags &= !BEING_CHOSEN_FLAG;
-						gameState->cutPiece2->flags |= (PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG);
+						gameState->cutPiece2->flags |= ADJUSTING_POSITION_FLAG;
 						gameState->cutPiece2->centerPosition.x -= gameState->cutPiece2->temporaryPositionChange.x;
 						gameState->cutPiece2->centerPosition.y -= gameState->cutPiece2->temporaryPositionChange.y;
+						gameState->chosenPiece = gameState->cutPiece2;
+						gameState->pieceWasChosen = true;
 						selectedAnEntity = true;
 					}
 					gameState->cutPiece1 = nullptr;
 					gameState->cutPiece2 = nullptr;
-					gameState->readyForNewEntityInitialization = true;
 				}
 			}
 		}
 	}
 	else {
-		if (mouseInput.inputType == LEFT_CLICK) {
-			DrawLine(mouseInput.inputPositions[0].x, mouseInput.inputPositions[0].y, mouseInput.inputPositions[1].x, mouseInput.inputPositions[1].y, RED);
+		if (inputInfo.mouseInputInfo.inputType == LEFT_CLICK) {
+			DrawLine(inputInfo.mouseInputInfo.inputPositions[0].x, inputInfo.mouseInputInfo.inputPositions[0].y, inputInfo.mouseInputInfo.inputPositions[1].x, inputInfo.mouseInputInfo.inputPositions[1].y, RED);
+		}
+	}
+
+	if (gameState->pieceWasChosen) {
+		if (inputInfo.keyCodes & A_KEY_CODE && gameState->chosenPiece->centerPosition.x >= 100) {
+			gameState->chosenPiece->centerPosition.x -= 2;
+		}
+		if (inputInfo.keyCodes & D_KEY_CODE && gameState->chosenPiece->centerPosition.x <= 700) {
+			gameState->chosenPiece->centerPosition.x += 2;
+		}
+		if (inputInfo.keyCodes & ENTER_KEY_CODE) {
+			gameState->chosenPiece->flags &= !ADJUSTING_POSITION_FLAG;
+			gameState->chosenPiece->flags |= (PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG);
+			gameState->pieceWasChosen = false;
+			gameState->readyForNewEntityInitialization = true;
+			gameState->chosenPiece = nullptr;
 		}
 	}
 
@@ -138,6 +157,7 @@ void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
 					Vector2 forceApplicationPoint = CalculateForceApplicationPoint(entity, relevantEntity);
 					if (forceApplicationPoint.x == 0 && forceApplicationPoint.y == 0) {
 						forceApplicationPoint = entity->centerPosition;
+						forceApplicationPoint.y += collInfo.minOverlap / 2;
 					}
 					
 					for(int k = 0; k < gameState->SOLVER_ITERATIONS; k++){
@@ -160,7 +180,7 @@ void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
 						entity->positionWhenMovementBecameInsignificant.y = entity->centerPosition.y;
 						entity->angleWhenMovementBecameInsignificant = entity->angle;
 					}
-					else if (entity->framesWithConsequentialInsignificantMovement >= 1000 
+					else if (entity->framesWithConsequentialInsignificantMovement >= 10 
 						&& distance(entity->centerPosition, entity->positionWhenMovementBecameInsignificant) < INSIGNIFICANT_DISPLACEMENT_THRESHOLD 
 						&& abs(entity->angle - entity->angleWhenMovementBecameInsignificant) < INSIGNIFICANT_ANGULAR_DISPLACEMENT_THRESHOLD
 						) 
@@ -210,13 +230,13 @@ void InitializeMainMenu(GameState* gameState) {
 	playButton->buttonFunction = ChangeScreenTo;
 }
 
-void UpdateMainMenu(GameState* gameState, MouseInputInfo mouseInput) {
+void UpdateMainMenu(GameState* gameState, InputInfo inputInfo) {
 	uint32_t relevantEntitiesSize = sizeof(Entity*) * 500;
 	Entity** relevantEntities = (Entity**)PushTemporarySize(gameState, relevantEntitiesSize);
-	if (mouseInput.mouseReleasedThisFrame) {
+	if (inputInfo.mouseInputInfo.mouseReleasedThisFrame) {
 		//click
-		if (mouseInput.inputDurationFrames < gameState->ClickThresholdFrames) {
-			Vector2 mousePos = mouseInput.inputPositions[1];
+		if (inputInfo.mouseInputInfo.inputDurationFrames < gameState->ClickThresholdFrames) {
+			Vector2 mousePos = inputInfo.mouseInputInfo.inputPositions[1];
 			int numOfCloseEntities = CalculateRelevantEntitiesForPosition(gameState, mousePos, relevantEntities);
 			bool selectedAnEntity = false;
 			for (int i = 0; i < numOfCloseEntities; i++) {
@@ -232,8 +252,8 @@ void UpdateMainMenu(GameState* gameState, MouseInputInfo mouseInput) {
 		}
 	}
 	else {
-		if (mouseInput.inputType == LEFT_CLICK) {
-			DrawLine(mouseInput.inputPositions[0].x, mouseInput.inputPositions[0].y, mouseInput.inputPositions[1].x, mouseInput.inputPositions[1].y, RED);
+		if (inputInfo.mouseInputInfo.inputType == LEFT_CLICK) {
+			DrawLine(inputInfo.mouseInputInfo.inputPositions[0].x, inputInfo.mouseInputInfo.inputPositions[0].y, inputInfo.mouseInputInfo.inputPositions[1].x, inputInfo.mouseInputInfo.inputPositions[1].y, RED);
 		}
 	}
 	RetractTemporarySize(gameState, relevantEntitiesSize);

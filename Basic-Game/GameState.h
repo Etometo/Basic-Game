@@ -43,23 +43,35 @@ typedef struct GameState {
 	Entity* entityBeingCut;
 	Entity* cutPiece1;
 	Entity* cutPiece2;
+	Entity* chosenPiece;
+	bool pieceWasChosen;
 	bool readyForNewEntityInitialization;
 	bool entityInitialized;
 	VertexData* rectData;
 	VertexData* rectDataEnd;
 };
 
-
 enum MOUSE_INPUT_TYPE{
 	NONE = 0,
 	LEFT_CLICK = 1,
 };
-struct MouseInputInfo {
+typedef struct MouseInputInfo {
 	MOUSE_INPUT_TYPE inputType;
 	bool mouseReleasedThisFrame;
 	uint32_t inputDurationFrames;
 	Vector2 inputPositions[2];
 };
+
+enum KEY_CODES : uint8_t {
+	A_KEY_CODE = 1,
+	D_KEY_CODE = 2,
+	ENTER_KEY_CODE = 4,
+};
+typedef struct InputInfo {
+	MouseInputInfo mouseInputInfo;
+	uint8_t keyCodes;
+};
+
 
 void* PushSize(GameState* state, size_t sizeInBytes);
 

@@ -61,36 +61,50 @@ int main() {
 	gameState->gameplayScreenInitialized = true;
 
 	MouseInputInfo mouseInputInfo = { NONE, false, 0, {{0, 0}, {0, 0}}};
+	InputInfo inputInfo = { mouseInputInfo, 0 };
 	while (!WindowShouldClose()) {
 		//std::cout << "Frame number " << gameState->frameCount << "is starting" << std::endl << std::endl;
 		BeginDrawing();
 			ClearBackground(RAYWHITE);
 
 			if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-				if(mouseInputInfo.inputType == NONE){
-					mouseInputInfo.inputType = LEFT_CLICK;
-					mouseInputInfo.inputPositions[0] = GetMousePosition();
+				if(inputInfo.mouseInputInfo.inputType == NONE){
+					inputInfo.mouseInputInfo.inputType = LEFT_CLICK;
+					inputInfo.mouseInputInfo.inputPositions[0] = GetMousePosition();
 				}
-				mouseInputInfo.inputPositions[1] = GetMousePosition();
-				mouseInputInfo.inputDurationFrames++;
+				inputInfo.mouseInputInfo.inputPositions[1] = GetMousePosition();
+				inputInfo.mouseInputInfo.inputDurationFrames++;
 			}
 			else {
-				if (!mouseInputInfo.mouseReleasedThisFrame && mouseInputInfo.inputType == LEFT_CLICK) {
-					mouseInputInfo.mouseReleasedThisFrame = true;
-					mouseInputInfo.inputPositions[1] = GetMousePosition();
+				if (!inputInfo.mouseInputInfo.mouseReleasedThisFrame && inputInfo.mouseInputInfo.inputType == LEFT_CLICK) {
+					inputInfo.mouseInputInfo.mouseReleasedThisFrame = true;
+					inputInfo.mouseInputInfo.inputPositions[1] = GetMousePosition();
 				}
 				else {
-					mouseInputInfo.inputType = NONE;
-					mouseInputInfo.inputDurationFrames = 0;
-					mouseInputInfo.mouseReleasedThisFrame = false;
+					inputInfo.mouseInputInfo.inputType = NONE;
+					inputInfo.mouseInputInfo.inputDurationFrames = 0;
+					inputInfo.mouseInputInfo.mouseReleasedThisFrame = false;
 				}
+			}
+			//I made new key codes because i wanna use them like flags so I can store multiple key inputs in one int
+			if (IsKeyDown(KEY_A)) {
+				inputInfo.keyCodes |= A_KEY_CODE;
+				std::cout << "a";
+			}
+			if (IsKeyDown(KEY_D)) {
+				inputInfo.keyCodes |= D_KEY_CODE;
+				std::cout << "d";
+			}
+			if (IsKeyDown(KEY_ENTER)) {
+				inputInfo.keyCodes |= ENTER_KEY_CODE;
+				std::cout << "enter";
 			}
 
 			switch (gameState->currentScreenCode) {
 				case MAIN_SCREEN:
-					UpdateMainMenu(gameState, mouseInputInfo);
+					UpdateMainMenu(gameState, inputInfo);
 				case GAMEPLAY_SCREEN:
-					UpdateGameplayScreen(gameState, mouseInputInfo);
+					UpdateGameplayScreen(gameState, inputInfo);
 			}
 
 			for (int i = 0; i < gameState->lastEntityOnEntities + 1 - gameState->entities; i++) {
@@ -101,6 +115,7 @@ int main() {
 			}
 
 		EndDrawing();
+		inputInfo.keyCodes = 0;
 	}
 	RetractSize(gameState, sizeof(Entity*) * 20);
 	CloseWindow();

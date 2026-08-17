@@ -1,5 +1,5 @@
 #pragma once
-struct MouseInputInfo;
+struct InputInfo;
 
 enum SCREEN_CODES : uint8_t{
 	//dont put 0 because of the main drawing loop
@@ -10,7 +10,7 @@ enum SCREEN_CODES : uint8_t{
 struct GameState;
 
 void InitializeGameplayScreen(GameState* gameState);
-void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput);
+void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo);
 
 void InitializeMainMenu(GameState* gameState);
-void UpdateMainMenu(GameState* gameState, MouseInputInfo mouseInput);
+void UpdateMainMenu(GameState* gameState, InputInfo inputInfo);
