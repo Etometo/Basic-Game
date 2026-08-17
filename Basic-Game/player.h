@@ -6,7 +6,7 @@
 #include "raylib.h"
 #include "screens.h"
 
-constexpr float INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD = 1.9;
+constexpr float INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD = 5;
 constexpr float INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD = 0.2;
 
 constexpr float INSIGNIFICANT_DISPLACEMENT_THRESHOLD = 10;

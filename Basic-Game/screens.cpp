@@ -160,7 +160,7 @@ void UpdateGameplayScreen(GameState* gameState, MouseInputInfo mouseInput) {
 						entity->positionWhenMovementBecameInsignificant.y = entity->centerPosition.y;
 						entity->angleWhenMovementBecameInsignificant = entity->angle;
 					}
-					else if (entity->framesWithConsequentialInsignificantMovement >= 10 
+					else if (entity->framesWithConsequentialInsignificantMovement >= 1000 
 						&& distance(entity->centerPosition, entity->positionWhenMovementBecameInsignificant) < INSIGNIFICANT_DISPLACEMENT_THRESHOLD 
 						&& abs(entity->angle - entity->angleWhenMovementBecameInsignificant) < INSIGNIFICANT_ANGULAR_DISPLACEMENT_THRESHOLD
 						) 

@@ -386,7 +386,7 @@ void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, floa
     if (entity->id == 2) {
         std::cout << " ";
     }
-    if (abs(forceApplicationPointFromTheCenter.x) < EPSILON && abs(forceApplicationPointFromTheCenter.y < EPSILON)) {
+    if (abs(forceApplicationPointFromTheCenter.x) < EPSILON && abs(forceApplicationPointFromTheCenter.y) < EPSILON) {
         torque = 0;
     }
     else {
@@ -798,35 +798,7 @@ unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sum
 		vertexPos = e1->vertexData[i].position;
 		vertexPos.x += e1->centerPosition.x;
 		vertexPos.y += e1->centerPosition.y;
-		if (vertexPos.x < e2xMin || vertexPos.x > e2xMax || vertexPos.y < e2yMin || vertexPos.y > e2yMax){
-			continue;
-		} 
-
-		Vector2 raycastStartingPoint = vertexPos;
-		Vector2 raycastDirection = { 1, 0 };
-		Vector2 e2vertex1, e2vertex2;
-		unsigned int numberOfIntersections = 0;
-		for (int j = 0; j < e2->vertexDataEnd - e2->vertexData - 1; j++) {
-			e2vertex1 = { e2->vertexData[j].position.x + e2->centerPosition.x, e2->vertexData[j].position.y + e2->centerPosition.y };
-			e2vertex2 = { e2->vertexData[j + 1].position.x + e2->centerPosition.x, e2->vertexData[j + 1].position.y + e2->centerPosition.y };
-			if ((raycastStartingPoint.y < e2vertex1.y && raycastStartingPoint.y < e2vertex2.y) || (raycastStartingPoint.y > e2vertex1.y && raycastStartingPoint.y > e2vertex2.y)) {
-				continue;
-			}
-			if ((e2vertex2.x - e2vertex1.x) == 0) {
-				if (e2vertex1.x < raycastStartingPoint.x) {
-					continue;
-				}
-			}
-			float slopeOfThePair = (e2vertex2.y - e2vertex1.y) / (e2vertex2.x - e2vertex1.x);
-			float xValueOfRaycastsYValueIntersection = (raycastStartingPoint.y - e2vertex1.y + e2vertex1.x * slopeOfThePair) / slopeOfThePair;
-			if (xValueOfRaycastsYValueIntersection < raycastStartingPoint.x) {
-				continue;
-			}
-			else {
-				numberOfIntersections += 1;
-			}
-		}
-		if (numberOfIntersections & 1) {
+		if (CheckIfAPointIsInsideAnEntity(vertexPos, e2)) {
 			centerOfVerticesInsideE2.x += vertexPos.x;
 			centerOfVerticesInsideE2.y += vertexPos.y;
 			numberOfVerticesInsideE2++;
