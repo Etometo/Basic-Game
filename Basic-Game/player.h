@@ -12,6 +12,8 @@ constexpr float INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD = 0.2;
 constexpr float INSIGNIFICANT_DISPLACEMENT_THRESHOLD = 10;
 constexpr float INSIGNIFICANT_ANGULAR_DISPLACEMENT_THRESHOLD = 5;
 
+constexpr int NUM_OF_FRAMES_FOR_ENTITY_TO_FREEZE = 30;
+
 struct GameState;
 
 typedef struct VertexData {

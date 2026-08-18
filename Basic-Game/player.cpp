@@ -11,7 +11,7 @@
 #include <raylib.h>
 #include "GameState.h"
 
-constexpr float BAUMGARTE_BETA = 0.2f; 
+constexpr float BAUMGARTE_BETA = 0.5f; 
 constexpr float PENETRATION_SLOP = 0.5f;           
 constexpr float EPSILON = 1e-5f;           
 
@@ -70,7 +70,7 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
 
     returnPointer->screenCode = screenCode;
     return returnPointer;
-}
+} 
 
 int CutEntityIntoTwoPiecesByALine(GameState* gameState, Entity* entity, Vector2 cutStart, Vector2 cutEnd, uint32_t entityFlags, Entity* &newE1, Entity* &newE2) {
 	uint16_t vertexCount = entity->vertexDataEnd - entity->vertexData;
@@ -89,21 +89,44 @@ int CutEntityIntoTwoPiecesByALine(GameState* gameState, Entity* entity, Vector2 
 	uint32_t* indicesOfPointOnLineIntersections = (uint32_t*)PushTemporarySize(gameState, vertexCount * sizeof(uint32_t));
 	uint32_t* indicesOfPointOnLineIntersectionsEnd = indicesOfPointOnLineIntersections;
 
+	VertexData* vertexData1 = (VertexData*)PushSize(gameState, (vertexCount + 2) * sizeof(VertexData));
+	VertexData* vertexData1End = vertexData1;
+	VertexData* vertexData2 = (VertexData*)PushSize(gameState, (vertexCount + 2) * sizeof(VertexData));
+	VertexData* vertexData2End = vertexData2;
+    uint32_t totalAllocatedSizeForVertexData = 2 * (vertexCount + 2) * sizeof(VertexData);
+	Vector2 vertexData1center = { 0, 0 };
+	Vector2 vertexData2center = { 0, 0 };
+    uint8_t intersectionCount = 0;
 	for (int i = 0; i < vertexCount; i++) {
-		Vector2 vertex1Pos = entity->vertexData[i].position;
-		Vector2 vertex2Pos;
-		if (i + 1 >= vertexCount) {
-			vertex2Pos = entity->vertexData[0].position;
-		}
-		else {
-			vertex2Pos = entity->vertexData[i+1].position;
-		}
-		vertex1Pos.x += entity->centerPosition.x;
-		vertex2Pos.x += entity->centerPosition.x;
-		vertex1Pos.y += entity->centerPosition.y;
-		vertex2Pos.y += entity->centerPosition.y;
+		Vector2 vertexPos = entity->vertexData[i].position;
+		vertexPos.x += entity->centerPosition.x;
+		vertexPos.y += entity->centerPosition.y;
 
-		float edgeDx = vertex2Pos.x - vertex1Pos.x;
+		float sideOfThePoint = (cutEnd.x - cutStart.x) * (vertexPos.y - cutStart.y) - (cutEnd.y - cutStart.y) * (vertexPos.x - cutStart.x);
+		if (sideOfThePoint < -EPSILON) {
+			(*vertexData1End).position = entity->vertexData[i].position;
+			vertexData1center.x += (*vertexData1End).position.x;
+			vertexData1center.y += (*vertexData1End).position.y;
+			vertexData1End++;
+		}
+		else if (sideOfThePoint > -EPSILON) {
+			(*vertexData2End).position = entity->vertexData[i].position;
+			vertexData2center.x += (*vertexData2End).position.x;
+			vertexData2center.y += (*vertexData2End).position.y;
+			vertexData2End++;
+		}
+
+        Vector2 nextVertexPos;
+        if ((i + 1) >= vertexCount) {
+			 nextVertexPos = entity->vertexData[0].position;
+        }
+        else {
+			 nextVertexPos = entity->vertexData[i + 1].position;
+        }
+        nextVertexPos.x += entity->centerPosition.x;
+        nextVertexPos.y += entity->centerPosition.y;
+
+		float edgeDx = nextVertexPos.x - vertexPos.x;
 		edgeIsVertical = abs(edgeDx) < FLT_EPSILON ? true : false;
 		float edgeSlope;
 
@@ -113,91 +136,47 @@ int CutEntityIntoTwoPiecesByALine(GameState* gameState, Entity* entity, Vector2 
 			continue;
 		}
 		else if (cutIsVertical) {
-			edgeSlope = (vertex2Pos.y - vertex1Pos.y) / edgeDx;
+			edgeSlope = (nextVertexPos.y - vertexPos.y) / edgeDx;
 			xValueOfIntersection = cutStart.x;
-			yValueOfIntersection = edgeSlope * (xValueOfIntersection - vertex1Pos.x) + vertex1Pos.y;
+			yValueOfIntersection = edgeSlope * (xValueOfIntersection - vertexPos.x) + vertexPos.y;
 		}
 		else if (edgeIsVertical) {
-			xValueOfIntersection = vertex1Pos.x;
+			xValueOfIntersection = vertexPos.x;
 			yValueOfIntersection = cuttingLineSlope * (xValueOfIntersection - cutStart.x) + cutStart.y;
 		}
 		else {
-			edgeSlope = (vertex2Pos.y - vertex1Pos.y) / edgeDx;
-			xValueOfIntersection = (cuttingLineSlope * cutStart.x - edgeSlope * vertex1Pos.x + vertex1Pos.y - cutStart.y) / (cuttingLineSlope - edgeSlope);
+			edgeSlope = (nextVertexPos.y - vertexPos.y) / edgeDx;
+			xValueOfIntersection = (cuttingLineSlope * cutStart.x - edgeSlope * vertexPos.x + vertexPos.y - cutStart.y) / (cuttingLineSlope - edgeSlope);
 			yValueOfIntersection = cuttingLineSlope * (xValueOfIntersection - cutStart.x) + cutStart.y;
 		}
-		Vector2 positionOfIntersectionPointFromVertex1 = { xValueOfIntersection - vertex1Pos.x, yValueOfIntersection - vertex1Pos.y };
-		Vector2 positionOfIntersectionPointFromVertex2 = { xValueOfIntersection - vertex2Pos.x, yValueOfIntersection - vertex2Pos.y };
+
+		Vector2 positionOfIntersectionPointFromVertex1 = { xValueOfIntersection - vertexPos.x, yValueOfIntersection - vertexPos.y };
+		Vector2 positionOfIntersectionPointFromVertex2 = { xValueOfIntersection - nextVertexPos.x, yValueOfIntersection - nextVertexPos.y };
 
         Vector2 positionOfCuttingLineStartFromIntersectionPoint = { cutStart.x - xValueOfIntersection, cutStart.y - yValueOfIntersection };
         Vector2 positionOfCuttingLineEndFromIntersectionPoint = { cutEnd.x - xValueOfIntersection, cutEnd.y - yValueOfIntersection };
 		if (DotProduct(positionOfIntersectionPointFromVertex1, positionOfIntersectionPointFromVertex2) <= 0 && 
             DotProduct(positionOfCuttingLineStartFromIntersectionPoint, positionOfCuttingLineEndFromIntersectionPoint) <= 0) {
-			*(intersectionPointsEnd) = { xValueOfIntersection, yValueOfIntersection }; 
-			intersectionPointsEnd++;
-			if (magnitude(positionOfIntersectionPointFromVertex1) < FLT_EPSILON) {
-				*indicesOfPointOnLineIntersectionsEnd = i;
-				indicesOfPointOnLineIntersectionsEnd++;
-			}
-			if (magnitude(positionOfIntersectionPointFromVertex2) < FLT_EPSILON) {
-				*indicesOfPointOnLineIntersectionsEnd = i + 1;
-				indicesOfPointOnLineIntersectionsEnd++;
-			}
+            Vector2 intersectionPoint = { xValueOfIntersection, yValueOfIntersection };
+
+			(*vertexData1End).position = intersectionPoint;
+			(*vertexData1End).position.x -= entity->centerPosition.x;
+			(*vertexData1End).position.y -= entity->centerPosition.y;
+			vertexData1center.x += (*vertexData1End).position.x;
+			vertexData1center.y += (*vertexData1End).position.y;
+			vertexData1End++;
+
+			(*vertexData2End).position = intersectionPoint;
+			(*vertexData2End).position.x -= entity->centerPosition.x;
+			(*vertexData2End).position.y -= entity->centerPosition.y;
+			vertexData2center.x += (*vertexData2End).position.x;
+			vertexData2center.y += (*vertexData2End).position.y;
+			vertexData2End++;
+            intersectionCount++;
 		}
-		std::cout << " ";
 	}
 
-	unsigned int intersectionCount = intersectionPointsEnd - intersectionPoints;
-    if (intersectionCount > 0) {
-        VertexData* vertexData1 = (VertexData*)PushSize(gameState, (vertexCount + intersectionCount) * sizeof(VertexData));
-        VertexData* vertexData1End = vertexData1;
-        VertexData* vertexData2 = (VertexData*)PushSize(gameState, (vertexCount + intersectionCount) * sizeof(VertexData));
-        VertexData* vertexData2End = vertexData2;
-        Vector2 vertexData1center = { 0, 0 };
-        Vector2 vertexData2center = { 0, 0 };
-        for (int i = 0; i < intersectionCount; i++) {
-            (*vertexData1End).position = intersectionPoints[i];
-            (*vertexData1End).position.x -= entity->centerPosition.x;
-            (*vertexData1End).position.y -= entity->centerPosition.y;
-            vertexData1center.x += (*vertexData1End).position.x;
-            vertexData1center.y += (*vertexData1End).position.y;
-
-            (*vertexData2End).position = intersectionPoints[i];
-            (*vertexData2End).position.x -= entity->centerPosition.x;
-            (*vertexData2End).position.y -= entity->centerPosition.y;
-            vertexData2center.x += (*vertexData2End).position.x;
-            vertexData2center.y += (*vertexData2End).position.y;
-
-            vertexData1End++;
-            vertexData2End++;
-        }
-        for (int i = 0; i < vertexCount; i++) {
-            bool thisVertexAlreadyAdded = false;
-            for (int j = 0; j < indicesOfPointOnLineIntersectionsEnd - indicesOfPointOnLineIntersections; j++) {
-                if (i == indicesOfPointOnLineIntersections[j]) {
-                    thisVertexAlreadyAdded = true;
-                }
-            }
-            if (thisVertexAlreadyAdded) {
-                continue;
-            }
-            Vector2 vertexPos = entity->vertexData[i].position;
-            vertexPos.x += entity->centerPosition.x;
-            vertexPos.y += entity->centerPosition.y;
-            float sideOfThePoint = (cutEnd.x - cutStart.x) * (vertexPos.y - cutStart.y) - (cutEnd.y - cutStart.y) * (vertexPos.x - cutStart.x);
-            if (sideOfThePoint < 0) {
-                (*vertexData1End).position = entity->vertexData[i].position;
-                vertexData1End++;
-                vertexData1center.x += entity->vertexData[i].position.x;
-                vertexData1center.y += entity->vertexData[i].position.y;
-            }
-            else {
-                (*vertexData2End).position = entity->vertexData[i].position;
-                vertexData2End++;
-                vertexData2center.x += entity->vertexData[i].position.x;
-                vertexData2center.y += entity->vertexData[i].position.y;
-            }
-        }
+    if (intersectionCount == 2) {
         vertexData1center.x /= vertexData1End - vertexData1;
         vertexData1center.y /= vertexData1End - vertexData1;
 
@@ -226,6 +205,8 @@ int CutEntityIntoTwoPiecesByALine(GameState* gameState, Entity* entity, Vector2 
         return ENTITY_WAS_CUT;
     }
     else {
+        RetractTemporarySize(gameState, totalAllocatedTemporarySize);
+        RetractSize(gameState, totalAllocatedSizeForVertexData);
 		return ENTITY_WASNT_CUT;
     }
 }
@@ -839,7 +820,7 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
 
     if (collInfo.minOverlap > PENETRATION_SLOP) {
         float relativeVelOnCollisionLine = DotProduct(collInfo.normalizedOverlapLine, relativeVelocityOfForceApplicationPoint);
-        penetrationBias = ((BAUMGARTE_BETA * 5) * (collInfo.minOverlap - PENETRATION_SLOP) / GetFrameTime()) / gameState->SOLVER_ITERATIONS;
+        penetrationBias = ((BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP) / GetFrameTime()) / gameState->SOLVER_ITERATIONS;
     }
 
 

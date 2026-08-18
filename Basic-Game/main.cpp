@@ -21,7 +21,7 @@ int main() {
 		gameState->nextEmptyPlaceForEntity = gameState->entities;
 		gameState->lastEntityOnEntities = gameState->entities;
 
-		gameState->goalFps = 60;
+		gameState->goalFps = 120;
 		gameState->gravityConstant = 98 * 4;
 		gameState->EPSILON = 1e-5f;
 		gameState->ClickThresholdFrames = gameState->goalFps / 3;

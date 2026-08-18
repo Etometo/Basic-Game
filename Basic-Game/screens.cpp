@@ -34,7 +34,7 @@ void InitializeGameplayScreen(GameState* gameState) {
 
 	Vector2 floorCenterPos = { 400, 750 };
 	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, NON_MOVING_FLAG | GROUND_COLLISION_FLAG | PHYSICS_FLAG, floorCenterPos, GAMEPLAY_SCREEN);
-	floor->frictionCons = 0.1;
+	floor->frictionCons = 0.3;
 }
 
 void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
@@ -76,7 +76,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 				if (pointIsInsideEntity && (entity->flags & BEING_CHOSEN_FLAG)) {
 					if (entity->id == gameState->cutPiece1->id) {
 						DeleteEntity(gameState, gameState->cutPiece2);
-						gameState->cutPiece1->flags &= !BEING_CHOSEN_FLAG;
+						gameState->cutPiece1->flags &= ~BEING_CHOSEN_FLAG;
 						gameState->cutPiece1->flags |= ADJUSTING_POSITION_FLAG;
 						gameState->cutPiece1->centerPosition.x -= gameState->cutPiece1->temporaryPositionChange.x;
 						gameState->cutPiece1->centerPosition.y -= gameState->cutPiece1->temporaryPositionChange.y;
@@ -86,7 +86,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 					}
 					else if (entity->id == gameState->cutPiece2->id) {
 						DeleteEntity(gameState, gameState->cutPiece1);
-						gameState->cutPiece2->flags &= !BEING_CHOSEN_FLAG;
+						gameState->cutPiece2->flags &= ~BEING_CHOSEN_FLAG;
 						gameState->cutPiece2->flags |= ADJUSTING_POSITION_FLAG;
 						gameState->cutPiece2->centerPosition.x -= gameState->cutPiece2->temporaryPositionChange.x;
 						gameState->cutPiece2->centerPosition.y -= gameState->cutPiece2->temporaryPositionChange.y;
@@ -114,7 +114,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 			gameState->chosenPiece->centerPosition.x += 2;
 		}
 		if (inputInfo.keyCodes & ENTER_KEY_CODE) {
-			gameState->chosenPiece->flags &= !ADJUSTING_POSITION_FLAG;
+			gameState->chosenPiece->flags &= ~ADJUSTING_POSITION_FLAG;
 			gameState->chosenPiece->flags |= (PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG);
 			gameState->pieceWasChosen = false;
 			gameState->readyForNewEntityInitialization = true;
@@ -177,7 +177,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 						entity->positionWhenMovementBecameInsignificant.y = entity->centerPosition.y;
 						entity->angleWhenMovementBecameInsignificant = entity->angle;
 					}
-					else if (entity->framesWithConsequentialInsignificantMovement >= 10 
+					else if (entity->framesWithConsequentialInsignificantMovement >= NUM_OF_FRAMES_FOR_ENTITY_TO_FREEZE
 						&& distance(entity->centerPosition, entity->positionWhenMovementBecameInsignificant) < INSIGNIFICANT_DISPLACEMENT_THRESHOLD 
 						&& abs(entity->angle - entity->angleWhenMovementBecameInsignificant) < INSIGNIFICANT_ANGULAR_DISPLACEMENT_THRESHOLD
 						) 
