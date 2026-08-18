@@ -3,7 +3,7 @@
 #include <cassert>
 
 void* PushSize(GameState* state, size_t sizeInBytes) {
-	assert((char*)state->arena.usableCapacity - (char*)state->arena.used > sizeInBytes);
+	assert((char*)state->arena.capacity - (char*)state->arena.used > sizeInBytes);
 
 	state->arena.used += sizeInBytes;
 	return state->arena.base + state->arena.used - sizeInBytes;
@@ -56,7 +56,7 @@ void DeleteEntity(GameState* state, Entity* entity) {
 }
 
 void* PushTemporarySize(GameState* state, uint32_t sizeInBytes) {
-	assert(state->arena.capacity - state->arena.usableCapacity - state->arena.usedTemporary > sizeInBytes);
+	assert(state->arena.temporaryCapacity - state->arena.usedTemporary > sizeInBytes);
 	state->arena.usedTemporary += sizeInBytes;
 	return state->arena.base + state->arena.capacity - state->arena.usedTemporary;
 }

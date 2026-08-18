@@ -67,16 +67,12 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 		}
 		//click
 		if (inputInfo.mouseInputInfo.inputDurationFrames < gameState->ClickThresholdFrames) {
-			std::cout << "click" << std::endl;
 			Vector2 mousePos = inputInfo.mouseInputInfo.inputPositions[1];
 			int numOfCloseEntities = CalculateRelevantEntitiesForPosition(gameState, mousePos, relevantEntities);
 			bool selectedAnEntity = false;
 			for (int i = 0; i < numOfCloseEntities; i++) {
 				Entity* entity = relevantEntities[i];
 				bool pointIsInsideEntity = CheckIfAPointIsInsideAnEntity(mousePos, entity);
-				if (pointIsInsideEntity) {
-					std::cout << "Entity " << entity->id << " clicked" << std::endl;
-				}
 				if (pointIsInsideEntity && (entity->flags & BEING_CHOSEN_FLAG)) {
 					if (entity->id == gameState->cutPiece1->id) {
 						DeleteEntity(gameState, gameState->cutPiece2);
@@ -153,11 +149,12 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 				CollisionInfo collInfo = DetectCollisionWithEntity(entity, relevantEntity);
 				float totalMass = entity->mass + relevantEntity->mass;
 
-				if (collInfo.minOverlap > 0) {
-					Vector2 forceApplicationPoint = CalculateForceApplicationPoint(entity, relevantEntity);
+				if (collInfo.minOverlap > FLT_EPSILON) {
+					Vector2 forceApplicationPoint = CalculateForceApplicationPoint(entity, relevantEntity, 5);
 					if (forceApplicationPoint.x == 0 && forceApplicationPoint.y == 0) {
 						forceApplicationPoint = entity->centerPosition;
 						forceApplicationPoint.y += collInfo.minOverlap / 2;
+						std::cout << "force application point changed" << std::endl;
 					}
 					
 					for(int k = 0; k < gameState->SOLVER_ITERATIONS; k++){

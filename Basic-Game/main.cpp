@@ -15,15 +15,13 @@ int main() {
 		gameState->arena.base = (uint8_t*)rawMemory + sizeof(GameState);
 		gameState->arena.used = 0;
 		gameState->arena.usedTemporary = 0;
-		gameState->arena.capacity = 150 * 1024 * 1024 - sizeof(GameState);
 		gameState->arena.temporaryCapacity = 100 * 1024;
-		gameState->arena.usableCapacity = gameState->arena.capacity - gameState->arena.temporaryCapacity;
+		gameState->arena.capacity = 150 * 1024 * 1024 - gameState->arena.temporaryCapacity - sizeof(GameState);
 		gameState->entitiesCapacity = 2000;
 		gameState->nextEmptyPlaceForEntity = gameState->entities;
 		gameState->lastEntityOnEntities = gameState->entities;
 
 		gameState->goalFps = 60;
-		gameState->isInitialized = true;
 		gameState->gravityConstant = 98 * 4;
 		gameState->EPSILON = 1e-5f;
 		gameState->ClickThresholdFrames = gameState->goalFps / 3;
@@ -39,6 +37,7 @@ int main() {
 		gameState->cutPiece2 = nullptr;
 		gameState->readyForNewEntityInitialization = true;
 		gameState->entityInitialized = false;
+
 	}
 	//initialize the spatial grid
 	int numberOfPartitionsOnWidthAxis = gameState->WINDOW_WIDTH / gameState->gridSquareEdgeLength;
@@ -50,6 +49,8 @@ int main() {
 	gameState->gridDimentions[0] = numberOfPartitionsOnHeightAxis;
 	gameState->gridDimentions[1] = numberOfPartitionsOnWidthAxis;
 	gameState->gridDimentions[2] = numOfIdsPerCell;
+
+	gameState->isInitialized = true;
 	
 	InitWindow(gameState->WINDOW_WIDTH, gameState->WINDOW_HEIGHT, "asd");
 	SetTargetFPS(gameState->goalFps);
@@ -89,15 +90,12 @@ int main() {
 			//I made new key codes because i wanna use them like flags so I can store multiple key inputs in one int
 			if (IsKeyDown(KEY_A)) {
 				inputInfo.keyCodes |= A_KEY_CODE;
-				std::cout << "a";
 			}
 			if (IsKeyDown(KEY_D)) {
 				inputInfo.keyCodes |= D_KEY_CODE;
-				std::cout << "d";
 			}
 			if (IsKeyDown(KEY_ENTER)) {
 				inputInfo.keyCodes |= ENTER_KEY_CODE;
-				std::cout << "enter";
 			}
 
 			switch (gameState->currentScreenCode) {

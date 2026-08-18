@@ -6,7 +6,6 @@
 typedef struct MemoryArena {
 	size_t used;
 	size_t usedTemporary;
-	size_t usableCapacity;
 	size_t temporaryCapacity;
 	size_t capacity;
 	uint8_t* base;

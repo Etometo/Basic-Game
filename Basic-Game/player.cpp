@@ -126,16 +126,20 @@ int CutEntityIntoTwoPiecesByALine(GameState* gameState, Entity* entity, Vector2 
 			xValueOfIntersection = (cuttingLineSlope * cutStart.x - edgeSlope * vertex1Pos.x + vertex1Pos.y - cutStart.y) / (cuttingLineSlope - edgeSlope);
 			yValueOfIntersection = cuttingLineSlope * (xValueOfIntersection - cutStart.x) + cutStart.y;
 		}
-		Vector2 positionFromVertex1 = { xValueOfIntersection - vertex1Pos.x, yValueOfIntersection - vertex1Pos.y };
-		Vector2 positionFromVertex2 = { xValueOfIntersection - vertex2Pos.x, yValueOfIntersection - vertex2Pos.y };
-		if (DotProduct(positionFromVertex1, positionFromVertex2) <= 0) {
-			*(intersectionPointsEnd) = { xValueOfIntersection, yValueOfIntersection };
+		Vector2 positionOfIntersectionPointFromVertex1 = { xValueOfIntersection - vertex1Pos.x, yValueOfIntersection - vertex1Pos.y };
+		Vector2 positionOfIntersectionPointFromVertex2 = { xValueOfIntersection - vertex2Pos.x, yValueOfIntersection - vertex2Pos.y };
+
+        Vector2 positionOfCuttingLineStartFromIntersectionPoint = { cutStart.x - xValueOfIntersection, cutStart.y - yValueOfIntersection };
+        Vector2 positionOfCuttingLineEndFromIntersectionPoint = { cutEnd.x - xValueOfIntersection, cutEnd.y - yValueOfIntersection };
+		if (DotProduct(positionOfIntersectionPointFromVertex1, positionOfIntersectionPointFromVertex2) <= 0 && 
+            DotProduct(positionOfCuttingLineStartFromIntersectionPoint, positionOfCuttingLineEndFromIntersectionPoint) <= 0) {
+			*(intersectionPointsEnd) = { xValueOfIntersection, yValueOfIntersection }; 
 			intersectionPointsEnd++;
-			if (magnitude(positionFromVertex1) < FLT_EPSILON) {
+			if (magnitude(positionOfIntersectionPointFromVertex1) < FLT_EPSILON) {
 				*indicesOfPointOnLineIntersectionsEnd = i;
 				indicesOfPointOnLineIntersectionsEnd++;
 			}
-			if (magnitude(positionFromVertex2) < FLT_EPSILON) {
+			if (magnitude(positionOfIntersectionPointFromVertex2) < FLT_EPSILON) {
 				*indicesOfPointOnLineIntersectionsEnd = i + 1;
 				indicesOfPointOnLineIntersectionsEnd++;
 			}
@@ -452,6 +456,7 @@ bool CheckIfAPointIsInsideAnEntity(Vector2 positionOfPoint, Entity* entity) {
             }
         }
     }	
+    return isInside;
 }
 
 int MakeAnArrayFullOfUniqueItems(GameState* gameState, char* arrayStart, char* arrayEnd, uint32_t numOfElements, uint32_t typeSize) {
@@ -749,13 +754,13 @@ CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2) {
     }
 }
 
-Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2) {
+Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2, float vertexOutsidePush) {
 	Vector2 forceApplicationPoint = { 0, 0 };
 
 	Vector2 centerOfVerticesInsideE2 = { 0, 0 };
 	Vector2 centerOfVerticesInsideE1 = { 0, 0 };
-	int numberOfVerticesOfE1InsideE2 = CheckHowManyVerticesOfE1IsInE2(e1, e2, centerOfVerticesInsideE2);
-	int numberOfVerticesOfE2InsideE1 = CheckHowManyVerticesOfE1IsInE2(e2, e1, centerOfVerticesInsideE1);
+    int numberOfVerticesOfE1InsideE2 = CheckHowManyVerticesOfE1IsInE2(e1, e2, centerOfVerticesInsideE2, vertexOutsidePush);
+    int numberOfVerticesOfE2InsideE1 = CheckHowManyVerticesOfE1IsInE2(e2, e1, centerOfVerticesInsideE1, vertexOutsidePush);
     //come up with something for the name
     int divisionNumber = 0;
 
@@ -773,34 +778,31 @@ Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2) {
 		forceApplicationPoint.x = (centerOfVerticesInsideE2.x + centerOfVerticesInsideE1.x) / divisionNumber;
 		forceApplicationPoint.y = (centerOfVerticesInsideE2.y + centerOfVerticesInsideE1.y) / divisionNumber;
     }
+    else {
+        std::cout << " ";
+    }
 
     return forceApplicationPoint;
 }
 
-unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sumOfInsiderPointsPositions) {
-	float e2xMax = FLT_MIN;
-	float e2yMax = FLT_MIN;
-	float e2xMin = FLT_MAX;
-	float e2yMin = FLT_MAX;
-	for (int i = 0; i < e2->vertexDataEnd - e2->vertexData; i++) {
-		Vector2 vertexPos = e2->vertexData[i].position;
-		vertexPos.x += e2->centerPosition.x;
-		vertexPos.y += e2->centerPosition.y;
-		e2xMin = vertexPos.x < e2xMin ? vertexPos.x : e2xMin;
-		e2yMin = vertexPos.y < e2yMin ? vertexPos.y : e2yMin;
-		e2xMax = vertexPos.x > e2xMax ? vertexPos.x : e2xMax;
-		e2yMax = vertexPos.y > e2yMax ? vertexPos.y : e2yMax;
-	}
+unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sumOfInsiderPointsPositions, float vertexOutsidePush) {
+
 	Vector2 centerOfVerticesInsideE2 = { 0, 0 };
 	int numberOfVerticesInsideE2 = 0;
-	for (int i = 0; i < e1->vertexDataEnd - e1->vertexData; i++) {
+    float vertexRelativePositionMagnitude;
+    float sin, cos;
+    for (int i = 0; i < e1->vertexDataEnd - e1->vertexData; i++) {
 		Vector2 vertexPos;
-		vertexPos = e1->vertexData[i].position;
-		vertexPos.x += e1->centerPosition.x;
-		vertexPos.y += e1->centerPosition.y;
-		if (CheckIfAPointIsInsideAnEntity(vertexPos, e2)) {
-			centerOfVerticesInsideE2.x += vertexPos.x;
-			centerOfVerticesInsideE2.y += vertexPos.y;
+        vertexPos = e1->vertexData[i].position;
+        vertexRelativePositionMagnitude = magnitude(vertexPos);
+        sin = vertexPos.y / vertexRelativePositionMagnitude;
+        cos = vertexPos.x / vertexRelativePositionMagnitude;
+
+        vertexPos.x += e1->centerPosition.x + vertexOutsidePush*cos;
+        vertexPos.y += e1->centerPosition.y + vertexOutsidePush*sin;
+        if (CheckIfAPointIsInsideAnEntity(vertexPos, e2)) {
+			centerOfVerticesInsideE2.x += vertexPos.x - vertexOutsidePush*cos;
+			centerOfVerticesInsideE2.y += vertexPos.y - vertexOutsidePush*sin;
 			numberOfVerticesInsideE2++;
 		}
 	}
@@ -837,7 +839,7 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
 
     if (collInfo.minOverlap > PENETRATION_SLOP) {
         float relativeVelOnCollisionLine = DotProduct(collInfo.normalizedOverlapLine, relativeVelocityOfForceApplicationPoint);
-        penetrationBias = ((BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP) / GetFrameTime()) / gameState->SOLVER_ITERATIONS;
+        penetrationBias = ((BAUMGARTE_BETA * 5) * (collInfo.minOverlap - PENETRATION_SLOP) / GetFrameTime()) / gameState->SOLVER_ITERATIONS;
     }
 
 
