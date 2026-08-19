@@ -11,6 +11,11 @@ typedef struct MemoryArena {
 	uint8_t* base;
 };
 
+enum GAMEPLAY_STATES : uint8_t {
+	CUTTING_OR_CHOOSING_AN_ENTITY = 1,
+	ADJUSTING_THE_POSITION_OF_THE_CHOSEN_ENTITY = 2,
+	WAITING_FOR_THE_ENTITY_TO_STOP = 4,
+};
 
 typedef struct GameState {
 	bool isInitialized = false;
@@ -37,6 +42,7 @@ typedef struct GameState {
 	uint32_t gridDimentions[3];
 
 	SCREEN_CODES currentScreenCode;
+	GAMEPLAY_STATES gameplayState;
 
 	bool gameplayScreenInitialized;
 	Entity* entityBeingCut;

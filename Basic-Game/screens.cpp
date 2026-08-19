@@ -35,21 +35,25 @@ void InitializeGameplayScreen(GameState* gameState) {
 	Vector2 floorCenterPos = { 400, 750 };
 	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, NON_MOVING_FLAG | GROUND_COLLISION_FLAG | PHYSICS_FLAG, floorCenterPos, GAMEPLAY_SCREEN);
 	floor->frictionCons = 0.3;
+
+	gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
 }
 
 void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 	uint32_t relevantEntitiesSize = sizeof(Entity*) * 500;
 	Entity** relevantEntities = (Entity**)PushTemporarySize(gameState, relevantEntitiesSize);
 
-	if (gameState->readyForNewEntityInitialization) {
-		gameState->entityBeingCut = (Entity*)InitializeAndPushEntity(gameState, gameState->rectData, gameState->rectDataEnd, 10, BEING_CUT_FLAG, { 400, 100 }, GAMEPLAY_SCREEN);
+	if (gameState->gameplayState == CUTTING_OR_CHOOSING_AN_ENTITY && gameState->entityBeingCut == nullptr) {
+		VertexData* newVertexData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
+		std::memcpy(newVertexData, gameState->rectData, sizeof(VertexData) * 4);
+		gameState->entityBeingCut = (Entity*)InitializeAndPushEntity(gameState, newVertexData, newVertexData + 4, 10, BEING_CUT_FLAG | BEING_CHOSEN_FLAG, { 400, 100 }, GAMEPLAY_SCREEN);
 		gameState->readyForNewEntityInitialization = false;
 		gameState->entityInitialized = true;
 	}
 
 	if (inputInfo.mouseInputInfo.mouseReleasedThisFrame) {
 		//hold and release
-		if (inputInfo.mouseInputInfo.inputDurationFrames > gameState->ClickThresholdFrames) {
+		if (inputInfo.mouseInputInfo.inputDurationFrames > gameState->ClickThresholdFrames && gameState->gameplayState == CUTTING_OR_CHOOSING_AN_ENTITY) {
 			Entity* newEntity1 = 0;
 			Entity* newEntity2 = 0;
 			uint32_t newEntityFlags = BEING_CHOSEN_FLAG;
@@ -71,54 +75,55 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 			int numOfCloseEntities = CalculateRelevantEntitiesForPosition(gameState, mousePos, relevantEntities);
 			bool selectedAnEntity = false;
 			for (int i = 0; i < numOfCloseEntities; i++) {
-				Entity* entity = relevantEntities[i];
-				bool pointIsInsideEntity = CheckIfAPointIsInsideAnEntity(mousePos, entity);
+				Entity* clickedEntity = relevantEntities[i];
+				bool pointIsInsideEntity = CheckIfAPointIsInsideAnEntity(mousePos, clickedEntity);
 
 				if (pointIsInsideEntity) {
-					if (entity->id == gameState->entityBeingCut->id && gameState->chosenPiece == nullptr) {
-						gameState->entityBeingCut->flags &= ~BEING_CHOSEN_FLAG;
-						gameState->entityBeingCut->flags |= ADJUSTING_POSITION_FLAG;
-						gameState->entityBeingCut = nullptr;
-					}
-					else if (entity->flags & BEING_CHOSEN_FLAG) {
-						if (entity->id == gameState->cutPiece1->id && gameState->chosenPiece == nullptr) {
-							gameState->cutPiece1->flags &= ~BEING_CHOSEN_FLAG;
-							gameState->cutPiece1->flags |= ADJUSTING_POSITION_FLAG;
-							gameState->cutPiece1->centerPosition.x -= gameState->cutPiece1->temporaryPositionChange.x;
-							gameState->cutPiece1->centerPosition.y -= gameState->cutPiece1->temporaryPositionChange.y;
-							gameState->chosenPiece = gameState->cutPiece1;
-							gameState->pieceWasChosen = true;
+					if (clickedEntity->flags & BEING_CHOSEN_FLAG && gameState->chosenPiece == nullptr) {
+						clickedEntity->flags &= ~(BEING_CHOSEN_FLAG | BEING_CUT_FLAG);
+						clickedEntity->flags |= ADJUSTING_POSITION_FLAG;
 
-							gameState->entityBeingCut = gameState->cutPiece2;
-							gameState->cutPiece2->centerPosition.x -= gameState->cutPiece2->temporaryPositionChange.x;
-							gameState->cutPiece2->centerPosition.y -= gameState->cutPiece2->temporaryPositionChange.y;
-							selectedAnEntity = true;
+						clickedEntity->centerPosition.x -= clickedEntity->temporaryPositionChange.x;
+						clickedEntity->centerPosition.y -= clickedEntity->temporaryPositionChange.y;
+						clickedEntity->temporaryPositionChange = { 0, 0 };
+						gameState->chosenPiece = clickedEntity;
+						if (gameState->cutPiece1 != nullptr) {
+							if (gameState->cutPiece1->id == clickedEntity->id) {
+								gameState->entityBeingCut = gameState->cutPiece2;
+							}
+							else {
+								gameState->cutPiece1->centerPosition.x -= gameState->cutPiece1->temporaryPositionChange.x;
+								gameState->cutPiece1->centerPosition.y -= gameState->cutPiece1->temporaryPositionChange.y;
+								gameState->cutPiece1->temporaryPositionChange = { 0, 0 };
+							}
 						}
-						else if (entity->id == gameState->cutPiece2->id && gameState->chosenPiece == nullptr) {
-							gameState->cutPiece2->flags &= ~BEING_CHOSEN_FLAG;
-							gameState->cutPiece2->flags |= ADJUSTING_POSITION_FLAG;
-							gameState->cutPiece2->centerPosition.x -= gameState->cutPiece2->temporaryPositionChange.x;
-							gameState->cutPiece2->centerPosition.y -= gameState->cutPiece2->temporaryPositionChange.y;
-							gameState->chosenPiece = gameState->cutPiece2;
-							gameState->pieceWasChosen = true;
-
-							gameState->entityBeingCut = gameState->cutPiece1;
-							gameState->cutPiece1->centerPosition.x -= gameState->cutPiece1->temporaryPositionChange.x;
-							gameState->cutPiece1->centerPosition.y -= gameState->cutPiece1->temporaryPositionChange.y;
-							selectedAnEntity = true;
+						if (gameState->cutPiece2 != nullptr) {
+							if (gameState->cutPiece2->id == clickedEntity->id) {
+								gameState->entityBeingCut = gameState->cutPiece1;
+							}
+							else{
+								gameState->cutPiece2->centerPosition.x -= gameState->cutPiece2->temporaryPositionChange.x;
+								gameState->cutPiece2->centerPosition.y -= gameState->cutPiece2->temporaryPositionChange.y;
+								gameState->cutPiece2->temporaryPositionChange = { 0, 0 };
+							}
+						}
+						if(gameState->cutPiece1 == nullptr && gameState->cutPiece2 == nullptr){
+							gameState->entityBeingCut = nullptr;
 						}
 						gameState->cutPiece1 = nullptr;
 						gameState->cutPiece2 = nullptr;
+						gameState->gameplayState = ADJUSTING_THE_POSITION_OF_THE_CHOSEN_ENTITY;
 					}
 
 				}
-				if (pointIsInsideEntity && !(entity->flags & (NOT_IN_FREE_FALL_FLAG | NON_MOVING_FLAG | ADJUSTING_POSITION_FLAG))) {
-					entity->flags |= NON_MOVING_FLAG;
-					entity->flags &= ~GRAVITY_FLAG;
+				if (pointIsInsideEntity && !(clickedEntity->flags & (NOT_IN_FREE_FALL_FLAG | NON_MOVING_FLAG | ADJUSTING_POSITION_FLAG))) {
+					clickedEntity->flags |= NON_MOVING_FLAG;
+					clickedEntity->flags &= ~GRAVITY_FLAG;
 					gameState->chosenPiece = nullptr;
 					if (gameState->entityBeingCut == nullptr) {
 						gameState->readyForNewEntityInitialization;
 					}
+					gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
 				}
 			}
 		}
@@ -129,7 +134,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 		}
 	}
 
-	if (gameState->pieceWasChosen) {
+	if (gameState->chosenPiece != nullptr) {
 		if (inputInfo.keyCodes & A_KEY_CODE && gameState->chosenPiece->centerPosition.x >= 100) {
 			gameState->chosenPiece->centerPosition.x -= 2;
 		}
@@ -139,7 +144,8 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 		if (inputInfo.keyCodes & ENTER_KEY_CODE) {
 			gameState->chosenPiece->flags &= ~ADJUSTING_POSITION_FLAG;
 			gameState->chosenPiece->flags |= (PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG | NOT_IN_FREE_FALL_FLAG);
-			gameState->pieceWasChosen = false;
+			gameState->chosenPiece = nullptr;
+			gameState->gameplayState = WAITING_FOR_THE_ENTITY_TO_STOP;
 		}
 	}
 
@@ -179,15 +185,9 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 				if (collInfo.minOverlap > FLT_EPSILON) {
 					if (entity->flags & NOT_IN_FREE_FALL_FLAG) {
 						entity->flags &= ~NOT_IN_FREE_FALL_FLAG;
-						std::cout << (!(entity->flags & NOT_IN_FREE_FALL_FLAG) && !(entity->flags & NON_MOVING_FLAG)) << std::endl;
-						std::cout << !(entity->flags & NOT_IN_FREE_FALL_FLAG) << std::endl;
-						std::cout << !(entity->flags & NON_MOVING_FLAG) << std::endl;
 					}
 					if (relevantEntity->flags & NOT_IN_FREE_FALL_FLAG) {
 						relevantEntity->flags &= ~NOT_IN_FREE_FALL_FLAG;
-						std::cout << (!(entity->flags & NOT_IN_FREE_FALL_FLAG) && !(entity->flags & NON_MOVING_FLAG)) << std::endl;
-						std::cout << !(entity->flags & NOT_IN_FREE_FALL_FLAG) << std::endl;
-						std::cout << !(entity->flags & NON_MOVING_FLAG) << std::endl;
 					}
 					Vector2 forceApplicationPoint = CalculateForceApplicationPoint(entity, relevantEntity, 5);
 					if (forceApplicationPoint.x == 0 && forceApplicationPoint.y == 0) {
@@ -208,7 +208,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 				CalibrateEntityWithGrid(gameState, entity);
 
 				if(!(entity->flags & NOT_IN_FREE_FALL_FLAG)) {
-					//check if the entity needs to stop
+					//check if the clickedEntity needs to stop
 					std::cout << "s";
 					if(magnitude(entity->physicsVelocity) < INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD && 
 						abs(entity->rotationalVelocity) < INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD) 
@@ -230,6 +230,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 							if (gameState->entityBeingCut == nullptr) {
 								gameState->readyForNewEntityInitialization;
 							}
+							gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
 						}
 						entity->framesWithConsequentialInsignificantMovement++;
 					}
