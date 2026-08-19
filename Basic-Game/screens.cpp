@@ -41,7 +41,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 	uint32_t relevantEntitiesSize = sizeof(Entity*) * 500;
 	Entity** relevantEntities = (Entity**)PushTemporarySize(gameState, relevantEntitiesSize);
 
-	if (gameState->readyForNewEntityInitialization && gameState->chosenPiece == nullptr) {
+	if (gameState->readyForNewEntityInitialization) {
 		gameState->entityBeingCut = (Entity*)InitializeAndPushEntity(gameState, gameState->rectData, gameState->rectDataEnd, 10, BEING_CUT_FLAG, { 400, 100 }, GAMEPLAY_SCREEN);
 		gameState->readyForNewEntityInitialization = false;
 		gameState->entityInitialized = true;
@@ -73,29 +73,52 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 			for (int i = 0; i < numOfCloseEntities; i++) {
 				Entity* entity = relevantEntities[i];
 				bool pointIsInsideEntity = CheckIfAPointIsInsideAnEntity(mousePos, entity);
-				if (pointIsInsideEntity && (entity->flags & BEING_CHOSEN_FLAG)) {
-					if (entity->id == gameState->cutPiece1->id) {
-						DeleteEntity(gameState, gameState->cutPiece2);
-						gameState->cutPiece1->flags &= ~BEING_CHOSEN_FLAG;
-						gameState->cutPiece1->flags |= ADJUSTING_POSITION_FLAG;
-						gameState->cutPiece1->centerPosition.x -= gameState->cutPiece1->temporaryPositionChange.x;
-						gameState->cutPiece1->centerPosition.y -= gameState->cutPiece1->temporaryPositionChange.y;
-						gameState->chosenPiece = gameState->cutPiece1;
-						gameState->pieceWasChosen = true;
-						selectedAnEntity = true;
+
+				if (pointIsInsideEntity) {
+					if (entity->id == gameState->entityBeingCut->id && gameState->chosenPiece == nullptr) {
+						gameState->entityBeingCut->flags &= ~BEING_CHOSEN_FLAG;
+						gameState->entityBeingCut->flags |= ADJUSTING_POSITION_FLAG;
+						gameState->entityBeingCut = nullptr;
 					}
-					else if (entity->id == gameState->cutPiece2->id) {
-						DeleteEntity(gameState, gameState->cutPiece1);
-						gameState->cutPiece2->flags &= ~BEING_CHOSEN_FLAG;
-						gameState->cutPiece2->flags |= ADJUSTING_POSITION_FLAG;
-						gameState->cutPiece2->centerPosition.x -= gameState->cutPiece2->temporaryPositionChange.x;
-						gameState->cutPiece2->centerPosition.y -= gameState->cutPiece2->temporaryPositionChange.y;
-						gameState->chosenPiece = gameState->cutPiece2;
-						gameState->pieceWasChosen = true;
-						selectedAnEntity = true;
+					else if (entity->flags & BEING_CHOSEN_FLAG) {
+						if (entity->id == gameState->cutPiece1->id && gameState->chosenPiece == nullptr) {
+							gameState->cutPiece1->flags &= ~BEING_CHOSEN_FLAG;
+							gameState->cutPiece1->flags |= ADJUSTING_POSITION_FLAG;
+							gameState->cutPiece1->centerPosition.x -= gameState->cutPiece1->temporaryPositionChange.x;
+							gameState->cutPiece1->centerPosition.y -= gameState->cutPiece1->temporaryPositionChange.y;
+							gameState->chosenPiece = gameState->cutPiece1;
+							gameState->pieceWasChosen = true;
+
+							gameState->entityBeingCut = gameState->cutPiece2;
+							gameState->cutPiece2->centerPosition.x -= gameState->cutPiece2->temporaryPositionChange.x;
+							gameState->cutPiece2->centerPosition.y -= gameState->cutPiece2->temporaryPositionChange.y;
+							selectedAnEntity = true;
+						}
+						else if (entity->id == gameState->cutPiece2->id && gameState->chosenPiece == nullptr) {
+							gameState->cutPiece2->flags &= ~BEING_CHOSEN_FLAG;
+							gameState->cutPiece2->flags |= ADJUSTING_POSITION_FLAG;
+							gameState->cutPiece2->centerPosition.x -= gameState->cutPiece2->temporaryPositionChange.x;
+							gameState->cutPiece2->centerPosition.y -= gameState->cutPiece2->temporaryPositionChange.y;
+							gameState->chosenPiece = gameState->cutPiece2;
+							gameState->pieceWasChosen = true;
+
+							gameState->entityBeingCut = gameState->cutPiece1;
+							gameState->cutPiece1->centerPosition.x -= gameState->cutPiece1->temporaryPositionChange.x;
+							gameState->cutPiece1->centerPosition.y -= gameState->cutPiece1->temporaryPositionChange.y;
+							selectedAnEntity = true;
+						}
+						gameState->cutPiece1 = nullptr;
+						gameState->cutPiece2 = nullptr;
 					}
-					gameState->cutPiece1 = nullptr;
-					gameState->cutPiece2 = nullptr;
+
+				}
+				if (pointIsInsideEntity && !(entity->flags & (NOT_IN_FREE_FALL_FLAG | NON_MOVING_FLAG | ADJUSTING_POSITION_FLAG))) {
+					entity->flags |= NON_MOVING_FLAG;
+					entity->flags &= ~GRAVITY_FLAG;
+					gameState->chosenPiece = nullptr;
+					if (gameState->entityBeingCut == nullptr) {
+						gameState->readyForNewEntityInitialization;
+					}
 				}
 			}
 		}
@@ -117,7 +140,6 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 			gameState->chosenPiece->flags &= ~ADJUSTING_POSITION_FLAG;
 			gameState->chosenPiece->flags |= (PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG | NOT_IN_FREE_FALL_FLAG);
 			gameState->pieceWasChosen = false;
-			gameState->readyForNewEntityInitialization = true;
 		}
 	}
 
@@ -205,6 +227,9 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 							entity->flags |= NON_MOVING_FLAG;
 							entity->flags &= ~GRAVITY_FLAG;
 							gameState->chosenPiece = nullptr;
+							if (gameState->entityBeingCut == nullptr) {
+								gameState->readyForNewEntityInitialization;
+							}
 						}
 						entity->framesWithConsequentialInsignificantMovement++;
 					}

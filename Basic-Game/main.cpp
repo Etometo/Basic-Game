@@ -102,8 +102,10 @@ int main() {
 			switch (gameState->currentScreenCode) {
 				case MAIN_SCREEN:
 					UpdateMainMenu(gameState, inputInfo);
+					break;
 				case GAMEPLAY_SCREEN:
 					UpdateGameplayScreen(gameState, inputInfo);
+					break;
 			}
 
 			for (int i = 0; i < gameState->lastEntityOnEntities + 1 - gameState->entities; i++) {
