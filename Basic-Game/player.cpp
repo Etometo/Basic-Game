@@ -376,7 +376,12 @@ void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, floa
     }
     else {
 		Vector2 torqueAxis = { -forceApplicationPointFromTheCenter.y, forceApplicationPointFromTheCenter.x };
+        force.x -= entity->penetrationResolveForce.x;
+        force.y -= entity->penetrationResolveForce.y;
 		torque = DotProduct(force, torqueAxis);
+        force.x += entity->penetrationResolveForce.x;
+        force.y += entity->penetrationResolveForce.y;
+        entity->penetrationResolveForce = { 0, 0 };
     }
 
     entity->netForce.x += force.x;
@@ -390,8 +395,6 @@ void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, floa
     entity->rotationalAcceleration = torque / entity->inertia;
     entity->rotationalVelocity += entity->rotationalAcceleration * deltaTime;
 
-    entity->forceAppliedToAccelerationAndVelocity.x += force.x;
-    entity->forceAppliedToAccelerationAndVelocity.y += force.y;
     entity->forcesMultipliedByAppliedTime.x += force.x * deltaTime;
     entity->forcesMultipliedByAppliedTime.y += force.y * deltaTime;
 }
@@ -854,10 +857,13 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
         j = 0;
     }
     j /= sumOfInverseMasses;
-
+    //penetrationBias / sumOfInverseMasses / deltaTime
 
     impulse.x += j * collInfo.normalizedOverlapLine.x;
     impulse.y += j * collInfo.normalizedOverlapLine.y;
+
+    float penetrationResolveForceMagnitude = penetrationBias / sumOfInverseMasses / deltaTime;
+    e1->penetrationResolveForce = { penetrationResolveForceMagnitude * collInfo.normalizedOverlapLine.x, penetrationResolveForceMagnitude * collInfo.normalizedOverlapLine.y };
 
     Vector2 impulseForce = { impulse.x / deltaTime, impulse.y / deltaTime };
     ApplyForceToEntitiesVelocityImmediately(e1, impulseForce, deltaTime, forceApplicationPoint);

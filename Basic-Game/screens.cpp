@@ -41,7 +41,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 	uint32_t relevantEntitiesSize = sizeof(Entity*) * 500;
 	Entity** relevantEntities = (Entity**)PushTemporarySize(gameState, relevantEntitiesSize);
 
-	if (gameState->readyForNewEntityInitialization) {
+	if (gameState->readyForNewEntityInitialization && gameState->chosenPiece == nullptr) {
 		gameState->entityBeingCut = (Entity*)InitializeAndPushEntity(gameState, gameState->rectData, gameState->rectDataEnd, 10, BEING_CUT_FLAG, { 400, 100 }, GAMEPLAY_SCREEN);
 		gameState->readyForNewEntityInitialization = false;
 		gameState->entityInitialized = true;
@@ -115,15 +115,14 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 		}
 		if (inputInfo.keyCodes & ENTER_KEY_CODE) {
 			gameState->chosenPiece->flags &= ~ADJUSTING_POSITION_FLAG;
-			gameState->chosenPiece->flags |= (PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG);
+			gameState->chosenPiece->flags |= (PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG | NOT_IN_FREE_FALL_FLAG);
 			gameState->pieceWasChosen = false;
 			gameState->readyForNewEntityInitialization = true;
-			gameState->chosenPiece = nullptr;
 		}
 	}
 
 	float deltaTime = GetDeltaTime();
-	for (int i = 0; i <= (gameState->lastEntityOnEntities - gameState->entities); i++) {
+	for (int i = 0; i < (gameState->lastEntityOnEntities - gameState->entities) + 1; i++) {
 		Entity* entity = gameState->entities + i;
 		if (entity->id == 0) {
 			continue;
@@ -131,16 +130,22 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 		int numOfRelevantEntities = CalculateRelevantEntitiesForEntity(gameState, entity, relevantEntities, i);
 		float solverIterationTimeStep = deltaTime / gameState->SOLVER_ITERATIONS;
 		if ((entity->flags & PHYSICS_FLAG)) {
-			if ((entity->flags & GRAVITY_FLAG) > 0) {
-				float forcePerVertex = (entity->mass * gameState->gravityConstant) / (entity->vertexDataEnd - entity->vertexData);
-				for (int v = 0; v < entity->vertexDataEnd - entity->vertexData; v++) {
-					Vector2 vertexPos = entity->centerPosition;
-					vertexPos.x += entity->vertexData[v].position.x;
-					vertexPos.y += entity->vertexData[v].position.y;
-					ApplyForceToEntitiesVelocityImmediately(entity, { 0, forcePerVertex}, deltaTime, vertexPos);
+			if (entity->flags & GRAVITY_FLAG) {
+				if(!(entity->flags & NOT_IN_FREE_FALL_FLAG)){
+					float forcePerVertex = (entity->mass * gameState->gravityConstant) / (entity->vertexDataEnd - entity->vertexData);
+					for (int v = 0; v < entity->vertexDataEnd - entity->vertexData; v++) {
+						Vector2 vertexPos = entity->centerPosition;
+						vertexPos.x += entity->vertexData[v].position.x;
+						vertexPos.y += entity->vertexData[v].position.y;
+						ApplyForceToEntitiesVelocityImmediately(entity, { 0, forcePerVertex}, deltaTime, vertexPos);
+					}
+					entity->gravityApplied = true;
 				}
-				entity->gravityApplied = true;
+				else {
+					entity->centerPosition.y += freeFallSpeed;
+				}
 			}
+
 			for (int j = 0; j < numOfRelevantEntities; j++) {
 				Entity* relevantEntity = relevantEntities[j];
 				if ((relevantEntity->flags & PHYSICS_FLAG) == 0) {
@@ -150,11 +155,21 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 				float totalMass = entity->mass + relevantEntity->mass;
 
 				if (collInfo.minOverlap > FLT_EPSILON) {
+					if (entity->flags & NOT_IN_FREE_FALL_FLAG) {
+						entity->flags &= ~NOT_IN_FREE_FALL_FLAG;
+						std::cout << (!(entity->flags & NOT_IN_FREE_FALL_FLAG) && !(entity->flags & NON_MOVING_FLAG)) << std::endl;
+						std::cout << !(entity->flags & NOT_IN_FREE_FALL_FLAG) << std::endl;
+						std::cout << !(entity->flags & NON_MOVING_FLAG) << std::endl;
+					}
+					if (relevantEntity->flags & NOT_IN_FREE_FALL_FLAG) {
+						relevantEntity->flags &= ~NOT_IN_FREE_FALL_FLAG;
+						std::cout << (!(entity->flags & NOT_IN_FREE_FALL_FLAG) && !(entity->flags & NON_MOVING_FLAG)) << std::endl;
+						std::cout << !(entity->flags & NOT_IN_FREE_FALL_FLAG) << std::endl;
+						std::cout << !(entity->flags & NON_MOVING_FLAG) << std::endl;
+					}
 					Vector2 forceApplicationPoint = CalculateForceApplicationPoint(entity, relevantEntity, 5);
 					if (forceApplicationPoint.x == 0 && forceApplicationPoint.y == 0) {
 						forceApplicationPoint = entity->centerPosition;
-						forceApplicationPoint.y += collInfo.minOverlap / 2;
-						std::cout << "force application point changed" << std::endl;
 					}
 					
 					for(int k = 0; k < gameState->SOLVER_ITERATIONS; k++){
@@ -163,44 +178,51 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 						HandleFriction(gameState, entity, relevantEntity, collInfo, impulse, relativeVelocityOfForceApplicationPoint, forceApplicationPoint, solverIterationTimeStep);
 					}
 				}
+
 			}
-			if (!(entity->flags & NON_MOVING_FLAG)){
+
+			if (!(entity->flags & NON_MOVING_FLAG)) {
 				MoveAndRotateEntity(entity, deltaTime);
 				CalibrateEntityWithGrid(gameState, entity);
 
-				if(magnitude(entity->physicsVelocity) < INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD && 
-					entity->rotationalVelocity < INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD) 
-				{
-					std::cout << "entity " << entity->id << "started stopping" << std::endl;
-					if (entity->framesWithConsequentialInsignificantMovement == 0) {
-						entity->positionWhenMovementBecameInsignificant.x = entity->centerPosition.x;
-						entity->positionWhenMovementBecameInsignificant.y = entity->centerPosition.y;
-						entity->angleWhenMovementBecameInsignificant = entity->angle;
-					}
-					else if (entity->framesWithConsequentialInsignificantMovement >= NUM_OF_FRAMES_FOR_ENTITY_TO_FREEZE
-						&& distance(entity->centerPosition, entity->positionWhenMovementBecameInsignificant) < INSIGNIFICANT_DISPLACEMENT_THRESHOLD 
-						&& abs(entity->angle - entity->angleWhenMovementBecameInsignificant) < INSIGNIFICANT_ANGULAR_DISPLACEMENT_THRESHOLD
-						) 
+				if(!(entity->flags & NOT_IN_FREE_FALL_FLAG)) {
+					//check if the entity needs to stop
+					std::cout << "s";
+					if(magnitude(entity->physicsVelocity) < INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD && 
+						abs(entity->rotationalVelocity) < INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD) 
 					{
-						entity->flags |= NON_MOVING_FLAG;
-					}
-					entity->framesWithConsequentialInsignificantMovement++;
-				}
-				else {
-					if (entity->framesWithConsequentialInsignificantMovement > 0) {
-						if (magnitude(entity->physicsVelocity) > INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD) {
-							std::cout << "stopped because of normal speed" << std::endl;
+						std::cout << "entity " << entity->id << "started stopping" << std::endl;
+						if (entity->framesWithConsequentialInsignificantMovement == 0) {
+							entity->positionWhenMovementBecameInsignificant.x = entity->centerPosition.x;
+							entity->positionWhenMovementBecameInsignificant.y = entity->centerPosition.y;
+							entity->angleWhenMovementBecameInsignificant = entity->angle;
 						}
-						if (entity->rotationalVelocity > INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD) {
-							std::cout << "stopped because of angular speed" << std::endl;
+						else if (entity->framesWithConsequentialInsignificantMovement >= NUM_OF_FRAMES_FOR_ENTITY_TO_FREEZE
+							&& distance(entity->centerPosition, entity->positionWhenMovementBecameInsignificant) < INSIGNIFICANT_DISPLACEMENT_THRESHOLD 
+							&& abs(entity->angle - entity->angleWhenMovementBecameInsignificant) < INSIGNIFICANT_ANGULAR_DISPLACEMENT_THRESHOLD
+							) 
+						{
+							entity->flags |= NON_MOVING_FLAG;
+							entity->flags &= ~GRAVITY_FLAG;
+							gameState->chosenPiece = nullptr;
 						}
+						entity->framesWithConsequentialInsignificantMovement++;
 					}
-					entity->framesWithConsequentialInsignificantMovement = 0;
+					else {
+						if (entity->framesWithConsequentialInsignificantMovement > 0) {
+							if (magnitude(entity->physicsVelocity) > INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD) {
+								std::cout << "stopped because of normal speed" << std::endl;
+							}
+							if (abs(entity->rotationalVelocity) > INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD) {
+								std::cout << "stopped because of angular speed" << std::endl;
+							}
+						}
+						entity->framesWithConsequentialInsignificantMovement = 0;
+					}
 				}
 			}
+
 			entity->netForce = { 0, 0 };
-			entity->forceAppliedToAccelerationAndVelocity = { 0, 0 };
-			entity->forcesMultipliedByAppliedTime = { 0, 0 };
 			entity->torque = 0;
 		}
 	}

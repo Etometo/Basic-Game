@@ -6,13 +6,15 @@
 #include "raylib.h"
 #include "screens.h"
 
-constexpr float INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD = 5;
+constexpr float INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD = 10;
 constexpr float INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD = 0.2;
 
 constexpr float INSIGNIFICANT_DISPLACEMENT_THRESHOLD = 10;
-constexpr float INSIGNIFICANT_ANGULAR_DISPLACEMENT_THRESHOLD = 5;
+constexpr float INSIGNIFICANT_ANGULAR_DISPLACEMENT_THRESHOLD = 8;
 
 constexpr int NUM_OF_FRAMES_FOR_ENTITY_TO_FREEZE = 30;
+
+constexpr int freeFallSpeed = 2;
 
 struct GameState;
 
@@ -32,6 +34,7 @@ enum {
 	BEING_CUT_FLAG = 128,
 	BEING_CHOSEN_FLAG = 256,
 	ADJUSTING_POSITION_FLAG = 512,
+	NOT_IN_FREE_FALL_FLAG = 1024,
 };
 
 enum {
@@ -54,7 +57,8 @@ typedef struct Entity {
 
 	float elasticity;
 	float mass;
-	Vector2 forceAppliedToAccelerationAndVelocity;
+	//this is zeroed in the first time it is used.
+	Vector2 penetrationResolveForce;
 	Vector2 forcesMultipliedByAppliedTime;
 	Vector2 netForce;
 	Vector2 acceleration;
