@@ -56,6 +56,7 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
     for (int i = 0; i < vertexCount; i++) {
         returnPointer->inertia += massPerVertex * (pow(vertexData[i].position.x - centerOfTheShape.x, 2) + pow(vertexData[i].position.y - centerOfTheShape.y, 2));
     }
+    returnPointer->angularDamping = 5;
 
 	return returnPointer;
 }
@@ -341,6 +342,7 @@ float magnitude(Vector2 v) {
     return sqrtf(square(v.x) + square(v.y));
 }
 void RotateEntity(Entity* entity, float deltaTime) {
+    entity->rotationalVelocity *= 1 / (1 + entity->angularDamping * deltaTime);
     float rotationalChange = entity->rotationalVelocity * deltaTime;
     float sin = sinf(rotationalChange);
     float cos = cosf(rotationalChange);
@@ -812,14 +814,18 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
         float speedChangeInY = gameState->gravityConstant * deltaTime;
         relativeVelocityOfForceApplicationPoint.x = (e1->physicsVelocity.x) - (e2->physicsVelocity.x);
         relativeVelocityOfForceApplicationPoint.y = (e1->physicsVelocity.y) - (e2->physicsVelocity.y + speedChangeInY);
-        relativeVelocityOfForceApplicationPoint.x += (velocityOfE1CausedByRotationalVelocity.x - velocityOfE2CausedByRotationalVelocity.x);
-        relativeVelocityOfForceApplicationPoint.y += (velocityOfE1CausedByRotationalVelocity.y - velocityOfE2CausedByRotationalVelocity.y);
+        if (abs(e1->rotationalVelocity - e2->rotationalVelocity) > INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD) {
+			relativeVelocityOfForceApplicationPoint.x += (velocityOfE1CausedByRotationalVelocity.x - velocityOfE2CausedByRotationalVelocity.x);
+			relativeVelocityOfForceApplicationPoint.y += (velocityOfE1CausedByRotationalVelocity.y - velocityOfE2CausedByRotationalVelocity.y);
+        }
     }
     else{
         relativeVelocityOfForceApplicationPoint.x = (e1->physicsVelocity.x) - (e2->physicsVelocity.x);
         relativeVelocityOfForceApplicationPoint.y = (e1->physicsVelocity.y) - (e2->physicsVelocity.y);
-        relativeVelocityOfForceApplicationPoint.x += (velocityOfE1CausedByRotationalVelocity.x - velocityOfE2CausedByRotationalVelocity.x);
-        relativeVelocityOfForceApplicationPoint.y += (velocityOfE1CausedByRotationalVelocity.y - velocityOfE2CausedByRotationalVelocity.y);
+        if (abs(e1->rotationalVelocity - e2->rotationalVelocity) > INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD) {
+			relativeVelocityOfForceApplicationPoint.x += (velocityOfE1CausedByRotationalVelocity.x - velocityOfE2CausedByRotationalVelocity.x);
+			relativeVelocityOfForceApplicationPoint.y += (velocityOfE1CausedByRotationalVelocity.y - velocityOfE2CausedByRotationalVelocity.y);
+        }
     }
 
     if (collInfo.minOverlap > PENETRATION_SLOP) {
@@ -917,21 +923,15 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
     float sumOfInverseMassesT = inv1mass + inv2mass + rotationalMass1T + rotationalMass2T;
 
     if (sumOfInverseMassesT > EPSILON) {
-        // Calculate theoretical friction impulse needed to stop sliding perfectly
+        std::cout << "friction";
         float jt = -relativeVelOnFrictionAxis / sumOfInverseMassesT;
 
-        // Coulomb's Law: limit friction based on normal impulse (j_n) and friction constant (mu)
         float frictionConst = e1->frictionCons > e2->frictionCons ? e1->frictionCons : e2->frictionCons;
         float impulseMagnitude = sqrt(pow(impulse.x, 2) + pow(impulse.y, 2));
-        float maxFriction = frictionConst * impulseMagnitude;
+        float friction = frictionConst * impulseMagnitude;
 
-        // Clamp the friction impulse
-        if (jt > maxFriction) jt = maxFriction;
-        if (jt < -maxFriction) jt = -maxFriction;
+        Vector2 frictionImpulseForce = { friction * frictionAxis.x , friction * frictionAxis.y};
 
-        Vector2 frictionImpulseForce = { (jt * frictionAxis.x) / deltaTime, (jt * frictionAxis.y) / deltaTime };
-
-        // Apply forces!
         ApplyForceToEntitiesVelocityImmediately(e1, frictionImpulseForce, deltaTime, forceApplicationPoint);
         if (!(e2->flags & NON_MOVING_FLAG)) {
             ApplyForceToEntitiesVelocityImmediately(e2, { -frictionImpulseForce.x, -frictionImpulseForce.y }, deltaTime, forceApplicationPoint);

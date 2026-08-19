@@ -6,8 +6,8 @@
 #include "raylib.h"
 #include "screens.h"
 
-constexpr float INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD = 10;
-constexpr float INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD = 0.2;
+constexpr float INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD = 15;
+constexpr float INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD = 0.5;
 
 constexpr float INSIGNIFICANT_DISPLACEMENT_THRESHOLD = 10;
 constexpr float INSIGNIFICANT_ANGULAR_DISPLACEMENT_THRESHOLD = 8;
@@ -73,6 +73,7 @@ typedef struct Entity {
 	float rotationalAcceleration;
 	float rotationalVelocity;
 	float angle;
+	float angularDamping;
 
 	uint8_t framesWithConsequentialInsignificantMovement;
 	Vector2 positionWhenMovementBecameInsignificant;

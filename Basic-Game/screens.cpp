@@ -34,7 +34,7 @@ void InitializeGameplayScreen(GameState* gameState) {
 
 	Vector2 floorCenterPos = { 400, 750 };
 	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, NON_MOVING_FLAG | GROUND_COLLISION_FLAG | PHYSICS_FLAG, floorCenterPos, GAMEPLAY_SCREEN);
-	floor->frictionCons = 0.3;
+	floor->frictionCons = 0.8;
 
 	gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
 }
