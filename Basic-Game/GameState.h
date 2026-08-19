@@ -46,6 +46,8 @@ typedef struct GameState {
 	bool pieceWasChosen;
 	bool readyForNewEntityInitialization;
 	bool entityInitialized;
+	uint16_t numOfPiecesCutAndUsed;
+
 	VertexData* rectData;
 	VertexData* rectDataEnd;
 };

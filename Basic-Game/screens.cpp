@@ -197,7 +197,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 							entity->positionWhenMovementBecameInsignificant.y = entity->centerPosition.y;
 							entity->angleWhenMovementBecameInsignificant = entity->angle;
 						}
-						else if (entity->framesWithConsequentialInsignificantMovement >= NUM_OF_FRAMES_FOR_ENTITY_TO_FREEZE
+						else if (entity->framesWithConsequentialInsignificantMovement >= SECONDS_FOR_ENTITY_TO_FREEZE * GetFPS()
 							&& distance(entity->centerPosition, entity->positionWhenMovementBecameInsignificant) < INSIGNIFICANT_DISPLACEMENT_THRESHOLD 
 							&& abs(entity->angle - entity->angleWhenMovementBecameInsignificant) < INSIGNIFICANT_ANGULAR_DISPLACEMENT_THRESHOLD
 							) 
@@ -246,6 +246,10 @@ void InitializeMainMenu(GameState* gameState) {
 	*(buttonDataEnd++) = VertexData{ -60, -50 };
 	*(buttonDataEnd++) = VertexData{ -60, 50 };
 	Entity* playButton = InitializeAndPushEntity(gameState, buttonData, buttonDataEnd, 0, BUTTON_FLAG, { (float)gameState->WINDOW_HEIGHT / 2, (float)gameState->WINDOW_WIDTH / 2 }, MAIN_SCREEN);
+	char* text = (char*)PushSize(gameState, sizeof(char) * 5);
+	snprintf(text, sizeof(char) * 5, "%s", "PLAY");
+	playButton->text = text;
+	playButton->flags |= HAS_TEXT;
 	playButton->buttonFunction = ChangeScreenTo;
 }
 

@@ -268,9 +268,16 @@ void DrawEntity(Entity* player) {
             DrawTriangle(v1, v3, v2, player->color);
         }
 	}
-    char idStr[10];
-    snprintf(idStr, sizeof(idStr), "%d", player->id);
-    DrawText(idStr, player->centerPosition.x, player->centerPosition.y, 30, BLACK);
+    if (player->flags & HAS_TEXT) {
+        int fontSize = 30;
+        float textWidth = MeasureText(player->text, fontSize);
+		DrawText(player->text, player->centerPosition.x - textWidth/2, player->centerPosition.y - fontSize/2, 30, BLACK);
+    }
+    else {
+		char idStr[10];
+		snprintf(idStr, sizeof(idStr), "%d", player->id);
+		DrawText(idStr, player->centerPosition.x, player->centerPosition.y, 30, BLACK);
+    }
 }
 
 void DrawEntityOutline(Entity* entity) {
@@ -368,9 +375,6 @@ void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, floa
     float torque;
     forceApplicationPointFromTheCenter.x = forceApplicationPoint.x - entity->centerPosition.x;
     forceApplicationPointFromTheCenter.y = forceApplicationPoint.y - entity->centerPosition.y;
-    if (entity->id == 2) {
-        std::cout << " ";
-    }
     if (abs(forceApplicationPointFromTheCenter.x) < EPSILON && abs(forceApplicationPointFromTheCenter.y) < EPSILON) {
         torque = 0;
     }
@@ -586,7 +590,7 @@ CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2) {
     //because we go over every pair twice if we skip this other calculation will be done anyways
     CollisionInfo collInfo;
     collInfo.minOverlap = 0;
-    if (((e1->flags & e2->flags) & COLLISION_FLAGS) == 0) { return collInfo; }
+    if (((e1->flags & e2->flags) & GROUND_COLLISION_FLAG) == 0) { return collInfo; }
 
     double minOverlap = DBL_MAX;
     Vector3 overlapLine;
@@ -761,9 +765,6 @@ Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2, float vertexOutsi
     if (divisionNumber != 0) {
 		forceApplicationPoint.x = (centerOfVerticesInsideE2.x + centerOfVerticesInsideE1.x) / divisionNumber;
 		forceApplicationPoint.y = (centerOfVerticesInsideE2.y + centerOfVerticesInsideE1.y) / divisionNumber;
-    }
-    else {
-        std::cout << " ";
     }
 
     return forceApplicationPoint;
@@ -995,9 +996,6 @@ void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float fric
             e->stoppedByFriction = true;
 		}
         else if(abs(speedAfterFrictionOnFrictionAxis) < abs(currentSpeedOnFrictionAxis)) {
-            if (frictionMagnitude > 1000) {
-                std::cout << " ";
-            }
             ApplyForceToEntitiesVelocityImmediately(e, { normalizedFrictionAxis.x * frictionMagnitude * frictionDir, normalizedFrictionAxis.y * frictionMagnitude * frictionDir }, deltaTime, forceApplicationPoint);
         }
 }

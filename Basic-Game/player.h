@@ -12,7 +12,7 @@ constexpr float INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD = 0.2;
 constexpr float INSIGNIFICANT_DISPLACEMENT_THRESHOLD = 10;
 constexpr float INSIGNIFICANT_ANGULAR_DISPLACEMENT_THRESHOLD = 8;
 
-constexpr int NUM_OF_FRAMES_FOR_ENTITY_TO_FREEZE = 30;
+constexpr float SECONDS_FOR_ENTITY_TO_FREEZE = 0.5;
 
 constexpr int freeFallSpeed = 2;
 
@@ -27,8 +27,7 @@ enum {
 	NON_MOVING_FLAG = 2,
 	PLAYER_FLAG = 4,
 	GROUND_COLLISION_FLAG = 8,
-	ENTITY_COLLISION_FLAG = 16,
-	COLLISION_FLAGS = GROUND_COLLISION_FLAG + ENTITY_COLLISION_FLAG,
+	HAS_TEXT = 16,
 	PHYSICS_FLAG = 32,
 	BUTTON_FLAG = 64,
 	BEING_CUT_FLAG = 128,
@@ -87,6 +86,8 @@ typedef struct Entity {
 	bool stoppedByFriction;
 
 	void(*buttonFunction)(GameState* gameState, SCREEN_CODES screenCode);
+
+	char* text;
 };
 
 struct CollisionInfo {

@@ -51,7 +51,8 @@ int main() {
 	gameState->gridDimentions[2] = numOfIdsPerCell;
 
 	gameState->isInitialized = true;
-	
+
+	SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
 	InitWindow(gameState->WINDOW_WIDTH, gameState->WINDOW_HEIGHT, "asd");
 	SetTargetFPS(gameState->goalFps);
 
