@@ -1,6 +1,10 @@
 #include "GameState.h"
 #include <iostream>
 
+void ChangeScreenTo(GameState* gameState, SCREEN_CODES screenCode) {
+	gameState->currentScreenCode = screenCode;
+}
+
 void InitializeGameplayScreen(GameState* gameState) {
 	VertexData* rectData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
 	VertexData* rectDataEnd = rectData;
@@ -37,6 +41,7 @@ void InitializeGameplayScreen(GameState* gameState) {
 	floor->frictionCons = 15;
 
 	gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
+	gameState->floor = floor;
 }
 
 void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
@@ -46,9 +51,16 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 	if (gameState->gameplayState == CUTTING_OR_CHOOSING_AN_ENTITY && gameState->entityBeingCut == nullptr) {
 		VertexData* newVertexData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
 		std::memcpy(newVertexData, gameState->rectData, sizeof(VertexData) * 4);
-		gameState->entityBeingCut = (Entity*)InitializeAndPushEntity(gameState, newVertexData, newVertexData + 4, 10, BEING_CUT_FLAG | BEING_CHOSEN_FLAG, { 400, 100 }, GAMEPLAY_SCREEN);
+
+		uint32_t entityFlags = BEING_CUT_FLAG | BEING_CHOSEN_FLAG | IS_A_BUILDING_BLOCK_FLAG;
+		gameState->entityBeingCut = (Entity*)InitializeAndPushEntity(gameState, newVertexData, newVertexData + 4, 10, entityFlags, { 400, 100 }, GAMEPLAY_SCREEN);
 		gameState->readyForNewEntityInitialization = false;
 		gameState->entityInitialized = true;
+		gameState->numOfEntitiesSpawnedAndUsed++;
+		if (gameState->numOfEntitiesSpawnedAndUsed > gameState->limitOfSpawnedEntities) {
+			InitializeEndScreen(gameState);
+			ChangeScreenTo(gameState, END_SCREEN);
+		}
 	}
 
 	if (inputInfo.mouseInputInfo.mouseReleasedThisFrame) {
@@ -56,7 +68,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 		if (inputInfo.mouseInputInfo.inputDurationFrames > gameState->ClickThresholdFrames && gameState->gameplayState == CUTTING_OR_CHOOSING_AN_ENTITY) {
 			Entity* newEntity1 = 0;
 			Entity* newEntity2 = 0;
-			uint32_t newEntityFlags = BEING_CHOSEN_FLAG;
+			uint32_t newEntityFlags = BEING_CHOSEN_FLAG | IS_A_BUILDING_BLOCK_FLAG;
 			int operationStatus = CutEntityIntoTwoPiecesByALine(gameState, gameState->entityBeingCut, inputInfo.mouseInputInfo.inputPositions[0], inputInfo.mouseInputInfo.inputPositions[1], newEntityFlags, newEntity1, newEntity2);
 			if (operationStatus == ENTITY_WAS_CUT) {
 				gameState->cutPiece1 = newEntity1;
@@ -260,9 +272,6 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 
 }
 
-void ChangeScreenTo(GameState* gameState, SCREEN_CODES screenCode) {
-	gameState->currentScreenCode = screenCode;
-}
 void InitializeMainMenu(GameState* gameState) {
 	VertexData* buttonData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
 	VertexData* buttonDataEnd = buttonData;
@@ -305,4 +314,32 @@ void UpdateMainMenu(GameState* gameState, InputInfo inputInfo) {
 		}
 	}
 	RetractTemporarySize(gameState, relevantEntitiesSize);
+}
+
+void InitializeEndScreen(GameState* gameState) {
+	float floorsCeiling = -FLT_MAX;
+	float score = 0;
+	for (int i = 0; i < gameState->floor->vertexDataEnd - gameState->floor->vertexData; i++) {
+		float yValueOfVertex = gameState->floor->centerPosition.y + gameState->floor->vertexData[i].position.y;
+		if (yValueOfVertex > floorsCeiling) {
+			floorsCeiling = yValueOfVertex;
+		}
+	}
+
+	for (int i = 0; i < gameState->lastEntityOnEntities - gameState->entities; i++) {
+		Entity* entity = gameState->entities + i;
+		if (entity->id == 0 || entity->screenCode != GAMEPLAY_SCREEN || !(entity->flags & IS_A_BUILDING_BLOCK_FLAG)) {
+			continue;
+		}
+		score += powf(entity->centerPosition.y - floorsCeiling, 2);
+	}
+	score /= 100;
+	gameState->score = (long int)score;
+	snprintf(gameState->scoreText, sizeof(char) * 40, "%d", gameState->score);
+}
+
+void UpdateEndScreen(GameState* gameState) {
+	int fontSize = 60;
+	float textWidth = MeasureText(gameState->scoreText, fontSize);
+	DrawText(gameState->scoreText, gameState->WINDOW_WIDTH / 2 - textWidth/2, gameState->WINDOW_HEIGHT / 2 - fontSize/2, fontSize, BLACK);
 }

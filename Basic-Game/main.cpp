@@ -38,6 +38,8 @@ int main() {
 		gameState->readyForNewEntityInitialization = true;
 		gameState->entityInitialized = false;
 
+		gameState->limitOfSpawnedEntities = 3;
+
 	}
 	//initialize the spatial grid
 	int numberOfPartitionsOnWidthAxis = gameState->WINDOW_WIDTH / gameState->gridSquareEdgeLength;
@@ -106,6 +108,8 @@ int main() {
 				case GAMEPLAY_SCREEN:
 					UpdateGameplayScreen(gameState, inputInfo);
 					break;
+				case END_SCREEN:
+					UpdateEndScreen(gameState);
 			}
 
 			for (int i = 0; i < gameState->lastEntityOnEntities + 1 - gameState->entities; i++) {

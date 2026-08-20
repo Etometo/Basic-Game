@@ -15,3 +15,6 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo);
 
 void InitializeMainMenu(GameState* gameState);
 void UpdateMainMenu(GameState* gameState, InputInfo inputInfo);
+
+void InitializeEndScreen(GameState* gameState);
+void UpdateEndScreen(GameState* gameState);

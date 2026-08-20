@@ -52,10 +52,16 @@ typedef struct GameState {
 	bool pieceWasChosen;
 	bool readyForNewEntityInitialization;
 	bool entityInitialized;
-	uint16_t numOfPiecesCutAndUsed;
+	uint16_t numOfEntitiesSpawnedAndUsed;
+	uint16_t limitOfSpawnedEntities;
+
+	Entity* floor;
 
 	VertexData* rectData;
 	VertexData* rectDataEnd;
+
+	long int score;
+	char scoreText[40];
 };
 
 enum MOUSE_INPUT_TYPE{

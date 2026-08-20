@@ -12,7 +12,7 @@
 #include "GameState.h"
 
 constexpr float BAUMGARTE_BETA = 0.5f; 
-constexpr float PENETRATION_SLOP = 3;           
+constexpr float PENETRATION_SLOP = 0.2;           
 constexpr float EPSILON = 1e-5f;           
 
 float GetDeltaTime() {
@@ -272,12 +272,12 @@ void DrawEntity(Entity* player) {
     if (player->flags & HAS_TEXT) {
         int fontSize = 30;
         float textWidth = MeasureText(player->text, fontSize);
-		DrawText(player->text, player->centerPosition.x - textWidth/2, player->centerPosition.y - fontSize/2, 30, BLACK);
+		DrawText(player->text, player->centerPosition.x - textWidth/2, player->centerPosition.y - fontSize/2, fontSize, BLACK);
     }
     else {
 		char idStr[10];
 		snprintf(idStr, sizeof(idStr), "%d", player->id);
-		DrawText(idStr, player->centerPosition.x, player->centerPosition.y, 30, BLACK);
+		DrawText(idStr, player->centerPosition.x, player->centerPosition.y, 20, BLACK);
     }
 }
 
@@ -386,12 +386,7 @@ void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, floa
     }
     else {
 		Vector2 torqueAxis = { -forceApplicationPointFromTheCenter.y, forceApplicationPointFromTheCenter.x };
-        force.x -= entity->penetrationResolveForce.x;
-        force.y -= entity->penetrationResolveForce.y;
 		torque = DotProduct(force, torqueAxis);
-        force.x += entity->penetrationResolveForce.x;
-        force.y += entity->penetrationResolveForce.y;
-        entity->penetrationResolveForce = { 0, 0 };
     }
 
     entity->netForce.x += force.x;
@@ -434,19 +429,14 @@ bool CheckIfAPointIsInsideAnEntity(Vector2 positionOfPoint, Entity* entity) {
     for (int j = 0; j < vertexCount; j++) {
         vertex1Pos = { entity->vertexData[j].position.x + entity->centerPosition.x, entity->vertexData[j].position.y + entity->centerPosition.y };
 
-        // Wrap around to close the polygon
         int nextIndex = (j + 1) < vertexCount ? (j + 1) : 0;
         vertex2Pos = { entity->vertexData[nextIndex].position.x + entity->centerPosition.x, entity->vertexData[nextIndex].position.y + entity->centerPosition.y };
 
-        // 1. Asymmetric Y-bounds check prevents double-counting vertices and ignores horizontal lines
         if ((vertex1Pos.y > positionOfPoint.y) != (vertex2Pos.y > positionOfPoint.y)) {
-
-            // 2. Direct intersection math (Only divides by Delta Y, which is guaranteed non-zero by the above IF statement)
             float xValueOfRaycastsIntersection = (vertex2Pos.x - vertex1Pos.x) * (positionOfPoint.y - vertex1Pos.y) / (vertex2Pos.y - vertex1Pos.y) + vertex1Pos.x;
 
-            // 3. Count intersection if it happens to the right of our point
             if (positionOfPoint.x < xValueOfRaycastsIntersection) {
-                isInside = !isInside; // Toggle parity instead of incrementing an integer
+                isInside = !isInside;
             }
         }
     }	
@@ -805,7 +795,7 @@ unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sum
 
 void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2& impulse, Vector2& relativeVelocityOfForceApplicationPoint, Vector2 forceApplicationPoint, float deltaTime) {
     float push = collInfo.minOverlap - PENETRATION_SLOP;
-    float penetrationBias = 0;
+    float penetrationCorrectionAmount = 0;
 
     Vector3 distanceVectorOfForceApplicationPointFromE1Center = { forceApplicationPoint.x - e1->centerPosition.x, forceApplicationPoint.y - e1->centerPosition.y };
     Vector3 distanceVectorOfForceApplicationPointFromE2Center = { forceApplicationPoint.x - e2->centerPosition.x, forceApplicationPoint.y - e2->centerPosition.y };
@@ -818,25 +808,20 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
         float speedChangeInY = gameState->gravityConstant * deltaTime;
         relativeVelocityOfForceApplicationPoint.x = (e1->physicsVelocity.x) - (e2->physicsVelocity.x);
         relativeVelocityOfForceApplicationPoint.y = (e1->physicsVelocity.y) - (e2->physicsVelocity.y + speedChangeInY);
-        if (abs(e1->rotationalVelocity - e2->rotationalVelocity) > INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD) {
-			relativeVelocityOfForceApplicationPoint.x += (velocityOfE1CausedByRotationalVelocity.x - velocityOfE2CausedByRotationalVelocity.x);
-			relativeVelocityOfForceApplicationPoint.y += (velocityOfE1CausedByRotationalVelocity.y - velocityOfE2CausedByRotationalVelocity.y);
-        }
+		relativeVelocityOfForceApplicationPoint.x += (velocityOfE1CausedByRotationalVelocity.x - velocityOfE2CausedByRotationalVelocity.x);
+		relativeVelocityOfForceApplicationPoint.y += (velocityOfE1CausedByRotationalVelocity.y - velocityOfE2CausedByRotationalVelocity.y);
     }
     else{
         relativeVelocityOfForceApplicationPoint.x = (e1->physicsVelocity.x) - (e2->physicsVelocity.x);
         relativeVelocityOfForceApplicationPoint.y = (e1->physicsVelocity.y) - (e2->physicsVelocity.y);
-        if (abs(e1->rotationalVelocity - e2->rotationalVelocity) > INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD) {
-			relativeVelocityOfForceApplicationPoint.x += (velocityOfE1CausedByRotationalVelocity.x - velocityOfE2CausedByRotationalVelocity.x);
-			relativeVelocityOfForceApplicationPoint.y += (velocityOfE1CausedByRotationalVelocity.y - velocityOfE2CausedByRotationalVelocity.y);
-        }
+		relativeVelocityOfForceApplicationPoint.x += (velocityOfE1CausedByRotationalVelocity.x - velocityOfE2CausedByRotationalVelocity.x);
+		relativeVelocityOfForceApplicationPoint.y += (velocityOfE1CausedByRotationalVelocity.y - velocityOfE2CausedByRotationalVelocity.y);
     }
 
     if (collInfo.minOverlap > PENETRATION_SLOP) {
         float relativeVelOnCollisionLine = DotProduct(collInfo.normalizedOverlapLine, relativeVelocityOfForceApplicationPoint);
-        penetrationBias = ((BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP) / GetFrameTime()) / gameState->SOLVER_ITERATIONS;
+        penetrationCorrectionAmount = ((BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP) / GetFrameTime()) / gameState->SOLVER_ITERATIONS;
     }
-
 
     float velAlongNormal = DotProduct(collInfo.normalizedOverlapLine, relativeVelocityOfForceApplicationPoint);
 
@@ -863,18 +848,17 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
 		return;
 	}
 
-    float j = (-(1.0 + e) * velAlongNormal) - penetrationBias;
+    float j = (-(1.0 + e) * velAlongNormal) - penetrationCorrectionAmount;
     if (j > EPSILON) {
         j = 0;
     }
     j /= sumOfInverseMasses;
-    //penetrationBias / sumOfInverseMasses / deltaTime
 
     impulse.x += j * collInfo.normalizedOverlapLine.x;
     impulse.y += j * collInfo.normalizedOverlapLine.y;
 
-    float penetrationResolveForceMagnitude = penetrationBias / sumOfInverseMasses / deltaTime;
-    e1->penetrationResolveForce = { penetrationResolveForceMagnitude * collInfo.normalizedOverlapLine.x, penetrationResolveForceMagnitude * collInfo.normalizedOverlapLine.y };
+    float penetrationResolveForceMagnitude = penetrationCorrectionAmount / sumOfInverseMasses / deltaTime;
+    //e1->penetrationResolveForce = { penetrationResolveForceMagnitude * collInfo.normalizedOverlapLine.x, penetrationResolveForceMagnitude * collInfo.normalizedOverlapLine.y };
 
     Vector2 impulseForce = { impulse.x / deltaTime, impulse.y / deltaTime };
     ApplyForceToEntitiesVelocityImmediately(e1, impulseForce, deltaTime, forceApplicationPoint);
@@ -927,8 +911,6 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
     float sumOfInverseMassesT = inv1mass + inv2mass + rotationalMass1T + rotationalMass2T;
     
     if (sumOfInverseMassesT > EPSILON && abs(relativeVelOnFrictionAxis) > EPSILON) {
-        float jt = -relativeVelOnFrictionAxis / sumOfInverseMassesT;
-
         float frictionConst = e1->frictionCons > e2->frictionCons ? e1->frictionCons : e2->frictionCons;
         float impulseMagnitude = sqrt(pow(impulse.x, 2) + pow(impulse.y, 2));
         float friction = frictionConst * impulseMagnitude;
