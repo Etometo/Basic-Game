@@ -12,7 +12,7 @@
 #include "GameState.h"
 
 constexpr float BAUMGARTE_BETA = 0.5f; 
-constexpr float PENETRATION_SLOP = 0.5f;           
+constexpr float PENETRATION_SLOP = 3;           
 constexpr float EPSILON = 1e-5f;           
 
 float GetDeltaTime() {
@@ -359,6 +359,10 @@ void MoveAndRotateEntity(Entity* player, float deltaTime) {
 	player->centerPosition.y += player->physicsVelocity.y * deltaTime;
 	player->lastSpeed = { player->physicsVelocity.x, player->physicsVelocity.y };
 	player->penetrationVelocity = { 0, 0 };
+
+    std::cout << "Entity " << player->id << " speed: ";
+    PrintVector(player->physicsVelocity);
+    std::cout << std::endl;
 
 	RotateEntity(player, deltaTime);
 }
@@ -921,16 +925,17 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
     float rotationalMass1T = (r1CrossT * r1CrossT) * inv1Inertia;
     float rotationalMass2T = (r2CrossT * r2CrossT) * inv2Inertia;
     float sumOfInverseMassesT = inv1mass + inv2mass + rotationalMass1T + rotationalMass2T;
-
-    if (sumOfInverseMassesT > EPSILON) {
-        std::cout << "friction";
+    
+    if (sumOfInverseMassesT > EPSILON && abs(relativeVelOnFrictionAxis) > EPSILON) {
         float jt = -relativeVelOnFrictionAxis / sumOfInverseMassesT;
 
         float frictionConst = e1->frictionCons > e2->frictionCons ? e1->frictionCons : e2->frictionCons;
         float impulseMagnitude = sqrt(pow(impulse.x, 2) + pow(impulse.y, 2));
         float friction = frictionConst * impulseMagnitude;
 
-        Vector2 frictionImpulseForce = { friction * frictionAxis.x , friction * frictionAxis.y};
+        int frictionDir = -relativeVelOnFrictionAxis / abs(relativeVelOnFrictionAxis);
+
+        Vector2 frictionImpulseForce = { friction * frictionAxis.x * frictionDir , friction * frictionAxis.y * frictionDir };
 
         ApplyForceToEntitiesVelocityImmediately(e1, frictionImpulseForce, deltaTime, forceApplicationPoint);
         if (!(e2->flags & NON_MOVING_FLAG)) {

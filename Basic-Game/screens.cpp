@@ -34,7 +34,7 @@ void InitializeGameplayScreen(GameState* gameState) {
 
 	Vector2 floorCenterPos = { 400, 750 };
 	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, NON_MOVING_FLAG | GROUND_COLLISION_FLAG | PHYSICS_FLAG, floorCenterPos, GAMEPLAY_SCREEN);
-	floor->frictionCons = 0.8;
+	floor->frictionCons = 15;
 
 	gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
 }
@@ -209,7 +209,6 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 
 				if(!(entity->flags & NOT_IN_FREE_FALL_FLAG)) {
 					//check if the clickedEntity needs to stop
-					std::cout << "s";
 					if(magnitude(entity->physicsVelocity) < INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD && 
 						abs(entity->rotationalVelocity) < INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD) 
 					{
