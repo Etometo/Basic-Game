@@ -53,7 +53,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 		std::memcpy(newVertexData, gameState->rectData, sizeof(VertexData) * 4);
 
 		uint32_t entityFlags = BEING_CUT_FLAG | BEING_CHOSEN_FLAG | IS_A_BUILDING_BLOCK_FLAG;
-		gameState->entityBeingCut = (Entity*)InitializeAndPushEntity(gameState, newVertexData, newVertexData + 4, 10, entityFlags, { 400, 100 }, GAMEPLAY_SCREEN);
+		gameState->entityBeingCut = (Entity*)InitializeAndPushEntity(gameState, newVertexData, newVertexData + 4, 10, entityFlags, gameState->newEntitySpawnPoint, GAMEPLAY_SCREEN);
 		gameState->readyForNewEntityInitialization = false;
 		gameState->entityInitialized = true;
 		gameState->numOfEntitiesSpawnedAndUsed++;
@@ -156,7 +156,6 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 		if (inputInfo.keyCodes & ENTER_KEY_CODE) {
 			gameState->chosenPiece->flags &= ~ADJUSTING_POSITION_FLAG;
 			gameState->chosenPiece->flags |= (PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG | NOT_IN_FREE_FALL_FLAG);
-			gameState->chosenPiece = nullptr;
 			gameState->gameplayState = WAITING_FOR_THE_ENTITY_TO_STOP;
 		}
 	}
@@ -239,7 +238,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 							entity->flags &= ~GRAVITY_FLAG;
 							gameState->chosenPiece = nullptr;
 							if (gameState->entityBeingCut == nullptr) {
-								gameState->readyForNewEntityInitialization;
+								gameState->readyForNewEntityInitialization = true;
 							}
 							gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
 						}
@@ -268,6 +267,22 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 		(gameState->entities + i)->gravityApplied = false;
 	}
 
+	if (gameState->gameplayState == WAITING_FOR_THE_ENTITY_TO_STOP && gameState->chosenPiece->centerPosition.y > 1000) {
+		gameState->chosenPiece->centerPosition = gameState->newEntitySpawnPoint;
+		gameState->chosenPiece->physicsVelocity = { 0, 0 };
+		gameState->chosenPiece->flags |= BEING_CUT_FLAG | BEING_CHOSEN_FLAG;
+		gameState->chosenPiece->flags &= ~(PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG | NOT_IN_FREE_FALL_FLAG);
+		float reverseAngle = -gameState->chosenPiece->angle;
+		float sin = sinf(reverseAngle);
+		float cos = cosf(reverseAngle);
+		for (int i = 0; i < gameState->chosenPiece->vertexDataEnd - gameState->chosenPiece->vertexData; i++) {
+			Vector2 vertexPos = gameState->chosenPiece->vertexData[i].position;
+			gameState->chosenPiece->vertexData[i].position.x = vertexPos.x * cos - vertexPos.y * sin;
+			gameState->chosenPiece->vertexData[i].position.y = vertexPos.x * sin + vertexPos.y * cos;
+		}
+		gameState->entityBeingCut = gameState->chosenPiece;
+		gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
+	}
 	RetractTemporarySize(gameState, relevantEntitiesSize);
 
 }

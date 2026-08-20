@@ -45,6 +45,7 @@ typedef struct GameState {
 	GAMEPLAY_STATES gameplayState;
 
 	bool gameplayScreenInitialized;
+	Vector2 newEntitySpawnPoint;
 	Entity* entityBeingCut;
 	Entity* cutPiece1;
 	Entity* cutPiece2;

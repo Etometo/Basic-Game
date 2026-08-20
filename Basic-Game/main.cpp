@@ -32,6 +32,7 @@ int main() {
 		gameState->gridSquareEdgeLength = 100;
 		gameState->SOLVER_ITERATIONS = 5;
 
+		gameState->newEntitySpawnPoint = { 400, 100 };
 		gameState->entityBeingCut = nullptr;
 		gameState->cutPiece1 = nullptr;
 		gameState->cutPiece2 = nullptr;
