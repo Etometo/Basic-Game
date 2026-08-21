@@ -3,6 +3,7 @@
 #include "player.h"
 #include "GameState.h"
 #include "screens.h"
+#include "screens.h"
 #include <thread>
 #include <chrono>
 
@@ -59,11 +60,11 @@ int main() {
 	InitWindow(gameState->WINDOW_WIDTH, gameState->WINDOW_HEIGHT, "asd");
 	SetTargetFPS(gameState->goalFps);
 
-	gameState->currentScreenCode = MAIN_SCREEN;
 
 	InitializeMainMenu(gameState);
 	InitializeGameplayScreen(gameState);
 	gameState->gameplayScreenInitialized = true;
+	ChangeScreenTo(gameState, MAIN_SCREEN);
 
 	MouseInputInfo mouseInputInfo = { NONE, false, 0, {{0, 0}, {0, 0}}};
 	InputInfo inputInfo = { mouseInputInfo, 0 };
@@ -115,7 +116,7 @@ int main() {
 
 			for (int i = 0; i < gameState->lastEntityOnEntities + 1 - gameState->entities; i++) {
 				Entity* entity = gameState->entities + i;
-				if (entity->id != 0 && entity->screenCode == gameState->currentScreenCode) {
+				if (entity->id != 0 && !(entity->flags & INVISIBLE_FLAG)) {
 					DrawEntity(entity);
 				}
 			}

@@ -56,6 +56,7 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
     for (int i = 0; i < vertexCount; i++) {
         returnPointer->inertia += massPerVertex * (pow(vertexData[i].position.x - centerOfTheShape.x, 2) + pow(vertexData[i].position.y - centerOfTheShape.y, 2));
     }
+    inertia /= 10;
     returnPointer->angularDamping = 5;
 
 	return returnPointer;
@@ -910,7 +911,7 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
     float rotationalMass2T = (r2CrossT * r2CrossT) * inv2Inertia;
     float sumOfInverseMassesT = inv1mass + inv2mass + rotationalMass1T + rotationalMass2T;
     
-    if (sumOfInverseMassesT > EPSILON && abs(relativeVelOnFrictionAxis) > EPSILON) {
+    if (sumOfInverseMassesT > EPSILON && abs(relativeVelOnFrictionAxis) > (INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD / 5)) {
         float frictionConst = e1->frictionCons > e2->frictionCons ? e1->frictionCons : e2->frictionCons;
         float impulseMagnitude = sqrt(pow(impulse.x, 2) + pow(impulse.y, 2));
         float friction = frictionConst * impulseMagnitude;

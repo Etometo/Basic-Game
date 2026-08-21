@@ -10,6 +10,8 @@ enum SCREEN_CODES : uint8_t {
 
 struct GameState;
 
+void ChangeScreenTo(GameState* gameState, SCREEN_CODES screenCode);
+
 void InitializeGameplayScreen(GameState* gameState);
 void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo);
 

@@ -3,6 +3,19 @@
 
 void ChangeScreenTo(GameState* gameState, SCREEN_CODES screenCode) {
 	gameState->currentScreenCode = screenCode;
+	for (int i = 0; i < (gameState->lastEntityOnEntities - gameState->entities) + 1; i++) {
+		Entity* entity = gameState->entities + i;
+		if (entity->id == 0) {
+			continue;
+		}
+		if (entity->screenCode != screenCode) {
+			entity->flags |= INVISIBLE_FLAG;
+		}
+		else {
+			entity->flags &= ~INVISIBLE_FLAG;
+		}
+	 
+	}
 }
 
 void InitializeGameplayScreen(GameState* gameState) {
@@ -38,7 +51,7 @@ void InitializeGameplayScreen(GameState* gameState) {
 
 	Vector2 floorCenterPos = { 400, 750 };
 	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, NON_MOVING_FLAG | GROUND_COLLISION_FLAG | PHYSICS_FLAG, floorCenterPos, GAMEPLAY_SCREEN);
-	floor->frictionCons = 15;
+	floor->frictionCons = 35;
 
 	gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
 	gameState->floor = floor;
@@ -63,6 +76,9 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 				InitializeEndScreen(gameState);
 				ChangeScreenTo(gameState, END_SCREEN);
 			}
+		}
+		else {
+			gameState->entityBeingCut->flags &= ~INVISIBLE_FLAG;
 		}
 
 		if (inputInfo.mouseInputInfo.mouseReleasedThisFrame) {
@@ -109,6 +125,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 									gameState->cutPiece1->centerPosition.x -= gameState->cutPiece1->temporaryPositionChange.x;
 									gameState->cutPiece1->centerPosition.y -= gameState->cutPiece1->temporaryPositionChange.y;
 									gameState->cutPiece1->temporaryPositionChange = { 0, 0 };
+									gameState->cutPiece1->flags |= INVISIBLE_FLAG;
 								}
 							}
 							if (gameState->cutPiece2 != nullptr) {
@@ -119,6 +136,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 									gameState->cutPiece2->centerPosition.x -= gameState->cutPiece2->temporaryPositionChange.x;
 									gameState->cutPiece2->centerPosition.y -= gameState->cutPiece2->temporaryPositionChange.y;
 									gameState->cutPiece2->temporaryPositionChange = { 0, 0 };
+									gameState->cutPiece2->flags |= INVISIBLE_FLAG;
 								}
 							}
 							if (gameState->cutPiece1 == nullptr && gameState->cutPiece2 == nullptr){
@@ -205,7 +223,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 						if (relevantEntity->flags & NOT_IN_FREE_FALL_FLAG) {
 							relevantEntity->flags &= ~NOT_IN_FREE_FALL_FLAG;
 						}
-						Vector2 forceApplicationPoint = CalculateForceApplicationPoint(entity, relevantEntity, 5);
+						Vector2 forceApplicationPoint = CalculateForceApplicationPoint(entity, relevantEntity, 0);
 						if (forceApplicationPoint.x == 0 && forceApplicationPoint.y == 0) {
 							forceApplicationPoint = entity->centerPosition;
 						}
@@ -337,6 +355,8 @@ void UpdateMainMenu(GameState* gameState, InputInfo inputInfo) {
 	}
 	RetractTemporarySize(gameState, relevantEntitiesSize);
 }
+
+void RestartGame();
 
 void InitializeEndScreen(GameState* gameState) {
 	float floorsCeiling = -FLT_MAX;
