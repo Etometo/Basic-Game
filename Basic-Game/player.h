@@ -6,11 +6,11 @@
 #include "raylib.h"
 #include "screens.h"
 
-constexpr float INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD = 15;
-constexpr float INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD = 0.1;
+constexpr float INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD = 8;
+constexpr float INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD = 0.2;
 
-constexpr float INSIGNIFICANT_DISPLACEMENT_THRESHOLD = 10;
-constexpr float INSIGNIFICANT_ANGULAR_DISPLACEMENT_THRESHOLD = 8;
+constexpr float INSIGNIFICANT_DISPLACEMENT_THRESHOLD = 20;
+constexpr float INSIGNIFICANT_ANGULAR_DISPLACEMENT_THRESHOLD = 0.6;
 
 constexpr float SECONDS_FOR_ENTITY_TO_FREEZE = 1.5;
 
@@ -55,6 +55,9 @@ typedef struct Entity {
 	uint32_t id;
 	uint32_t flags;
 	uint8_t screenCode;
+
+	uint64_t frameCount;
+	uint16_t averageFPS;
 
 	float elasticity;
 	float mass;

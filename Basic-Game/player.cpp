@@ -361,10 +361,6 @@ void MoveAndRotateEntity(Entity* player, float deltaTime) {
 	player->lastSpeed = { player->physicsVelocity.x, player->physicsVelocity.y };
 	player->penetrationVelocity = { 0, 0 };
 
-    std::cout << "Entity " << player->id << " speed: ";
-    PrintVector(player->physicsVelocity);
-    std::cout << std::endl;
-
 	RotateEntity(player, deltaTime);
 }
 
@@ -510,30 +506,8 @@ int CalculateRelevantEntitiesForPosition(GameState* gameState, Vector2 position,
             }
         }
     }
-    uint32_t totalAllocatedSize = (relevantEntitiesEnd - relevanEntities) * sizeof(uint32_t);
-    Entity** uniqueItems = (Entity**)PushSize(gameState, totalAllocatedSize);
-    uint32_t numOfUniqueItems = 0;
 
-    for (int i = 0; i < relevantEntitiesEnd - relevanEntities; i++) {
-        Entity* item = relevanEntities[i];
-        uint32_t count = 0;
-        for (int j = 0; j < numOfUniqueItems; j++) {
-            if (uniqueItems[j] == item) {
-                count++;
-            }
-        }
-        if (count == 0) {
-            uniqueItems[numOfUniqueItems] = item;
-            numOfUniqueItems++;
-        }
-    }
-
-    relevantEntitiesEnd = relevanEntities;
-    for (int j = 0; j < numOfUniqueItems; j++) {
-        *(relevantEntitiesEnd++) = uniqueItems[j];
-    }
-
-    RetractSize(gameState, totalAllocatedSize);
+    MakeAnArrayFullOfUniqueItems(gameState, (char*)relevanEntities, (char*)relevantEntitiesEnd, relevantEntitiesEnd - relevanEntities, sizeof(Entity*));
 
     return relevantEntitiesEnd - relevanEntities;
 }
@@ -768,7 +742,6 @@ Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2, float vertexOutsi
 }
 
 unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sumOfInsiderPointsPositions, float vertexOutsidePush) {
-
 	Vector2 centerOfVerticesInsideE2 = { 0, 0 };
 	int numberOfVerticesInsideE2 = 0;
     float vertexRelativePositionMagnitude;
@@ -911,7 +884,8 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
     float rotationalMass2T = (r2CrossT * r2CrossT) * inv2Inertia;
     float sumOfInverseMassesT = inv1mass + inv2mass + rotationalMass1T + rotationalMass2T;
     
-    if (sumOfInverseMassesT > EPSILON && abs(relativeVelOnFrictionAxis) > (INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD / 5)) {
+    //throw std::runtime_error("make friction stop objects when you try making a tower they slide off");
+    if (sumOfInverseMassesT > EPSILON && abs(relativeVelOnFrictionAxis) > EPSILON) {
         float frictionConst = e1->frictionCons > e2->frictionCons ? e1->frictionCons : e2->frictionCons;
         float impulseMagnitude = sqrt(pow(impulse.x, 2) + pow(impulse.y, 2));
         float friction = frictionConst * impulseMagnitude;
@@ -927,65 +901,6 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
     }
     //throw std::runtime_error("look at the videos for the jumping bug");
     return;
-}
-
-void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDir, float deltaTime, Vector2& relativeVelocity, Vector2 forceApplicationPoint) {
-        Vector2 netForceAfterFriction = {0, 0};
-        Vector3 currentSpeed = { e->physicsVelocity.x, e->physicsVelocity.y, 0 };
-		Vector3 speedAfterFriction;
-		Vector2 acceleration;
-
-        netForceAfterFriction.x += normalizedFrictionAxis.x * frictionMagnitude * frictionDir;
-        netForceAfterFriction.y += normalizedFrictionAxis.y * frictionMagnitude * frictionDir;
-		
-        acceleration.x = netForceAfterFriction.x / e->mass;
-        acceleration.y = netForceAfterFriction.y / e->mass;
-		
-        speedAfterFriction.x = currentSpeed.x + acceleration.x * deltaTime;
-        speedAfterFriction.y = currentSpeed.y + acceleration.y * deltaTime;
-		speedAfterFriction.z = 0;
-
-        float netForceOnObjectAfterFriction = sqrt(pow(netForceAfterFriction.x, 2) + pow(netForceAfterFriction.y, 2));
-
-        bool objectIsntMovingOnFrictionAxis = false;
-        float speedOnFrictionAxis = DotProduct(normalizedFrictionAxis, currentSpeed);
-        if (speedOnFrictionAxis == 0) {
-            objectIsntMovingOnFrictionAxis = true;
-        }
-        bool frictionBiggerThanNetForceOnFrictionAxis = false;
-        if(objectIsntMovingOnFrictionAxis) {
-            float currentNetForceOnFrictionAxis = DotProduct(normalizedFrictionAxis, e->netForce);
-            if (abs(currentNetForceOnFrictionAxis) <= frictionMagnitude && abs(currentNetForceOnFrictionAxis) > EPSILON) {
-                frictionBiggerThanNetForceOnFrictionAxis = true;
-            }
-        }
-
-        float currentSpeedOnFrictionAxis = DotProduct(normalizedFrictionAxis, currentSpeed);
-        float speedAfterFrictionOnFrictionAxis = DotProduct(normalizedFrictionAxis, speedAfterFriction);
-
-		if ((currentSpeedOnFrictionAxis * speedAfterFrictionOnFrictionAxis < 0) || (objectIsntMovingOnFrictionAxis && frictionBiggerThanNetForceOnFrictionAxis)) {
-            Vector3 k = { 0, 0, -1 };
-            Vector3 normalAxis;
-            CrossProduct(normalizedFrictionAxis, k, normalAxis);
-            float normalAxisLen = sqrt(pow(normalAxis.x, 2) + pow(normalAxis.y, 2));
-            normalAxis.x /= normalAxisLen;
-            normalAxis.y /= normalAxisLen;
-            normalAxis.z /= normalAxisLen;
-            Vector3 netForce;
-            netForce.x = e->netForce.x;
-            netForce.y = e->netForce.y;
-            netForce.z = 0;
-
-            //this is problematic check video
-            float currentRelativeVelOnFrictionAxis = DotProduct(normalizedFrictionAxis, relativeVelocity);
-            float impulseScalar = -(currentSpeedOnFrictionAxis)*e->mass;
-            Vector2 requiredImpulseForNewSpeed = { impulseScalar * normalizedFrictionAxis.x, impulseScalar * normalizedFrictionAxis.y };
-            ApplyForceToEntitiesVelocityImmediately(e, { requiredImpulseForNewSpeed.x / deltaTime, requiredImpulseForNewSpeed.y / deltaTime }, deltaTime, forceApplicationPoint);
-            e->stoppedByFriction = true;
-		}
-        else if(abs(speedAfterFrictionOnFrictionAxis) < abs(currentSpeedOnFrictionAxis)) {
-            ApplyForceToEntitiesVelocityImmediately(e, { normalizedFrictionAxis.x * frictionMagnitude * frictionDir, normalizedFrictionAxis.y * frictionMagnitude * frictionDir }, deltaTime, forceApplicationPoint);
-        }
 }
 
 namespace delaunator {

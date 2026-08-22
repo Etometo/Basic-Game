@@ -14,7 +14,8 @@ typedef struct MemoryArena {
 enum GAMEPLAY_STATES : uint8_t {
 	CUTTING_OR_CHOOSING_AN_ENTITY = 1,
 	ADJUSTING_THE_POSITION_OF_THE_CHOSEN_ENTITY = 2,
-	WAITING_FOR_THE_ENTITY_TO_STOP = 4,
+	WAITING_FOR_THE_ENTITY_TO_STOP = 3,
+	FREE_TIME_OF_ENTITIES = 4,
 };
 
 typedef struct GameState {
@@ -33,6 +34,7 @@ typedef struct GameState {
 	uint32_t nextAvailableId;
 
 	uint64_t frameCount = 0;
+	uint16_t averageFPS = 0;
 
 	uint32_t WINDOW_HEIGHT, WINDOW_WIDTH;
 	uint32_t gridSquareEdgeLength;
@@ -43,6 +45,10 @@ typedef struct GameState {
 
 	SCREEN_CODES currentScreenCode;
 	GAMEPLAY_STATES gameplayState;
+
+	//counts the time where the building blocks get defrozen when a building block is completely used
+	uint32_t freeTimeFramesCounter;
+	uint32_t freeTimeLimitInSeconds;
 
 	bool gameplayScreenInitialized;
 	Vector2 newEntitySpawnPoint;
@@ -61,7 +67,8 @@ typedef struct GameState {
 	VertexData* rectData;
 	VertexData* rectDataEnd;
 
-	long int score;
+	long unsigned int score;
+	long unsigned int highestScore;
 	char scoreText[40];
 };
 
@@ -86,6 +93,7 @@ typedef struct InputInfo {
 	uint8_t keyCodes;
 };
 
+void InitializeGameState(GameState* gameState);
 
 void* PushSize(GameState* state, size_t sizeInBytes);
 

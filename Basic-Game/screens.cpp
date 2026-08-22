@@ -1,20 +1,26 @@
 #include "GameState.h"
 #include <iostream>
 
+void RestartGameAndChangeScreenToMainScreen(GameState* gameState);
+
 void ChangeScreenTo(GameState* gameState, SCREEN_CODES screenCode) {
-	gameState->currentScreenCode = screenCode;
-	for (int i = 0; i < (gameState->lastEntityOnEntities - gameState->entities) + 1; i++) {
-		Entity* entity = gameState->entities + i;
-		if (entity->id == 0) {
-			continue;
+	if (screenCode == MAIN_SCREEN && gameState->currentScreenCode == END_SCREEN) {
+		RestartGameAndChangeScreenToMainScreen(gameState);
+	}
+	else {
+		gameState->currentScreenCode = screenCode;
+		for (int i = 0; i < (gameState->lastEntityOnEntities - gameState->entities) + 1; i++) {
+			Entity* entity = gameState->entities + i;
+			if (entity->id == 0) {
+				continue;
+			}
+			if (entity->screenCode != screenCode) {
+				entity->flags |= INVISIBLE_FLAG;
+			}
+			else {
+				entity->flags &= ~INVISIBLE_FLAG;
+			}
 		}
-		if (entity->screenCode != screenCode) {
-			entity->flags |= INVISIBLE_FLAG;
-		}
-		else {
-			entity->flags &= ~INVISIBLE_FLAG;
-		}
-	 
 	}
 }
 
@@ -51,7 +57,7 @@ void InitializeGameplayScreen(GameState* gameState) {
 
 	Vector2 floorCenterPos = { 400, 750 };
 	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, NON_MOVING_FLAG | GROUND_COLLISION_FLAG | PHYSICS_FLAG, floorCenterPos, GAMEPLAY_SCREEN);
-	floor->frictionCons = 35;
+	floor->frictionCons = 150;
 
 	gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
 	gameState->floor = floor;
@@ -64,17 +70,43 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 	
 	if (gameState->gameplayState == CUTTING_OR_CHOOSING_AN_ENTITY) {
 		if (gameState->entityBeingCut == nullptr) {
-			VertexData* newVertexData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
-			std::memcpy(newVertexData, gameState->rectData, sizeof(VertexData) * 4);
+			int FPS = GetFPS();
+			if(gameState->freeTimeFramesCounter >= gameState->averageFPS*gameState->freeTimeLimitInSeconds){
+				for (int i = 0; i < (gameState->lastEntityOnEntities - gameState->entities) + 1; i++) {
+					Entity* entity = gameState->entities + i;
+					if (entity->flags & (IS_A_BUILDING_BLOCK_FLAG)) {
+						entity->flags |= NON_MOVING_FLAG;
+						entity->flags &= ~GRAVITY_FLAG;
+					}
+				}
+				std::cout << "FREE TIME END" << std::endl;
+				VertexData* newVertexData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
+				std::memcpy(newVertexData, gameState->rectData, sizeof(VertexData) * 4);
 
-			uint32_t entityFlags = BEING_CUT_FLAG | BEING_CHOSEN_FLAG | IS_A_BUILDING_BLOCK_FLAG;
-			gameState->entityBeingCut = (Entity*)InitializeAndPushEntity(gameState, newVertexData, newVertexData + 4, 10, entityFlags, gameState->newEntitySpawnPoint, GAMEPLAY_SCREEN);
-			gameState->readyForNewEntityInitialization = false;
-			gameState->entityInitialized = true;
-			gameState->numOfEntitiesSpawnedAndUsed++;
-			if (gameState->numOfEntitiesSpawnedAndUsed > gameState->limitOfSpawnedEntities) {
-				InitializeEndScreen(gameState);
-				ChangeScreenTo(gameState, END_SCREEN);
+				uint32_t entityFlags = BEING_CUT_FLAG | BEING_CHOSEN_FLAG | IS_A_BUILDING_BLOCK_FLAG;
+				gameState->entityBeingCut = (Entity*)InitializeAndPushEntity(gameState, newVertexData, newVertexData + 4, 10, entityFlags, gameState->newEntitySpawnPoint, GAMEPLAY_SCREEN);
+				gameState->entityBeingCut->frictionCons = 100;
+				gameState->readyForNewEntityInitialization = false;
+				gameState->entityInitialized = true;
+				gameState->numOfEntitiesSpawnedAndUsed++;
+				if (gameState->numOfEntitiesSpawnedAndUsed > gameState->limitOfSpawnedEntities) {
+					InitializeEndScreen(gameState);
+					ChangeScreenTo(gameState, END_SCREEN);
+				}
+				gameState->freeTimeFramesCounter = 0;
+			}
+			else if (gameState->freeTimeFramesCounter == 0){
+				for (int i = 0; i < (gameState->lastEntityOnEntities - gameState->entities) + 1; i++) {
+					Entity* entity = gameState->entities + i;
+					if (entity->flags & (IS_A_BUILDING_BLOCK_FLAG | NON_MOVING_FLAG) && entity->id != gameState->floor->id) {
+						entity->flags &= ~NON_MOVING_FLAG;
+						entity->flags |= GRAVITY_FLAG;
+						entity->physicsVelocity = { 0, 0 };
+					}
+				}
+				std::cout << "FREE TIME START" << std::endl;
+				gameState->freeTimeFramesCounter++;
+				gameState->gameplayState = FREE_TIME_OF_ENTITIES;
 			}
 		}
 		else {
@@ -240,48 +272,50 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 				if (!(entity->flags & NON_MOVING_FLAG)) {
 					MoveAndRotateEntity(entity, deltaTime);
 					CalibrateEntityWithGrid(gameState, entity);
-
-					if(!(entity->flags & NOT_IN_FREE_FALL_FLAG)) {
-						//check if the clickedEntity needs to stop
-						if(magnitude(entity->physicsVelocity) < INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD && 
-							abs(entity->rotationalVelocity) < INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD) 
-						{
-							std::cout << "entity " << entity->id << "started stopping" << std::endl;
-							if (entity->framesWithConsequentialInsignificantMovement == 0) {
-								entity->positionWhenMovementBecameInsignificant.x = entity->centerPosition.x;
-								entity->positionWhenMovementBecameInsignificant.y = entity->centerPosition.y;
-								entity->angleWhenMovementBecameInsignificant = entity->angle;
-							}
-							else if (entity->framesWithConsequentialInsignificantMovement >= SECONDS_FOR_ENTITY_TO_FREEZE * GetFPS()
-								&& distance(entity->centerPosition, entity->positionWhenMovementBecameInsignificant) < INSIGNIFICANT_DISPLACEMENT_THRESHOLD 
-								&& abs(entity->angle - entity->angleWhenMovementBecameInsignificant) < INSIGNIFICANT_ANGULAR_DISPLACEMENT_THRESHOLD
-								) 
-							{
-								entity->flags |= NON_MOVING_FLAG;
-								entity->flags &= ~GRAVITY_FLAG;
-								gameState->chosenPiece = nullptr;
-								if (gameState->entityBeingCut == nullptr) {
-									gameState->readyForNewEntityInitialization = true;
-								}
-								gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
-							}
-							entity->framesWithConsequentialInsignificantMovement++;
-						}
-						else {
-							if (entity->framesWithConsequentialInsignificantMovement > 0) {
-								if (magnitude(entity->physicsVelocity) > INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD) {
-									std::cout << "stopped because of normal speed" << std::endl;
-								}
-								if (abs(entity->rotationalVelocity) > INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD) {
-									std::cout << "stopped because of angular speed" << std::endl;
-								}
-							}
-							entity->framesWithConsequentialInsignificantMovement = 0;
-						}
-					}
 				}
 				entity->netForce = { 0, 0 };
 				entity->torque = 0;
+			}
+
+			if(gameState->chosenPiece != nullptr) {
+				if(magnitude(gameState->chosenPiece->physicsVelocity) < INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD && 
+					abs(gameState->chosenPiece->rotationalVelocity) < INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD) 
+				{
+					std::cout << "entity " << gameState->chosenPiece->id << "started stopping" << std::endl;
+					if (gameState->chosenPiece->framesWithConsequentialInsignificantMovement == 0) {
+						gameState->chosenPiece->positionWhenMovementBecameInsignificant.x = gameState->chosenPiece->centerPosition.x;
+						gameState->chosenPiece->positionWhenMovementBecameInsignificant.y = gameState->chosenPiece->centerPosition.y;
+						gameState->chosenPiece->angleWhenMovementBecameInsignificant = gameState->chosenPiece->angle;
+					}
+					else if (gameState->chosenPiece->framesWithConsequentialInsignificantMovement >= SECONDS_FOR_ENTITY_TO_FREEZE * gameState->averageFPS
+						&& distance(gameState->chosenPiece->centerPosition, gameState->chosenPiece->positionWhenMovementBecameInsignificant) < INSIGNIFICANT_DISPLACEMENT_THRESHOLD 
+						&& abs(gameState->chosenPiece->angle - gameState->chosenPiece->angleWhenMovementBecameInsignificant) < INSIGNIFICANT_ANGULAR_DISPLACEMENT_THRESHOLD
+						) 
+					{
+						gameState->chosenPiece->flags |= NON_MOVING_FLAG;
+						gameState->chosenPiece->flags &= ~GRAVITY_FLAG;
+						gameState->chosenPiece = nullptr;
+						if (gameState->entityBeingCut == nullptr) {
+							gameState->readyForNewEntityInitialization = true;
+						}
+						gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
+					}
+					if (gameState->chosenPiece != nullptr) {
+						gameState->chosenPiece->framesWithConsequentialInsignificantMovement++;
+					}
+				}
+				else {
+					if (gameState->chosenPiece->framesWithConsequentialInsignificantMovement > 0) {
+						if (magnitude(gameState->chosenPiece->physicsVelocity) > INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD) {
+							std::cout << "stopped because of normal speed" << std::endl;
+						}
+						if (abs(gameState->chosenPiece->rotationalVelocity) > INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD) {
+							std::cout << "stopped because of angular speed" << std::endl;
+						}
+					}
+					gameState->chosenPiece->framesWithConsequentialInsignificantMovement = 0;
+				}
+				
 			}
 		}
 
@@ -308,6 +342,61 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 			gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
 			CalibrateEntityWithGrid(gameState, gameState->entityBeingCut);
 		}
+	}
+	else if (gameState->gameplayState == FREE_TIME_OF_ENTITIES) {
+		float deltaTime = GetDeltaTime();
+		for (int i = 0; i < (gameState->lastEntityOnEntities - gameState->entities) + 1; i++) {
+			Entity* entity = gameState->entities + i;
+			if (entity->id == 0) {
+				continue;
+			}
+			int numOfRelevantEntities = CalculateRelevantEntitiesForEntity(gameState, entity, relevantEntities, i);
+			float solverIterationTimeStep = deltaTime / gameState->SOLVER_ITERATIONS;
+			if ((entity->flags & PHYSICS_FLAG)) {
+				if (entity->flags & GRAVITY_FLAG) {
+					float forcePerVertex = (entity->mass * gameState->gravityConstant) / (entity->vertexDataEnd - entity->vertexData);
+					for (int v = 0; v < entity->vertexDataEnd - entity->vertexData; v++) {
+						Vector2 vertexPos = entity->centerPosition;
+						vertexPos.x += entity->vertexData[v].position.x;
+						vertexPos.y += entity->vertexData[v].position.y;
+						ApplyForceToEntitiesVelocityImmediately(entity, { 0, forcePerVertex }, deltaTime, vertexPos);
+					}
+					entity->gravityApplied = true;
+				}
+				for (int j = 0; j < numOfRelevantEntities; j++) {
+					Entity* relevantEntity = relevantEntities[j];
+					if ((relevantEntity->flags & PHYSICS_FLAG) == 0) {
+						continue;
+					}
+					CollisionInfo collInfo = DetectCollisionWithEntity(entity, relevantEntity);
+					float totalMass = entity->mass + relevantEntity->mass;
+
+					if (collInfo.minOverlap > FLT_EPSILON) {
+						Vector2 forceApplicationPoint = CalculateForceApplicationPoint(entity, relevantEntity, 0);
+						if (forceApplicationPoint.x == 0 && forceApplicationPoint.y == 0) {
+							forceApplicationPoint = entity->centerPosition;
+						}
+						for (int k = 0; k < gameState->SOLVER_ITERATIONS; k++) {
+							Vector2 impulse = { 0, 0 }, relativeVelocityOfForceApplicationPoint = { 0, 0 };
+							CalculateAndApplyImpulse(gameState, entity, relevantEntity, collInfo, impulse, relativeVelocityOfForceApplicationPoint, forceApplicationPoint, solverIterationTimeStep);
+							HandleFriction(gameState, entity, relevantEntity, collInfo, impulse, relativeVelocityOfForceApplicationPoint, forceApplicationPoint, solverIterationTimeStep);
+						}
+					}
+				}
+				if (!(entity->flags & NON_MOVING_FLAG)) {
+					MoveAndRotateEntity(entity, deltaTime);
+					CalibrateEntityWithGrid(gameState, entity);
+				}
+				entity->netForce = { 0, 0 };
+				entity->torque = 0;
+			}
+		}
+		gameState->freeTimeFramesCounter++;
+		if (gameState->freeTimeFramesCounter >= gameState->freeTimeLimitInSeconds * gameState->averageFPS) {
+			gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
+		}
+
+
 	}
 	RetractTemporarySize(gameState, relevantEntitiesSize);
 }
@@ -356,7 +445,20 @@ void UpdateMainMenu(GameState* gameState, InputInfo inputInfo) {
 	RetractTemporarySize(gameState, relevantEntitiesSize);
 }
 
-void RestartGame();
+void RestartGameAndChangeScreenToMainScreen(GameState* gameState) {
+	uint64_t highestScore = gameState->score;
+	if (highestScore < gameState->highestScore) {
+		highestScore = gameState->highestScore;
+	}
+	std::memset(gameState, 0, gameState->arena.capacity + gameState->arena.temporaryCapacity + sizeof(GameState));
+	InitializeGameState(gameState);
+	InitializeMainMenu(gameState);
+	InitializeGameplayScreen(gameState);
+	gameState->gameplayScreenInitialized = true;
+	ChangeScreenTo(gameState, MAIN_SCREEN);
+	gameState->highestScore = highestScore;
+}
+	
 
 void InitializeEndScreen(GameState* gameState) {
 	float floorsCeiling = -FLT_MAX;
@@ -378,10 +480,48 @@ void InitializeEndScreen(GameState* gameState) {
 	score /= 100;
 	gameState->score = (long int)score;
 	snprintf(gameState->scoreText, sizeof(char) * 40, "%d", gameState->score);
+
+	VertexData* newVertexData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 4);
+	std::memcpy(newVertexData, gameState->rectData, sizeof(VertexData) * 4);
+	Vector2 playAgainButtonPos = { gameState->WINDOW_WIDTH / 2, gameState->WINDOW_HEIGHT / 2 + 100 };
+	Entity* playAgainButton = InitializeAndPushEntity(gameState, newVertexData, newVertexData + 4, 0, BUTTON_FLAG | HAS_TEXT, playAgainButtonPos, END_SCREEN);
+	playAgainButton->buttonFunction = &ChangeScreenTo;
+
+	char* playAgainText = (char*)PushSize(gameState, sizeof(char) * 11);
+	snprintf(playAgainText, sizeof(char) * 11, "PLAY AGAIN");
+	playAgainButton->text = playAgainText;
+
+	for (int i = 0; i < 4; i++) {
+		newVertexData[i].position.x *= 2;
+	}
 }
 
-void UpdateEndScreen(GameState* gameState) {
+void UpdateEndScreen(GameState* gameState, InputInfo inputInfo) {
 	int fontSize = 60;
 	float textWidth = MeasureText(gameState->scoreText, fontSize);
-	DrawText(gameState->scoreText, gameState->WINDOW_WIDTH / 2 - textWidth/2, gameState->WINDOW_HEIGHT / 2 - fontSize/2, fontSize, BLACK);
+	DrawText(gameState->scoreText, gameState->WINDOW_WIDTH / 2 - textWidth / 2, gameState->WINDOW_HEIGHT / 2 - fontSize / 2, fontSize, BLACK);
+
+	uint32_t relevantEntitiesSize = sizeof(Entity*) * 500;
+	Entity** relevantEntities = (Entity**)PushTemporarySize(gameState, relevantEntitiesSize);
+	if (inputInfo.mouseInputInfo.mouseReleasedThisFrame) {
+		//click
+		if (inputInfo.mouseInputInfo.inputDurationFrames < gameState->ClickThresholdFrames) {
+			Vector2 mousePos = inputInfo.mouseInputInfo.inputPositions[1];
+			int numOfCloseEntities = CalculateRelevantEntitiesForPosition(gameState, mousePos, relevantEntities);
+			bool selectedAnEntity = false;
+			for (int i = 0; i < numOfCloseEntities; i++) {
+				Entity* entity = relevantEntities[i];
+				bool pointIsInsideEntity = CheckIfAPointIsInsideAnEntity(mousePos, entity);
+				if (pointIsInsideEntity) {
+					std::cout << "Entity " << entity->id << " clicked" << std::endl;
+				}
+				if (pointIsInsideEntity && (entity->flags & BUTTON_FLAG)) {
+					entity->buttonFunction(gameState, MAIN_SCREEN);
+					return;
+				}
+			}
+		}
+	}
+
+	RetractTemporarySize(gameState, relevantEntitiesSize);
 }
