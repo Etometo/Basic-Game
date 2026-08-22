@@ -314,6 +314,10 @@ bool IsCounterClockwise(Vector2 v1, Vector2 v2, Vector2 v3) {
     return crossProduct < 0.0f;
 }
 
+float triangleArea(Vector2 a, Vector2 b, Vector2 c) {
+    return 0.5f * std::abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
+}
+
 Vector2 AddVectors(Vector2& v1, Vector2& v2) {
     Vector2 newVector = { v1.x + v2.x, v1.y + v2.y };
     return newVector;
@@ -794,7 +798,7 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
 
     if (collInfo.minOverlap > PENETRATION_SLOP) {
         float relativeVelOnCollisionLine = DotProduct(collInfo.normalizedOverlapLine, relativeVelocityOfForceApplicationPoint);
-        penetrationCorrectionAmount = ((BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP) / GetFrameTime()) / gameState->SOLVER_ITERATIONS;
+        penetrationCorrectionAmount = ((BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP) / deltaTime);
     }
 
     float velAlongNormal = DotProduct(collInfo.normalizedOverlapLine, relativeVelocityOfForceApplicationPoint);

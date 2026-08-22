@@ -20,13 +20,12 @@ int main() {
 	ChangeScreenTo(gameState, MAIN_SCREEN);
 
 	SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
-	InitWindow(gameState->WINDOW_WIDTH, gameState->WINDOW_HEIGHT, "asd");
+	InitWindow(gameState->WINDOW_WIDTH, gameState->WINDOW_HEIGHT, "GAME");
 	SetTargetFPS(gameState->goalFps);
 
 	MouseInputInfo mouseInputInfo = { NONE, false, 0, {{0, 0}, {0, 0}}};
 	InputInfo inputInfo = { mouseInputInfo, 0 };
 	while (!WindowShouldClose()) {
-		//std::cout << "Frame number " << gameState->frameCount << "is starting" << std::endl << std::endl;
 		BeginDrawing();
 			ClearBackground(RAYWHITE);
 

@@ -16,6 +16,8 @@ constexpr float SECONDS_FOR_ENTITY_TO_FREEZE = 1.5;
 
 constexpr int freeFallSpeed = 2;
 
+constexpr int SECONDS_ENTITY_HAS_TO_FREEZE_BEFORE_BEING_RESET = 10;
+
 struct GameState;
 
 typedef struct VertexData {
@@ -110,6 +112,8 @@ void PrintVector(Vector2 vec);
 void PrintVector(Vector3 vec);
 
 double DotProduct(Vector2& vec1, Vector2& vec2);
+
+float triangleArea(Vector2 a, Vector2 b, Vector2 c);
 
 float distance(Vector2 v1, Vector2 v2);
 

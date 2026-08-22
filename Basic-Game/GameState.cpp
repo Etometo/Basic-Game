@@ -97,7 +97,6 @@ void DeleteEntity(GameState* state, Entity* entity) {
 			Entity* entity = state->entities + (state->entitiesCapacity - 1 - i);
 			if (entity->id != 0) {
 				state->lastEntityOnEntities = entity;
-				std::cout << " ";
 				break;
 			}
 		}

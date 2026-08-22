@@ -61,6 +61,7 @@ typedef struct GameState {
 	bool entityInitialized;
 	uint16_t numOfEntitiesSpawnedAndUsed;
 	uint16_t limitOfSpawnedEntities;
+	uint32_t framesElapsedWaitingForTheEntityToStop;
 
 	Entity* floor;
 
@@ -68,8 +69,9 @@ typedef struct GameState {
 	VertexData* rectDataEnd;
 
 	long unsigned int score;
+	char scoreText[50];
 	long unsigned int highestScore;
-	char scoreText[40];
+	char highestScoreText[50];
 };
 
 enum MOUSE_INPUT_TYPE{
