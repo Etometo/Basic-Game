@@ -722,8 +722,8 @@ Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2, float vertexOutsi
 
 	Vector2 centerOfVerticesInsideE2 = { 0, 0 };
 	Vector2 centerOfVerticesInsideE1 = { 0, 0 };
-    int numberOfVerticesOfE1InsideE2 = CheckHowManyVerticesOfE1IsInE2(e1, e2, centerOfVerticesInsideE2, vertexOutsidePush);
-    int numberOfVerticesOfE2InsideE1 = CheckHowManyVerticesOfE1IsInE2(e2, e1, centerOfVerticesInsideE1, vertexOutsidePush);
+    int numberOfVerticesOfE1InsideE2 = CheckHowManyVerticesOfE1IsInE2(e1, e2, centerOfVerticesInsideE2);
+    int numberOfVerticesOfE2InsideE1 = CheckHowManyVerticesOfE1IsInE2(e2, e1, centerOfVerticesInsideE1);
     //come up with something for the name
     int divisionNumber = 0;
 
@@ -745,23 +745,20 @@ Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2, float vertexOutsi
     return forceApplicationPoint;
 }
 
-unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sumOfInsiderPointsPositions, float vertexOutsidePush) {
+unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sumOfInsiderPointsPositions) {
+    //
 	Vector2 centerOfVerticesInsideE2 = { 0, 0 };
 	int numberOfVerticesInsideE2 = 0;
     float vertexRelativePositionMagnitude;
-    float sin, cos;
     for (int i = 0; i < e1->vertexDataEnd - e1->vertexData; i++) {
 		Vector2 vertexPos;
         vertexPos = e1->vertexData[i].position;
-        vertexRelativePositionMagnitude = magnitude(vertexPos);
-        sin = vertexPos.y / vertexRelativePositionMagnitude;
-        cos = vertexPos.x / vertexRelativePositionMagnitude;
 
-        vertexPos.x += e1->centerPosition.x + vertexOutsidePush*cos;
-        vertexPos.y += e1->centerPosition.y + vertexOutsidePush*sin;
+        vertexPos.x += e1->centerPosition.x;
+        vertexPos.y += e1->centerPosition.y;
         if (CheckIfAPointIsInsideAnEntity(vertexPos, e2)) {
-			centerOfVerticesInsideE2.x += vertexPos.x - vertexOutsidePush*cos;
-			centerOfVerticesInsideE2.y += vertexPos.y - vertexOutsidePush*sin;
+            centerOfVerticesInsideE2.x += vertexPos.x;
+            centerOfVerticesInsideE2.y += vertexPos.y;
 			numberOfVerticesInsideE2++;
 		}
 	}
@@ -798,7 +795,12 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
 
     if (collInfo.minOverlap > PENETRATION_SLOP) {
         float relativeVelOnCollisionLine = DotProduct(collInfo.normalizedOverlapLine, relativeVelocityOfForceApplicationPoint);
-        penetrationCorrectionAmount = ((BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP) / deltaTime);
+        /*if ((e1->flags | e2->flags) & NON_MOVING_FLAG && false) {
+			penetrationCorrectionAmount = ((collInfo.minOverlap - PENETRATION_SLOP) / deltaTime);
+        }
+        else {
+        }*/
+		penetrationCorrectionAmount = ((BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP) / deltaTime);
     }
 
     float velAlongNormal = DotProduct(collInfo.normalizedOverlapLine, relativeVelocityOfForceApplicationPoint);
@@ -835,8 +837,6 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
     impulse.x += j * collInfo.normalizedOverlapLine.x;
     impulse.y += j * collInfo.normalizedOverlapLine.y;
 
-    float penetrationResolveForceMagnitude = penetrationCorrectionAmount / sumOfInverseMasses / deltaTime;
-    //e1->penetrationResolveForce = { penetrationResolveForceMagnitude * collInfo.normalizedOverlapLine.x, penetrationResolveForceMagnitude * collInfo.normalizedOverlapLine.y };
 
     Vector2 impulseForce = { impulse.x / deltaTime, impulse.y / deltaTime };
     ApplyForceToEntitiesVelocityImmediately(e1, impulseForce, deltaTime, forceApplicationPoint);
