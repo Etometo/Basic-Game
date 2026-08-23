@@ -64,24 +64,58 @@ void InitializeGameplayScreen(GameState* gameState) {
 }
 
 void ResetChosenEntityAndGameplayStateIntoCuttingOrChoosingState(GameState* gameState) {
-	gameState->chosenPiece->centerPosition = gameState->newEntitySpawnPoint;
-	gameState->chosenPiece->physicsVelocity = { 0, 0 };
-	gameState->chosenPiece->flags |= BEING_CUT_FLAG | BEING_CHOSEN_FLAG;
-	gameState->chosenPiece->flags &= ~(PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG | NOT_IN_FREE_FALL_FLAG);
-	float reverseAngle = -gameState->chosenPiece->angle;
-	float sin = sinf(reverseAngle);
-	float cos = cosf(reverseAngle);
-	for (int i = 0; i < gameState->chosenPiece->vertexDataEnd - gameState->chosenPiece->vertexData; i++) {
-		Vector2 vertexPos = gameState->chosenPiece->vertexData[i].position;
-		gameState->chosenPiece->vertexData[i].position.x = vertexPos.x * cos - vertexPos.y * sin;
-		gameState->chosenPiece->vertexData[i].position.y = vertexPos.x * sin + vertexPos.y * cos;
+	if (gameState->entityBeingCut != nullptr) {
+		gameState->chosenPiece->centerPosition = gameState->newEntitySpawnPoint;
+		gameState->chosenPiece->centerPosition.x -= 100;
+		gameState->chosenPiece->temporaryPositionChange.x = -100;
+		gameState->chosenPiece->physicsVelocity = { 0, 0 };
+		gameState->chosenPiece->flags = BEING_CHOSEN_FLAG | IS_A_BUILDING_BLOCK_FLAG;
+		float reverseAngle = -gameState->chosenPiece->angle;
+		float sin = sinf(reverseAngle);
+		float cos = cosf(reverseAngle);
+		for (int i = 0; i < gameState->chosenPiece->vertexDataEnd - gameState->chosenPiece->vertexData; i++) {
+			Vector2 vertexPos = gameState->chosenPiece->vertexData[i].position;
+			gameState->chosenPiece->vertexData[i].position.x = vertexPos.x * cos - vertexPos.y * sin;
+			gameState->chosenPiece->vertexData[i].position.y = vertexPos.x * sin + vertexPos.y * cos;
+		}
+		gameState->chosenPiece->angle = 0;
+
+		gameState->entityBeingCut->centerPosition.x += 100;
+		gameState->entityBeingCut->temporaryPositionChange.x = 100;
+		gameState->entityBeingCut->flags = BEING_CHOSEN_FLAG | IS_A_BUILDING_BLOCK_FLAG;
+
+		gameState->cutPiece1 = gameState->chosenPiece;
+		gameState->cutPiece2 = gameState->entityBeingCut;
+
+		gameState->chosenPiece = nullptr;
+		Entity* emptyEntity = InitializeAndPushEntity(gameState, gameState->rectData, gameState->rectDataEnd, 0, 0, { 0, 0 }, GAMEPLAY_SCREEN);
+		DeleteEntity(gameState, emptyEntity);
+		gameState->entityBeingCut = emptyEntity;
+
+		gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
+		gameState->framesElapsedWaitingForTheEntityToStop = 0;
+		CalibrateEntityWithGrid(gameState, gameState->entityBeingCut);
 	}
-	gameState->chosenPiece->angle = 0;
-	gameState->entityBeingCut = gameState->chosenPiece;
-	gameState->chosenPiece = nullptr;
-	gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
-	gameState->framesElapsedWaitingForTheEntityToStop = 0;
-	CalibrateEntityWithGrid(gameState, gameState->entityBeingCut);
+	else {
+		gameState->chosenPiece->centerPosition = gameState->newEntitySpawnPoint;
+		gameState->chosenPiece->physicsVelocity = { 0, 0 };
+		gameState->chosenPiece->flags |= BEING_CUT_FLAG | BEING_CHOSEN_FLAG;
+		gameState->chosenPiece->flags &= ~(PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG | NOT_IN_FREE_FALL_FLAG);
+		float reverseAngle = -gameState->chosenPiece->angle;
+		float sin = sinf(reverseAngle);
+		float cos = cosf(reverseAngle);
+		for (int i = 0; i < gameState->chosenPiece->vertexDataEnd - gameState->chosenPiece->vertexData; i++) {
+			Vector2 vertexPos = gameState->chosenPiece->vertexData[i].position;
+			gameState->chosenPiece->vertexData[i].position.x = vertexPos.x * cos - vertexPos.y * sin;
+			gameState->chosenPiece->vertexData[i].position.y = vertexPos.x * sin + vertexPos.y * cos;
+		}
+		gameState->chosenPiece->angle = 0;
+		gameState->entityBeingCut = gameState->chosenPiece;
+		gameState->chosenPiece = nullptr;
+		gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
+		gameState->framesElapsedWaitingForTheEntityToStop = 0;
+		CalibrateEntityWithGrid(gameState, gameState->entityBeingCut);
+	}
 }
 
 void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
@@ -481,9 +515,9 @@ void InitializeEndScreen(GameState* gameState) {
 			shapeArea += triangleArea(v1, v2, v3);
 		}
 
-		score += sqrtf(powf(entity->centerPosition.y - floorsCeiling, 2) * powf(shapeArea, 2));
+		score += sqrtf(powf(entity->centerPosition.y - floorsCeiling, 5) * powf(shapeArea, 2));
 	}
-	score /= 1000;
+	score /= 10000000;
 	gameState->score = (long int)score;
 	snprintf(gameState->scoreText, sizeof(char) * 50, "%d", gameState->score);
 	if (score > gameState->highestScore) {
