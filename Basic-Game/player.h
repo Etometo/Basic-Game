@@ -72,6 +72,7 @@ typedef struct Entity {
 	Vector2 penetrationVelocity;
 	Vector2 physicsVelocity;
 	Vector2 lastSpeed;
+	float linearDamping;
 	float frictionCons;
 
 	//inside the screen is positive

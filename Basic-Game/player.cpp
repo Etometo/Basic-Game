@@ -58,6 +58,7 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
     }
     inertia /= 10;
     returnPointer->angularDamping = 5;
+    returnPointer->linearDamping = 1;
 
 	return returnPointer;
 }
@@ -360,6 +361,8 @@ void RotateEntity(Entity* entity, float deltaTime) {
 }
 
 void MoveAndRotateEntity(Entity* player, float deltaTime) {
+    player->physicsVelocity.x *= 1 / (1 + player->linearDamping * deltaTime);
+    player->physicsVelocity.y *= 1 / (1 + player->linearDamping * deltaTime);
 	player->centerPosition.x += player->physicsVelocity.x * deltaTime;
 	player->centerPosition.y += player->physicsVelocity.y * deltaTime;
 	player->lastSpeed = { player->physicsVelocity.x, player->physicsVelocity.y };
