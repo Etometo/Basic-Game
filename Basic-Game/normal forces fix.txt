@@ -1,0 +1,1 @@
+start from the non moving objects and check collisions and for every thing that collides with it apply normal force and for everything that collides with that apply normal force and so on

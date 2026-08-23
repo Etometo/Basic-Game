@@ -164,8 +164,14 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 							clickedEntity->flags &= ~(BEING_CHOSEN_FLAG | BEING_CUT_FLAG);
 							clickedEntity->flags |= ADJUSTING_POSITION_FLAG;
 
-							clickedEntity->centerPosition.x -= clickedEntity->temporaryPositionChange.x;
 							if (gameState->entityBeingCut->id == 0) {
+								gameState->cutPiece1->centerPosition.x -= gameState->cutPiece1->temporaryPositionChange.x;
+								gameState->cutPiece1->centerPosition.y -= gameState->cutPiece1->temporaryPositionChange.y;
+								gameState->cutPiece2->centerPosition.x -= gameState->cutPiece2->temporaryPositionChange.x;
+								gameState->cutPiece2->centerPosition.y -= gameState->cutPiece2->temporaryPositionChange.y;
+								gameState->cutPiece1->temporaryPositionChange = { 0, 0 };
+								gameState->cutPiece2->temporaryPositionChange = { 0, 0 };
+
 								if (clickedEntity->id == gameState->cutPiece1->id) {
 									gameState->entityBeingCut = gameState->cutPiece2;
 									gameState->cutPiece2->centerPosition.x -= gameState->cutPiece2->temporaryPositionChange.x;
@@ -257,7 +263,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 						if (relevantEntity->flags & NOT_IN_FREE_FALL_FLAG) {
 							relevantEntity->flags &= ~NOT_IN_FREE_FALL_FLAG;
 						}
-						Vector2 forceApplicationPoint = CalculateForceApplicationPoint(entity, relevantEntity, 0);
+						Vector2 forceApplicationPoint = CalculateForceApplicationPoint(entity, relevantEntity, 0, collInfo);
 						if (forceApplicationPoint.x == 0 && forceApplicationPoint.y == 0) {
 							forceApplicationPoint = entity->centerPosition;
 						}
@@ -362,7 +368,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 					float totalMass = entity->mass + relevantEntity->mass;
 
 					if (collInfo.minOverlap > FLT_EPSILON) {
-						Vector2 forceApplicationPoint = CalculateForceApplicationPoint(entity, relevantEntity, 0);
+						Vector2 forceApplicationPoint = CalculateForceApplicationPoint(entity, relevantEntity, 0, collInfo);
 						if (forceApplicationPoint.x == 0 && forceApplicationPoint.y == 0) {
 							forceApplicationPoint = entity->centerPosition;
 						}

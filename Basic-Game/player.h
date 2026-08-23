@@ -153,7 +153,7 @@ int CalculateRelevantEntitiesForPosition(GameState* gameState, Vector2 position,
 
 CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2);
 
-Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2, float vertexOutsidePush);
+Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2, float vertexOutsidePush, CollisionInfo collInfo);
 
 void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2& impulse, Vector2& relativeVelocity, Vector2 forceApplicationPoint, float deltaTime);
 
@@ -161,7 +161,7 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
 
 void ApplyGravityCalculatePhysicsAndMoveEntity(GameState* gameState, Entity* entity);
 
-unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sumOfInsiderVerticesPositions);
+unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sumOfInsiderVerticesPositions, CollisionInfo collInfo);
 
 void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDirection, float deltaTime, Vector2 &relativeVelocity, Vector2 forceApplicationPoint);
 

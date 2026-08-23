@@ -1,0 +1,7 @@
+Check every vertex at entity 1 to see if they are inside entity 2
+If there are vertices from e1 that are inside e2, apply the force at their center.
+If there is not any, check every vertex from e2 to see if they are inside e1 and apply the force at the center of the vertices that are inside e1.
+
+If the y value of the raycast is between the two vertices;
+	if both vertices x values are bigger than the raycast then they intersect;
+	if	

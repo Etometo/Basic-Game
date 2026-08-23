@@ -717,24 +717,20 @@ CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2) {
     }
 }
 
-Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2, float vertexOutsidePush) {
+Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2, float vertexOutsidePush, CollisionInfo collInfo) {
 	Vector2 forceApplicationPoint = { 0, 0 };
 
 	Vector2 centerOfVerticesInsideE2 = { 0, 0 };
 	Vector2 centerOfVerticesInsideE1 = { 0, 0 };
-    int numberOfVerticesOfE1InsideE2 = CheckHowManyVerticesOfE1IsInE2(e1, e2, centerOfVerticesInsideE2);
-    int numberOfVerticesOfE2InsideE1 = CheckHowManyVerticesOfE1IsInE2(e2, e1, centerOfVerticesInsideE1);
+    int numberOfVerticesOfE1InsideE2 = CheckHowManyVerticesOfE1IsInE2(e1, e2, centerOfVerticesInsideE2, collInfo);
+    int numberOfVerticesOfE2InsideE1 = CheckHowManyVerticesOfE1IsInE2(e2, e1, centerOfVerticesInsideE1, collInfo);
     //come up with something for the name
     int divisionNumber = 0;
 
     if (numberOfVerticesOfE1InsideE2 != 0) {
-		centerOfVerticesInsideE2.x /= numberOfVerticesOfE1InsideE2;
-		centerOfVerticesInsideE2.y /= numberOfVerticesOfE1InsideE2;
         divisionNumber++;
     }
     if (numberOfVerticesOfE2InsideE1 != 0) {
-		centerOfVerticesInsideE1.x /= numberOfVerticesOfE2InsideE1;
-		centerOfVerticesInsideE1.y /= numberOfVerticesOfE2InsideE1;
         divisionNumber++;
     }
     if (divisionNumber != 0) {
@@ -745,25 +741,30 @@ Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2, float vertexOutsi
     return forceApplicationPoint;
 }
 
-unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sumOfInsiderPointsPositions) {
-    //
+unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& weightedCenterOfInsiderPointsPositions, CollisionInfo collInfo) {
+    //calculates the weighted center of the points of e1 thats inside e2
 	Vector2 centerOfVerticesInsideE2 = { 0, 0 };
 	int numberOfVerticesInsideE2 = 0;
     float vertexRelativePositionMagnitude;
+    float sumOfWeights = 0;
     for (int i = 0; i < e1->vertexDataEnd - e1->vertexData; i++) {
 		Vector2 vertexPos;
         vertexPos = e1->vertexData[i].position;
+        float projectionOfVertexToOverlapLine = DotProduct(collInfo.normalizedOverlapLine, vertexPos);
+        //we take the cube so little differences get more importance
+        float weight = abs(projectionOfVertexToOverlapLine * projectionOfVertexToOverlapLine * projectionOfVertexToOverlapLine) / 100;
+        sumOfWeights += weight;
 
         vertexPos.x += e1->centerPosition.x;
         vertexPos.y += e1->centerPosition.y;
         if (CheckIfAPointIsInsideAnEntity(vertexPos, e2)) {
-            centerOfVerticesInsideE2.x += vertexPos.x;
-            centerOfVerticesInsideE2.y += vertexPos.y;
+            centerOfVerticesInsideE2.x += vertexPos.x * weight;
+            centerOfVerticesInsideE2.y += vertexPos.y * weight;
 			numberOfVerticesInsideE2++;
 		}
 	}
-    sumOfInsiderPointsPositions.x = centerOfVerticesInsideE2.x;
-    sumOfInsiderPointsPositions.y = centerOfVerticesInsideE2.y;
+    weightedCenterOfInsiderPointsPositions.x = centerOfVerticesInsideE2.x / sumOfWeights;
+    weightedCenterOfInsiderPointsPositions.y = centerOfVerticesInsideE2.y / sumOfWeights;
 
     return numberOfVerticesInsideE2;
 }
