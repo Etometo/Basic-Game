@@ -80,6 +80,7 @@ void ResetChosenEntityAndGameplayStateIntoCuttingOrChoosingState(GameState* game
 	gameState->entityBeingCut = gameState->chosenPiece;
 	gameState->chosenPiece = nullptr;
 	gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
+	gameState->framesElapsedWaitingForTheEntityToStop = 0;
 	CalibrateEntityWithGrid(gameState, gameState->entityBeingCut);
 }
 
@@ -322,16 +323,17 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 			(gameState->entities + i)->gravityApplied = false;
 		}
 
-		//we check the gameplay state again because it can be changed in this if statement
-		if (gameState->gameplayState == WAITING_FOR_THE_ENTITY_TO_STOP && gameState->chosenPiece->centerPosition.y > 1000) {
-			ResetChosenEntityAndGameplayStateIntoCuttingOrChoosingState(gameState);
+		//we check the gameplay state again because it can be changed before this if statement
+		if (gameState->gameplayState == WAITING_FOR_THE_ENTITY_TO_STOP) {
+			if (gameState->chosenPiece->centerPosition.y > 1000) {
+				ResetChosenEntityAndGameplayStateIntoCuttingOrChoosingState(gameState);
+			}
+			gameState->framesElapsedWaitingForTheEntityToStop++;
+			if (gameState->framesElapsedWaitingForTheEntityToStop > SECONDS_ENTITY_HAS_TO_FREEZE_BEFORE_BEING_RESET * gameState->averageFPS) {
+				ResetChosenEntityAndGameplayStateIntoCuttingOrChoosingState(gameState);
+			}
 		}
-
-		gameState->framesElapsedWaitingForTheEntityToStop++;
-		if (gameState->framesElapsedWaitingForTheEntityToStop > SECONDS_ENTITY_HAS_TO_FREEZE_BEFORE_BEING_RESET * gameState->averageFPS) {
-			ResetChosenEntityAndGameplayStateIntoCuttingOrChoosingState(gameState);
-		}
-		if (gameState->gameplayState != WAITING_FOR_THE_ENTITY_TO_STOP) {
+		else {
 			gameState->framesElapsedWaitingForTheEntityToStop = 0;
 		}
 	}

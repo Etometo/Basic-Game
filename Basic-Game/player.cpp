@@ -444,25 +444,18 @@ bool CheckIfAPointIsInsideAnEntity(Vector2 positionOfPoint, Entity* entity) {
     return isInside;
 }
 
-int MakeAnArrayFullOfUniqueItems(GameState* gameState, char* arrayStart, char* arrayEnd, uint32_t numOfElements, uint32_t typeSize) {
+int MakeAnArrayFullOfUniqueItems(GameState* gameState, char* arrayStart, char** arrayEnd, uint32_t numOfElements, uint32_t typeSize) {
     uint32_t totalAllocatedSize = (numOfElements) * typeSize;
     char* uniqueItems = (char*)PushSize(gameState, totalAllocatedSize);
     uint32_t numOfUniqueItems = 0;
 
-    char* item = (char*)PushSize(gameState, typeSize);
+    char* item;
     for (int i = 0; i < numOfElements; i++) {
         item = arrayStart + (i * typeSize);
         uint32_t count = 0;
         for (int j = 0; j < numOfUniqueItems; j++) {
             char* itemInUniqueItems = uniqueItems + (j * typeSize);
-            bool bytesAreIdentical = true;
-            for (int b = 0; b < typeSize; b++) {
-                if (*(itemInUniqueItems + b) != *(item + b)) {
-                    bytesAreIdentical = false;
-                    break;
-                }
-            }
-            if (bytesAreIdentical) {
+            if (memcmp(itemInUniqueItems, item, typeSize) == 0) {
                 count++;
                 break;
             }
@@ -474,12 +467,11 @@ int MakeAnArrayFullOfUniqueItems(GameState* gameState, char* arrayStart, char* a
             numOfUniqueItems++;
         }
     }
-    RetractSize(gameState, typeSize);
 
-    arrayEnd = arrayStart;
+    *arrayEnd = arrayStart;
     for (int b = 0; b < numOfUniqueItems * typeSize; b++) {
-        *(arrayEnd) = uniqueItems[b];
-        arrayEnd++;
+        **(arrayEnd) = uniqueItems[b];
+        (*arrayEnd)++;
     }
 
     RetractSize(gameState, totalAllocatedSize);
@@ -511,7 +503,7 @@ int CalculateRelevantEntitiesForPosition(GameState* gameState, Vector2 position,
         }
     }
 
-    MakeAnArrayFullOfUniqueItems(gameState, (char*)relevanEntities, (char*)relevantEntitiesEnd, relevantEntitiesEnd - relevanEntities, sizeof(Entity*));
+    MakeAnArrayFullOfUniqueItems(gameState, (char*)relevanEntities, (char**)&relevantEntitiesEnd, relevantEntitiesEnd - relevanEntities, sizeof(Entity*));
 
     return relevantEntitiesEnd - relevanEntities;
 }
@@ -539,7 +531,7 @@ int CalculateRelevantEntitiesForEntity(GameState* gameState, Entity* entity, Ent
         }
     }
 
-    MakeAnArrayFullOfUniqueItems(gameState, (char*)relevanEntities, (char*)relevantEntitiesEnd, relevantEntitiesEnd - relevanEntities, sizeof(Entity*));
+    MakeAnArrayFullOfUniqueItems(gameState, (char*)relevanEntities, (char**)&relevantEntitiesEnd, relevantEntitiesEnd - relevanEntities, sizeof(Entity*));
 
     return relevantEntitiesEnd - relevanEntities;
 }
@@ -753,7 +745,6 @@ unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& wei
         float projectionOfVertexToOverlapLine = DotProduct(collInfo.normalizedOverlapLine, vertexPos);
         //we take the cube so little differences get more importance
         float weight = abs(projectionOfVertexToOverlapLine * projectionOfVertexToOverlapLine * projectionOfVertexToOverlapLine) / 100;
-        sumOfWeights += weight;
 
         vertexPos.x += e1->centerPosition.x;
         vertexPos.y += e1->centerPosition.y;
@@ -761,10 +752,13 @@ unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& wei
             centerOfVerticesInsideE2.x += vertexPos.x * weight;
             centerOfVerticesInsideE2.y += vertexPos.y * weight;
 			numberOfVerticesInsideE2++;
+			sumOfWeights += weight;
 		}
 	}
-    weightedCenterOfInsiderPointsPositions.x = centerOfVerticesInsideE2.x / sumOfWeights;
-    weightedCenterOfInsiderPointsPositions.y = centerOfVerticesInsideE2.y / sumOfWeights;
+    if (sumOfWeights > 0) {
+		weightedCenterOfInsiderPointsPositions.x = centerOfVerticesInsideE2.x / sumOfWeights;
+		weightedCenterOfInsiderPointsPositions.y = centerOfVerticesInsideE2.y / sumOfWeights;
+    }
 
     return numberOfVerticesInsideE2;
 }
@@ -796,12 +790,12 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
 
     if (collInfo.minOverlap > PENETRATION_SLOP) {
         float relativeVelOnCollisionLine = DotProduct(collInfo.normalizedOverlapLine, relativeVelocityOfForceApplicationPoint);
-        /*if ((e1->flags | e2->flags) & NON_MOVING_FLAG && false) {
-			penetrationCorrectionAmount = ((collInfo.minOverlap - PENETRATION_SLOP) / deltaTime);
+        if ((e1->flags | e2->flags) & NON_MOVING_FLAG && false) {
+			penetrationCorrectionAmount = ((collInfo.minOverlap - PENETRATION_SLOP) / GetFrameTime()) / gameState->SOLVER_ITERATIONS;
         }
         else {
-        }*/
-		penetrationCorrectionAmount = ((BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP) / GetFrameTime()) / gameState->SOLVER_ITERATIONS;
+			penetrationCorrectionAmount = ((BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP) / GetFrameTime()) / gameState->SOLVER_ITERATIONS;
+        }
     }
 
     float velAlongNormal = DotProduct(collInfo.normalizedOverlapLine, relativeVelocityOfForceApplicationPoint);
