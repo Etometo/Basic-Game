@@ -12,7 +12,7 @@
 #include "GameState.h"
 
 constexpr float BAUMGARTE_BETA = 0.5f; 
-constexpr float PENETRATION_SLOP = 0.2;           
+constexpr float PENETRATION_SLOP = 0.8;           
 constexpr float EPSILON = 1e-5f;           
 
 float GetDeltaTime() {
@@ -223,7 +223,6 @@ void CalibrateEntityWithGrid(GameState* gameState, Entity* e)
 		for (int j = 0; j < gameState->gridDimentions[2]; j++) {
 			if (cellArray[j] == e->id) {
                 cellArray[j] = 0;
-                break;
 			}
 		}
     }
@@ -277,9 +276,11 @@ void DrawEntity(Entity* player) {
 		DrawText(player->text, player->centerPosition.x - textWidth/2, player->centerPosition.y - fontSize/2, fontSize, BLACK);
     }
     else {
+        /*
 		char idStr[10];
 		snprintf(idStr, sizeof(idStr), "%d", player->id);
 		DrawText(idStr, player->centerPosition.x, player->centerPosition.y, 20, BLACK);
+*/
     }
 }
 

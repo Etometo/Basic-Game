@@ -87,6 +87,17 @@ void RetractSize(GameState* state, size_t sizeInBytes) {
 }
 
 void DeleteEntity(GameState* state, Entity* entity) {
+    for (int i = 0; i < entity->gridPositionOfVerticesSize; i++) {
+        uint32_t rowIdx = *(entity->gridPositionsOfVertices + (i * 2)), columnIdx = *(entity->gridPositionsOfVertices + (i * 2) + 1);
+        if (rowIdx > 40000 || columnIdx > 40000) { continue; }
+		uint32_t* cellArray = state->spatialGrid + ((rowIdx * state->gridDimentions[0] + columnIdx) * state->gridDimentions[2]);
+		for (int j = 0; j < state->gridDimentions[2]; j++) {
+			if (cellArray[j] == entity->id) {
+                cellArray[j] = 0;
+			}
+		}
+    }
+
 	std::memset((void*)entity, 0, sizeof(Entity));
 	state->addedEntities -= 1;
 	if ((state->nextEmptyPlaceForEntity - entity) > 0) {

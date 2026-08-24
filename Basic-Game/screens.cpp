@@ -94,7 +94,8 @@ void ResetChosenEntityAndGameplayStateIntoCuttingOrChoosingState(GameState* game
 
 		gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
 		gameState->framesElapsedWaitingForTheEntityToStop = 0;
-		CalibrateEntityWithGrid(gameState, gameState->entityBeingCut);
+		CalibrateEntityWithGrid(gameState, gameState->cutPiece1);
+		CalibrateEntityWithGrid(gameState, gameState->cutPiece2);
 	}
 	else {
 		gameState->chosenPiece->centerPosition = gameState->newEntitySpawnPoint;
