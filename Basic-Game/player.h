@@ -67,6 +67,7 @@ typedef struct Entity {
 	//this is zeroed in the first time it is used.
 	Vector2 penetrationResolveForce;
 	Vector2 forcesMultipliedByAppliedTime;
+	Vector2 velocityAppliedToThePosition;
 	Vector2 netForce;
 	Vector2 acceleration;
 	//amount the object was moved directly to prevent penetrations
@@ -81,6 +82,7 @@ typedef struct Entity {
 	float torque;
 	float rotationalAcceleration;
 	float rotationalVelocity;
+	float rotationalVelocityAppliedToPosition;
 	float angle;
 	float angularDamping;
 

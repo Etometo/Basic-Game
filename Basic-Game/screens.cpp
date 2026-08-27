@@ -131,7 +131,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 
 				uint32_t entityFlags = BEING_CUT_FLAG | BEING_CHOSEN_FLAG | IS_A_BUILDING_BLOCK_FLAG;
 				gameState->entityBeingCut = (Entity*)InitializeAndPushEntity(gameState, newVertexData, newVertexData + 4, 10, entityFlags, gameState->newEntitySpawnPoint, GAMEPLAY_SCREEN);
-				gameState->entityBeingCut->frictionCons = 100;
+				gameState->entityBeingCut->frictionCons = 200;
 				gameState->readyForNewEntityInitialization = false;
 				gameState->entityInitialized = true;
 				gameState->numOfEntitiesSpawnedAndUsed++;

@@ -366,18 +366,28 @@ float magnitude(Vector2 v) {
     return sqrtf(square(v.x) + square(v.y));
 }
 void RotateEntity(Entity* entity, float deltaTime) {
+    entity->rotationalVelocity -= entity->rotationalVelocityAppliedToPosition;
     entity->rotationalVelocity *= 1 / (1 + entity->angularDamping * deltaTime);
     float rotationalChange = entity->rotationalVelocity * deltaTime;
     entity->angle += rotationalChange;
+    entity->rotationalVelocity += entity->rotationalVelocityAppliedToPosition;
+    entity->rotationalVelocityAppliedToPosition = 0;
 }
 
 void MoveAndRotateEntity(Entity* player, float deltaTime) {
+    player->physicsVelocity.x -= player->velocityAppliedToThePosition.x;
+    player->physicsVelocity.y -= player->velocityAppliedToThePosition.y;
+
     player->physicsVelocity.x *= 1 / (1 + player->linearDamping * deltaTime);
     player->physicsVelocity.y *= 1 / (1 + player->linearDamping * deltaTime);
 	player->centerPosition.x += player->physicsVelocity.x * deltaTime;
 	player->centerPosition.y += player->physicsVelocity.y * deltaTime;
 	player->lastSpeed = { player->physicsVelocity.x, player->physicsVelocity.y };
 	player->penetrationVelocity = { 0, 0 };
+
+    player->physicsVelocity.x += player->velocityAppliedToThePosition.x;
+    player->physicsVelocity.y += player->velocityAppliedToThePosition.y;
+    player->velocityAppliedToThePosition = { 0, 0 };
 
 	RotateEntity(player, deltaTime);
 }
@@ -417,6 +427,37 @@ void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, floa
 
     entity->forcesMultipliedByAppliedTime.x += force.x * deltaTime;
     entity->forcesMultipliedByAppliedTime.y += force.y * deltaTime;
+}
+
+void ApplyForceToEntitiesPositionAndVelocityImmediately(Entity* entity, Vector2 force, float deltaTime, Vector2 forceApplicationPoint) {
+    Vector2 forceApplicationPointFromTheCenter;
+    float torque;
+    forceApplicationPointFromTheCenter.x = forceApplicationPoint.x - entity->centerPosition.x;
+    forceApplicationPointFromTheCenter.y = forceApplicationPoint.y - entity->centerPosition.y;
+    if (abs(forceApplicationPointFromTheCenter.x) < EPSILON && abs(forceApplicationPointFromTheCenter.y) < EPSILON) {
+        torque = 0;
+    }
+    else {
+		Vector2 torqueAxis = { -forceApplicationPointFromTheCenter.y, forceApplicationPointFromTheCenter.x };
+		torque = DotProduct(force, torqueAxis);
+    }
+
+    entity->netForce.x += force.x;
+    entity->netForce.y += force.y;
+    entity->acceleration.x = force.x / entity->mass;
+    entity->acceleration.y = force.y / entity->mass;
+    entity->physicsVelocity.x += entity->acceleration.x * deltaTime;
+    entity->physicsVelocity.y += entity->acceleration.y * deltaTime;
+    entity->centerPosition.x += entity->acceleration.x * deltaTime * deltaTime;
+    entity->centerPosition.y += entity->acceleration.y * deltaTime * deltaTime;
+    entity->velocityAppliedToThePosition.x += entity->acceleration.x * deltaTime;
+    entity->velocityAppliedToThePosition.y += entity->acceleration.y * deltaTime;
+
+    entity->torque += torque;
+    entity->rotationalAcceleration = torque / entity->inertia;
+    entity->rotationalVelocity += entity->rotationalAcceleration * deltaTime;
+    entity->angle += entity->rotationalAcceleration * deltaTime*deltaTime;
+    entity->rotationalVelocityAppliedToPosition += entity->rotationalAcceleration * deltaTime;
 }
 
 
@@ -993,8 +1034,7 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
             friction = maxFriction;
         }
         else {
-            e1->linearDamping = 50;
-            e2->linearDamping = 50;
+            friction = frictionToStopTheEntities;
         }
 
         int frictionDir = -relativeVelOnFrictionAxis / abs(relativeVelOnFrictionAxis);
