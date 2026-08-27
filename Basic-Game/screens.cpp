@@ -56,7 +56,7 @@ void InitializeGameplayScreen(GameState* gameState) {
 	*(tri2DataEnd++) = VertexData{ 66.6667f, -33.3333f };
 
 	Vector2 floorCenterPos = { 400, 750 };
-	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, NON_MOVING_FLAG | GROUND_COLLISION_FLAG | PHYSICS_FLAG, floorCenterPos, GAMEPLAY_SCREEN);
+	Entity* floor = InitializeAndPushEntity(gameState, floorRectData, floorRectDataEnd, 0.2, NON_MOVING_FLAG | GROUND_COLLISION_FLAG | PHYSICS_FLAG | IN_CONTACT_WITH_GROUND_FLAG, floorCenterPos, GAMEPLAY_SCREEN);
 	floor->frictionCons = 130;
 
 	gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
@@ -126,7 +126,6 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 	
 	if (gameState->gameplayState == CUTTING_OR_CHOOSING_AN_ENTITY) {
 		if (gameState->entityBeingCut == nullptr) {
-			int FPS = GetFPS();
 			if(gameState->freeTimeFramesCounter >= gameState->averageFPS*gameState->freeTimeLimitInSeconds){
 				for (int i = 0; i < (gameState->lastEntityOnEntities - gameState->entities) + 1; i++) {
 					Entity* entity = gameState->entities + i;
@@ -147,6 +146,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 				if (gameState->numOfEntitiesSpawnedAndUsed > gameState->limitOfSpawnedEntities) {
 					InitializeEndScreen(gameState);
 					ChangeScreenTo(gameState, END_SCREEN);
+					return;
 				}
 				gameState->freeTimeFramesCounter = 0;
 			}
@@ -200,6 +200,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 							clickedEntity->flags &= ~(BEING_CHOSEN_FLAG | BEING_CUT_FLAG);
 							clickedEntity->flags |= ADJUSTING_POSITION_FLAG;
 
+							//this means the entity was cut
 							if (gameState->entityBeingCut->id == 0) {
 								gameState->cutPiece1->centerPosition.x -= gameState->cutPiece1->temporaryPositionChange.x;
 								gameState->cutPiece1->centerPosition.y -= gameState->cutPiece1->temporaryPositionChange.y;
@@ -210,16 +211,10 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 
 								if (clickedEntity->id == gameState->cutPiece1->id) {
 									gameState->entityBeingCut = gameState->cutPiece2;
-									gameState->cutPiece2->centerPosition.x -= gameState->cutPiece2->temporaryPositionChange.x;
-									gameState->cutPiece2->centerPosition.y -= gameState->cutPiece2->temporaryPositionChange.y;
-									gameState->cutPiece2->temporaryPositionChange = { 0, 0 };
 									gameState->cutPiece2->flags |= INVISIBLE_FLAG;
 								}
 								else if (clickedEntity->id == gameState->cutPiece2->id) {
 									gameState->entityBeingCut = gameState->cutPiece1;
-									gameState->cutPiece1->centerPosition.x -= gameState->cutPiece1->temporaryPositionChange.x;
-									gameState->cutPiece1->centerPosition.y -= gameState->cutPiece1->temporaryPositionChange.y;
-									gameState->cutPiece1->temporaryPositionChange = { 0, 0 };
 									gameState->cutPiece1->flags |= INVISIBLE_FLAG;
 								}
 							}
@@ -256,7 +251,6 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 				gameState->gameplayState = WAITING_FOR_THE_ENTITY_TO_STOP;
 			}
 		}
-
 	}
 	else if (gameState->gameplayState == WAITING_FOR_THE_ENTITY_TO_STOP) {
 		float deltaTime = GetDeltaTime();

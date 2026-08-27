@@ -51,14 +51,14 @@ typedef struct GameState {
 	uint32_t freeTimeLimitInSeconds;
 
 	bool gameplayScreenInitialized;
+	bool pieceWasChosen;
+	bool readyForNewEntityInitialization;
+	bool entityInitialized;
 	Vector2 newEntitySpawnPoint;
 	Entity* entityBeingCut;
 	Entity* cutPiece1;
 	Entity* cutPiece2;
 	Entity* chosenPiece;
-	bool pieceWasChosen;
-	bool readyForNewEntityInitialization;
-	bool entityInitialized;
 	uint16_t numOfEntitiesSpawnedAndUsed;
 	uint16_t limitOfSpawnedEntities;
 	uint32_t framesElapsedWaitingForTheEntityToStop;

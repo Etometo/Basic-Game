@@ -75,6 +75,9 @@ int main() {
 				if (entity->id != 0 && !(entity->flags & INVISIBLE_FLAG)) {
 					DrawEntity(entity);
 				}
+				if (entity->id != gameState->floor->id) {
+					entity->flags &= ~IN_CONTACT_WITH_GROUND_FLAG;
+				}
 			}
 
 			gameState->frameCount++;

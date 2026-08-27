@@ -27,7 +27,8 @@ typedef struct VertexData {
 enum {
 	GRAVITY_FLAG = 1,
 	NON_MOVING_FLAG = 2,
-	PLAYER_FLAG = 4,
+	//change the name
+	IN_CONTACT_WITH_GROUND_FLAG = 4,
 	GROUND_COLLISION_FLAG = 8,
 	HAS_TEXT = 16,
 	PHYSICS_FLAG = 32,
@@ -92,7 +93,6 @@ typedef struct Entity {
 	uint32_t gridPositionOfVerticesSize;
 
 	bool gravityApplied;
-	bool stoppedByFriction;
 
 	void(*buttonFunction)(GameState* gameState, SCREEN_CODES screenCode);
 

@@ -743,16 +743,35 @@ unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& wei
 	int numberOfVerticesInsideE2 = 0;
     float vertexRelativePositionMagnitude;
     float sumOfWeights = 0;
+
+    float distanceOfTheDeepestPointFromTheCenter = 0;
+
     for (int i = 0; i < e1->vertexDataEnd - e1->vertexData; i++) {
 		Vector2 vertexPos;
         vertexPos = e1->vertexData[i].position;
-        float projectionOfVertexToOverlapLine = DotProduct(collInfo.normalizedOverlapLine, vertexPos);
-        //we take the cube so little differences get more importance
-        float weight = abs(projectionOfVertexToOverlapLine * projectionOfVertexToOverlapLine * projectionOfVertexToOverlapLine) / 100;
+        vertexPos.x += e1->centerPosition.x;
+        vertexPos.y += e1->centerPosition.y;
+        if (CheckIfAPointIsInsideAnEntity(vertexPos, e2)) {
+            float distanceOfVertexFromCenter = DotProduct(collInfo.normalizedOverlapLine, vertexPos);
+            if (distanceOfTheDeepestPointFromTheCenter < distanceOfVertexFromCenter) {
+                distanceOfTheDeepestPointFromTheCenter = distanceOfVertexFromCenter;
+            }
+        }
+
+    }
+    float edgeDistanceFromTheCenter = distanceOfTheDeepestPointFromTheCenter - collInfo.minOverlap;
+
+    for (int i = 0; i < e1->vertexDataEnd - e1->vertexData; i++) {
+		Vector2 vertexPos;
+        vertexPos = e1->vertexData[i].position;
 
         vertexPos.x += e1->centerPosition.x;
         vertexPos.y += e1->centerPosition.y;
         if (CheckIfAPointIsInsideAnEntity(vertexPos, e2)) {
+			float projectionOfVertexToOverlapLine = DotProduct(collInfo.normalizedOverlapLine, vertexPos);
+            float distanceFromEdge = projectionOfVertexToOverlapLine - edgeDistanceFromTheCenter;
+
+			float weight = abs(distanceFromEdge*distanceFromEdge);
             centerOfVerticesInsideE2.x += vertexPos.x * weight;
             centerOfVerticesInsideE2.y += vertexPos.y * weight;
 			numberOfVerticesInsideE2++;
@@ -792,15 +811,6 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
 		relativeVelocityOfForceApplicationPoint.y += (velocityOfE1CausedByRotationalVelocity.y - velocityOfE2CausedByRotationalVelocity.y);
     }
 
-    if (collInfo.minOverlap > PENETRATION_SLOP) {
-        float relativeVelOnCollisionLine = DotProduct(collInfo.normalizedOverlapLine, relativeVelocityOfForceApplicationPoint);
-        if ((e1->flags | e2->flags) & NON_MOVING_FLAG && false) {
-			penetrationCorrectionAmount = ((collInfo.minOverlap - PENETRATION_SLOP) / GetFrameTime()) / gameState->SOLVER_ITERATIONS;
-        }
-        else {
-			penetrationCorrectionAmount = ((BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP) / GetFrameTime()) / gameState->SOLVER_ITERATIONS;
-        }
-    }
 
     float velAlongNormal = DotProduct(collInfo.normalizedOverlapLine, relativeVelocityOfForceApplicationPoint);
 
@@ -827,7 +837,7 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
 		return;
 	}
 
-    float j = (-(1.0 + e) * velAlongNormal) - penetrationCorrectionAmount;
+    float j = (-(1.0 + e) * velAlongNormal);
     if (j > EPSILON) {
         j = 0;
     }
@@ -836,9 +846,42 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
     impulse.x += j * collInfo.normalizedOverlapLine.x;
     impulse.y += j * collInfo.normalizedOverlapLine.y;
 
+    if (collInfo.minOverlap > PENETRATION_SLOP) {
+        if ((e1->flags | e2->flags) & IN_CONTACT_WITH_GROUND_FLAG) {
+			penetrationCorrectionAmount = ((collInfo.minOverlap - PENETRATION_SLOP)) / (GetFrameTime() * gameState->SOLVER_ITERATIONS);
+        }
+        else {
+			penetrationCorrectionAmount = ((BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP)) / (GetFrameTime() * gameState->SOLVER_ITERATIONS);
+        }
+    }
+    
+    float jPenetration = -penetrationCorrectionAmount;
+    jPenetration /= sumOfInverseMasses;
+    Vector2 penetrationSolverImpulse = {jPenetration * collInfo.normalizedOverlapLine.x, jPenetration * collInfo.normalizedOverlapLine.y};
+    Vector2 penetrationSolverForce = { penetrationSolverImpulse.x / deltaTime, penetrationSolverImpulse.y / deltaTime };
+
+    if (e1->flags & IN_CONTACT_WITH_GROUND_FLAG) {
+        ApplyForceToEntitiesVelocityImmediately(e2, { -penetrationSolverForce.x, -penetrationSolverForce.y }, deltaTime, forceApplicationPoint);
+        e2->flags |= IN_CONTACT_WITH_GROUND_FLAG;
+    }
+    else if (e2->flags & IN_CONTACT_WITH_GROUND_FLAG) {
+        ApplyForceToEntitiesVelocityImmediately(e1,penetrationSolverForce, deltaTime, forceApplicationPoint);
+        e1->flags |= IN_CONTACT_WITH_GROUND_FLAG;
+    }
+    else {
+		if (!(e1->flags & NON_MOVING_FLAG)) {
+			ApplyForceToEntitiesVelocityImmediately(e1, penetrationSolverForce, deltaTime, forceApplicationPoint);
+		}
+
+		if (!(e2->flags & NON_MOVING_FLAG)) {
+			ApplyForceToEntitiesVelocityImmediately(e2, { -penetrationSolverForce.x, -penetrationSolverForce.y }, deltaTime, forceApplicationPoint);
+		}
+    }
 
     Vector2 impulseForce = { impulse.x / deltaTime, impulse.y / deltaTime };
-    ApplyForceToEntitiesVelocityImmediately(e1, impulseForce, deltaTime, forceApplicationPoint);
+    if (!(e1->flags & NON_MOVING_FLAG)) {
+		ApplyForceToEntitiesVelocityImmediately(e1, impulseForce, deltaTime, forceApplicationPoint);
+    }
 
     if (!(e2->flags & NON_MOVING_FLAG)) {
         ApplyForceToEntitiesVelocityImmediately(e2, { -impulseForce.x, -impulseForce.y }, deltaTime, forceApplicationPoint);
