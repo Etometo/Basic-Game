@@ -85,7 +85,6 @@ void ResetChosenEntityAndGameplayStateIntoCuttingOrChoosingState(GameState* game
 		gameState->entityBeingCut = emptyEntity;
 
 		gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;
-		gameState->framesElapsedWaitingForTheEntityToStop = 0;
 		CalibrateEntityWithGrid(gameState, gameState->cutPiece1);
 		CalibrateEntityWithGrid(gameState, gameState->cutPiece2);
 	}
@@ -94,14 +93,6 @@ void ResetChosenEntityAndGameplayStateIntoCuttingOrChoosingState(GameState* game
 		gameState->chosenPiece->physicsVelocity = { 0, 0 };
 		gameState->chosenPiece->flags |= BEING_CUT_FLAG | BEING_CHOSEN_FLAG;
 		gameState->chosenPiece->flags &= ~(PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG | NOT_IN_FREE_FALL_FLAG);
-		float reverseAngle = -gameState->chosenPiece->angle;
-		float sin = sinf(reverseAngle);
-		float cos = cosf(reverseAngle);
-		for (int i = 0; i < gameState->chosenPiece->vertexDataEnd - gameState->chosenPiece->vertexData; i++) {
-			Vector2 vertexPos = gameState->chosenPiece->vertexData[i].position;
-			gameState->chosenPiece->vertexData[i].position.x = vertexPos.x * cos - vertexPos.y * sin;
-			gameState->chosenPiece->vertexData[i].position.y = vertexPos.x * sin + vertexPos.y * cos;
-		}
 		gameState->chosenPiece->angle = 0;
 		gameState->entityBeingCut = gameState->chosenPiece;
 		gameState->chosenPiece = nullptr;
@@ -334,6 +325,12 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 					}
 				}
 				else {
+					if (magnitude(gameState->chosenPiece->physicsVelocity) >= INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD) {
+						int a = 1 + 1;
+					}
+					if (abs(gameState->chosenPiece->rotationalVelocity) > INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD) {
+						int a = 1 + 1;
+					}
 					gameState->chosenPiece->framesWithConsequentialInsignificantMovement = 0;
 				}
 				
@@ -354,7 +351,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 				ResetChosenEntityAndGameplayStateIntoCuttingOrChoosingState(gameState);
 			}
 		}
-		else {
+		if(gameState->gameplayState != WAITING_FOR_THE_ENTITY_TO_STOP){
 			gameState->framesElapsedWaitingForTheEntityToStop = 0;
 		}
 	}

@@ -293,11 +293,11 @@ void DrawEntity(Entity* player) {
 		DrawText(player->text, player->centerPosition.x - textWidth/2, player->centerPosition.y - fontSize/2, fontSize, BLACK);
     }
     else {
-        /*
+        
 		char idStr[10];
 		snprintf(idStr, sizeof(idStr), "%d", player->id);
 		DrawText(idStr, player->centerPosition.x, player->centerPosition.y, 20, BLACK);
-*/
+
     }
 }
 
@@ -377,9 +377,9 @@ void RotateEntity(Entity* entity, float deltaTime) {
 void MoveAndRotateEntity(Entity* player, float deltaTime) {
     player->physicsVelocity.x -= player->velocityAppliedToThePosition.x;
     player->physicsVelocity.y -= player->velocityAppliedToThePosition.y;
-
     player->physicsVelocity.x *= 1 / (1 + player->linearDamping * deltaTime);
     player->physicsVelocity.y *= 1 / (1 + player->linearDamping * deltaTime);
+
 	player->centerPosition.x += player->physicsVelocity.x * deltaTime;
 	player->centerPosition.y += player->physicsVelocity.y * deltaTime;
 	player->lastSpeed = { player->physicsVelocity.x, player->physicsVelocity.y };
@@ -429,7 +429,7 @@ void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, floa
     entity->forcesMultipliedByAppliedTime.y += force.y * deltaTime;
 }
 
-void ApplyForceToEntitiesPositionAndVelocityImmediately(Entity* entity, Vector2 force, float deltaTime, Vector2 forceApplicationPoint) {
+void ApplyForceToEntitiesPositionImmediately(Entity* entity, Vector2 force, float deltaTime, Vector2 forceApplicationPoint) {
     Vector2 forceApplicationPointFromTheCenter;
     float torque;
     forceApplicationPointFromTheCenter.x = forceApplicationPoint.x - entity->centerPosition.x;
@@ -446,18 +446,12 @@ void ApplyForceToEntitiesPositionAndVelocityImmediately(Entity* entity, Vector2 
     entity->netForce.y += force.y;
     entity->acceleration.x = force.x / entity->mass;
     entity->acceleration.y = force.y / entity->mass;
-    entity->physicsVelocity.x += entity->acceleration.x * deltaTime;
-    entity->physicsVelocity.y += entity->acceleration.y * deltaTime;
     entity->centerPosition.x += entity->acceleration.x * deltaTime * deltaTime;
     entity->centerPosition.y += entity->acceleration.y * deltaTime * deltaTime;
-    entity->velocityAppliedToThePosition.x += entity->acceleration.x * deltaTime;
-    entity->velocityAppliedToThePosition.y += entity->acceleration.y * deltaTime;
 
     entity->torque += torque;
     entity->rotationalAcceleration = torque / entity->inertia;
-    entity->rotationalVelocity += entity->rotationalAcceleration * deltaTime;
     entity->angle += entity->rotationalAcceleration * deltaTime*deltaTime;
-    entity->rotationalVelocityAppliedToPosition += entity->rotationalAcceleration * deltaTime;
 }
 
 
@@ -940,7 +934,7 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
 
     if (collInfo.minOverlap > PENETRATION_SLOP) {
         if ((e1->flags | e2->flags) & IN_CONTACT_WITH_GROUND_FLAG) {
-			penetrationCorrectionAmount = ((collInfo.minOverlap - PENETRATION_SLOP)) / (GetFrameTime() * gameState->SOLVER_ITERATIONS);
+			penetrationCorrectionAmount = ((BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP)) / (GetFrameTime() * gameState->SOLVER_ITERATIONS);
         }
         else {
 			penetrationCorrectionAmount = ((BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP)) / (GetFrameTime() * gameState->SOLVER_ITERATIONS);
