@@ -481,7 +481,7 @@ void RestartGameAndChangeScreenToMainScreen(GameState* gameState) {
 	
 void InitializeEndScreen(GameState* gameState) {
 	float floorsCeiling = -FLT_MAX;
-	float score = 0;
+	long double score = 0;
 	for (int i = 0; i < gameState->floor->vertexDataEnd - gameState->floor->vertexData; i++) {
 		float yValueOfVertex = gameState->floor->centerPosition.y + gameState->floor->vertexData[i].position.y;
 		if (yValueOfVertex > floorsCeiling) {
@@ -502,10 +502,10 @@ void InitializeEndScreen(GameState* gameState) {
 			shapeArea += triangleArea(v1, v2, v3);
 		}
 
-		score += sqrtf(powf(entity->centerPosition.y - floorsCeiling, 5) * powf(shapeArea, 2));
+		score += sqrtf(pow(entity->centerPosition.y - floorsCeiling, 4) * shapeArea);
 	}
-	score /= 10000000;
-	gameState->score = (long int)score;
+	score /= 10000;
+	gameState->score = (long unsigned int)score;
 	snprintf(gameState->scoreText, sizeof(char) * 50, "%d", gameState->score);
 	if (score > gameState->highestScore) {
 		gameState->highestScore = score;

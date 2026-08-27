@@ -965,10 +965,10 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
     Vector3 frictionAxis;
     CrossProduct(collInfo.normalizedOverlapLine, k, frictionAxis);
 
-    // Get the relative speed along the friction tangent
+    // Get the relative speed along the maxFriction tangent
     float relativeVelOnFrictionAxis = DotProduct(frictionAxis, relativeVelocityOfForceApplicationPoint);
 
-    // Calculate rotational mass specifically for the friction axis
+    // Calculate rotational mass specifically for the maxFriction axis
     float r1CrossT = distanceOfForceApplicationPointFromE1Center.x * frictionAxis.y - distanceOfForceApplicationPointFromE1Center.y * frictionAxis.x;
     float r2CrossT = distanceOfForceApplicationPointFromE2Center.x * frictionAxis.y - distanceOfForceApplicationPointFromE2Center.y * frictionAxis.x;
 
@@ -981,19 +981,31 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
     float rotationalMass2T = (r2CrossT * r2CrossT) * inv2Inertia;
     float sumOfInverseMassesT = inv1mass + inv2mass + rotationalMass1T + rotationalMass2T;
     
-    //throw std::runtime_error("make friction stop objects when you try making a tower they slide off");
+    //throw std::runtime_error("make maxFriction stop objects when you try making a tower they slide off");
     if (sumOfInverseMassesT > EPSILON && abs(relativeVelOnFrictionAxis) > EPSILON) {
         float frictionConst = e1->frictionCons > e2->frictionCons ? e1->frictionCons : e2->frictionCons;
         float impulseMagnitude = sqrt(pow(impulse.x, 2) + pow(impulse.y, 2));
-        float friction = frictionConst * impulseMagnitude;
+        float maxFriction = frictionConst * impulseMagnitude;
+        float frictionToStopTheEntities = abs(relativeVelOnFrictionAxis) / sumOfInverseMassesT;
+        float friction = 0;
+
+        if (frictionToStopTheEntities > maxFriction) {
+            friction = maxFriction;
+        }
+        else {
+            e1->linearDamping = 50;
+            e2->linearDamping = 50;
+        }
 
         int frictionDir = -relativeVelOnFrictionAxis / abs(relativeVelOnFrictionAxis);
 
         Vector2 frictionImpulseForce = { friction * frictionAxis.x * frictionDir , friction * frictionAxis.y * frictionDir };
 
-        ApplyForceToEntitiesVelocityImmediately(e1, frictionImpulseForce, deltaTime, forceApplicationPoint);
+        if (!(e1->flags & NON_MOVING_FLAG)) {
+			ApplyForceToEntitiesVelocityImmediately(e1, frictionImpulseForce, deltaTime, forceApplicationPoint);
+        }
         if (!(e2->flags & NON_MOVING_FLAG)) {
-            ApplyForceToEntitiesVelocityImmediately(e2, { -frictionImpulseForce.x, -frictionImpulseForce.y }, deltaTime, forceApplicationPoint);
+			ApplyForceToEntitiesVelocityImmediately(e2, { -frictionImpulseForce.x, -frictionImpulseForce.y }, deltaTime, forceApplicationPoint);
         }
     }
     //throw std::runtime_error("look at the videos for the jumping bug");
