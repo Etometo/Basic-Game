@@ -259,10 +259,27 @@ void PrintVector(Vector3 vec) {
     std::cout << "(X: " << vec.x << " ,Y: " << vec.y << " ,Z: " << vec.z << " )" ;
 }
 void DrawEntity(Entity* player) {
+    float sin = sinf(player->angle);
+    float cos = cosf(player->angle);
 	for (int i = 0; i < player->triangulationIndicesEnd - player->triangulationIndices; i += 3) {
-        Vector2 v1 = AddVectors((*(player->vertexData + player->triangulationIndices[i])).position, player->centerPosition);
-        Vector2 v2 = AddVectors((*(player->vertexData + player->triangulationIndices[i+1])).position, player->centerPosition);
-        Vector2 v3 = AddVectors((*(player->vertexData + player->triangulationIndices[i+2])).position, player->centerPosition);
+        Vector2 p1 = (*(player->vertexData + player->triangulationIndices[i])).position;
+        Vector2 p2 = (*(player->vertexData + player->triangulationIndices[i + 1])).position;
+        Vector2 p3 = (*(player->vertexData + player->triangulationIndices[i + 2])).position;
+
+        Vector2 v1 = {
+            p1.x * cos - p1.y * sin + player->centerPosition.x,
+            p1.x * sin + p1.y * cos + player->centerPosition.y
+        };
+
+        Vector2 v2 = {
+            p2.x * cos - p2.y * sin + player->centerPosition.x,
+            p2.x * sin + p2.y * cos + player->centerPosition.y
+        };
+
+        Vector2 v3 = {
+            p3.x * cos - p3.y * sin + player->centerPosition.x,
+            p3.x * sin + p3.y * cos + player->centerPosition.y
+        };
         if (IsCounterClockwise(v1, v2, v3)) {
             DrawTriangle(v1, v2, v3, player->color);
         }
@@ -351,13 +368,6 @@ float magnitude(Vector2 v) {
 void RotateEntity(Entity* entity, float deltaTime) {
     entity->rotationalVelocity *= 1 / (1 + entity->angularDamping * deltaTime);
     float rotationalChange = entity->rotationalVelocity * deltaTime;
-    float sin = sinf(rotationalChange);
-    float cos = cosf(rotationalChange);
-    for (int i = 0; i < entity->vertexDataEnd - entity->vertexData; i++) {
-        Vector2 vertexPos = entity->vertexData[i].position;
-        entity->vertexData[i].position.x = vertexPos.x * cos - vertexPos.y * sin;
-        entity->vertexData[i].position.y = vertexPos.x * sin + vertexPos.y * cos;
-    }
     entity->angle += rotationalChange;
 }
 
@@ -410,12 +420,12 @@ void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, floa
 }
 
 
-bool CheckIfAPointIsInsideAnEntity(Vector2 positionOfPoint, Entity* entity) {
+bool CheckIfAPointIsInsideAnEntity(Vector2 positionOfPoint, Entity* entity, VertexData* entityRotatedVertexData) {
     float minX = FLT_MAX, minY = FLT_MAX;
     float maxX = -FLT_MAX, maxY = -FLT_MAX;
     int vertexCount = entity->vertexDataEnd - entity->vertexData;
     for (int i = 0; i < vertexCount; i++) {
-        Vector2 vertexPos = entity->vertexData[i].position;
+        Vector2 vertexPos = entityRotatedVertexData[i].position;
         vertexPos.x += entity->centerPosition.x;
         vertexPos.y += entity->centerPosition.y;
 		minX = vertexPos.x < minX ? vertexPos.x : minX;
@@ -424,7 +434,7 @@ bool CheckIfAPointIsInsideAnEntity(Vector2 positionOfPoint, Entity* entity) {
 		maxY = vertexPos.y > maxY ? vertexPos.y : maxY;
 	}
 
-	if (positionOfPoint.x < minX || positionOfPoint.x > maxX || positionOfPoint.y < minY || positionOfPoint.y > maxY){
+    if (positionOfPoint.x < minX || positionOfPoint.x > maxX || positionOfPoint.y < minY || positionOfPoint.y > maxY) {
         return false;
 	} 
 
@@ -432,10 +442,10 @@ bool CheckIfAPointIsInsideAnEntity(Vector2 positionOfPoint, Entity* entity) {
     Vector2 vertex1Pos, vertex2Pos;
 
     for (int j = 0; j < vertexCount; j++) {
-        vertex1Pos = { entity->vertexData[j].position.x + entity->centerPosition.x, entity->vertexData[j].position.y + entity->centerPosition.y };
+        vertex1Pos = { entityRotatedVertexData[j].position.x + entity->centerPosition.x, entityRotatedVertexData[j].position.y + entity->centerPosition.y };
 
         int nextIndex = (j + 1) < vertexCount ? (j + 1) : 0;
-        vertex2Pos = { entity->vertexData[nextIndex].position.x + entity->centerPosition.x, entity->vertexData[nextIndex].position.y + entity->centerPosition.y };
+        vertex2Pos = { entityRotatedVertexData[nextIndex].position.x + entity->centerPosition.x, entityRotatedVertexData[nextIndex].position.y + entity->centerPosition.y };
 
         if ((vertex1Pos.y > positionOfPoint.y) != (vertex2Pos.y > positionOfPoint.y)) {
             float xValueOfRaycastsIntersection = (vertex2Pos.x - vertex1Pos.x) * (positionOfPoint.y - vertex1Pos.y) / (vertex2Pos.y - vertex1Pos.y) + vertex1Pos.x;
@@ -555,10 +565,7 @@ void NormalVector(Vector3& vector, Vector3& normalVector) {
     CrossProduct(vector, vector2, normalVector);
 }
 
-CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2) {
-
-    //stupid comment change later
-    //because we go over every pair twice if we skip this other calculation will be done anyways
+CollisionInfo DetectCollisionWithEntity(GameState* gameState, Entity* e1, Entity* e2) {
     CollisionInfo collInfo;
     collInfo.minOverlap = 0;
     if (((e1->flags & e2->flags) & GROUND_COLLISION_FLAG) == 0) { return collInfo; }
@@ -568,6 +575,26 @@ CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2) {
 
     int e1NumOfVertices = e1->vertexDataEnd - e1->vertexData;
     int e2NumOfVertices = e2->vertexDataEnd - e2->vertexData;
+
+    VertexData* e1VertexData = (VertexData*)PushTemporarySize(gameState, sizeof(VertexData) * e1NumOfVertices);
+    VertexData* e2VertexData = (VertexData*)PushTemporarySize(gameState, sizeof(VertexData) * e2NumOfVertices);
+
+    float sin = sinf(e1->angle);
+    float cos = cosf(e1->angle);
+    for (int i = 0; i < e1NumOfVertices; i++) {
+        Vector2 vertexPos = e1->vertexData[i].position;
+        e1VertexData[i].position.x = vertexPos.x * cos - vertexPos.y * sin;
+        e1VertexData[i].position.y = vertexPos.x * sin + vertexPos.y * cos;
+    }
+
+    sin = sinf(e2->angle);
+    cos = cosf(e2->angle);
+    for (int i = 0; i < e2NumOfVertices; i++) {
+        Vector2 vertexPos = e2->vertexData[i].position;
+        e2VertexData[i].position.x = vertexPos.x * cos - vertexPos.y * sin;
+        e2VertexData[i].position.y = vertexPos.x * sin + vertexPos.y * cos;
+    }
+
     for (int i = 0; i < e1NumOfVertices + (e2NumOfVertices); i++) {
         double player1Down = DBL_MAX, player1Up = -DBL_MAX;
         double player2Down = DBL_MAX, player2Up = -DBL_MAX;
@@ -576,22 +603,22 @@ CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2) {
         Vector2 vertex1;
         Vector2 vertex2;
         if (i < e1NumOfVertices) {
-            vertex1 = AddVectors(e1->vertexData[i].position, e1->centerPosition);
+            vertex1 = AddVectors(e1VertexData[i].position, e1->centerPosition);
             if (i + 1 >= e1NumOfVertices) {
-                vertex2 = AddVectors(e1->vertexData[0].position, e1->centerPosition);
+                vertex2 = AddVectors(e1VertexData[0].position, e1->centerPosition);
             }
             else {
-                vertex2 = AddVectors(e1->vertexData[i + 1].position, e1->centerPosition);
+                vertex2 = AddVectors(e1VertexData[i + 1].position, e1->centerPosition);
             }
         }
         else {
             int a = i - (e1NumOfVertices);
-            vertex1 = AddVectors(e2->vertexData[a].position, e2->centerPosition);
+            vertex1 = AddVectors(e2VertexData[a].position, e2->centerPosition);
             if (a + 1 >= e2NumOfVertices) {
-                vertex2 = AddVectors(e2->vertexData[0].position, e2->centerPosition);
+                vertex2 = AddVectors(e2VertexData[0].position, e2->centerPosition);
             }
             else {
-                vertex2 = AddVectors(e2->vertexData[a + 1].position, e2->centerPosition);
+                vertex2 = AddVectors(e2VertexData[a + 1].position, e2->centerPosition);
             }
         }
 
@@ -607,8 +634,8 @@ CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2) {
             Vector3 posVector;
             //because we are taking the position relative to the center of e1 and vertex positions are relative to it
             //we dont subtract
-            posVector.x = e1->vertexData[j].position.x;
-            posVector.y = e1->vertexData[j].position.y;
+            posVector.x = e1VertexData[j].position.x;
+            posVector.y = e1VertexData[j].position.y;
             posVector.z = 0;
 
             double projectedLen = DotProduct(posVector, normal) / normalLength;
@@ -623,8 +650,8 @@ CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2) {
 
         for (int j = 0; j < e2NumOfVertices; j++) {
             Vector3 posVector;
-            posVector.x = e2->vertexData[j].position.x + e2->centerPosition.x - e1->centerPosition.x;
-            posVector.y = e2->vertexData[j].position.y + e2->centerPosition.y - e1->centerPosition.y;
+            posVector.x = e2VertexData[j].position.x + e2->centerPosition.x - e1->centerPosition.x;
+            posVector.y = e2VertexData[j].position.y + e2->centerPosition.y - e1->centerPosition.y;
             posVector.z = 0;
 
             double projectedLen = DotProduct(posVector, normal) / normalLength;
@@ -686,6 +713,7 @@ CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2) {
             //throw std::runtime_error("as");
         }
     }
+    RetractTemporarySize(gameState, (e1NumOfVertices + e2NumOfVertices) * sizeof(VertexData));
     if (minOverlap == DBL_MAX || minOverlap == 0) {
         collInfo.minOverlap = 0;
         collInfo.normalizedOverlapLine = { 0, 0, 0 };
@@ -713,13 +741,34 @@ CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2) {
     }
 }
 
-Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2, float vertexOutsidePush, CollisionInfo collInfo) {
+Vector2 CalculateForceApplicationPoint(GameState* gameState, Entity* e1, Entity* e2, float vertexOutsidePush, CollisionInfo collInfo) {
 	Vector2 forceApplicationPoint = { 0, 0 };
 
 	Vector2 centerOfVerticesInsideE2 = { 0, 0 };
 	Vector2 centerOfVerticesInsideE1 = { 0, 0 };
-    int numberOfVerticesOfE1InsideE2 = CheckHowManyVerticesOfE1IsInE2(e1, e2, centerOfVerticesInsideE2, collInfo);
-    int numberOfVerticesOfE2InsideE1 = CheckHowManyVerticesOfE1IsInE2(e2, e1, centerOfVerticesInsideE1, collInfo);
+
+    unsigned int e1NumOfVertices = e1->vertexDataEnd - e1->vertexData;
+    unsigned int e2NumOfVertices = e2->vertexDataEnd - e2->vertexData;
+    VertexData* e1VertexData = (VertexData*)PushTemporarySize(gameState, sizeof(VertexData) * e1NumOfVertices);
+    VertexData* e2VertexData = (VertexData*)PushTemporarySize(gameState, sizeof(VertexData) * e2NumOfVertices);
+
+    float sin = sinf(e1->angle);
+    float cos = cosf(e1->angle);
+    for (int i = 0; i < e1NumOfVertices; i++) {
+        Vector2 vertexPos = e1->vertexData[i].position;
+        e1VertexData[i].position.x = vertexPos.x * cos - vertexPos.y * sin;
+        e1VertexData[i].position.y = vertexPos.x * sin + vertexPos.y * cos;
+    }
+
+    sin = sinf(e2->angle);
+    cos = cosf(e2->angle);
+    for (int i = 0; i < e2NumOfVertices; i++) {
+        Vector2 vertexPos = e2->vertexData[i].position;
+        e2VertexData[i].position.x = vertexPos.x * cos - vertexPos.y * sin;
+        e2VertexData[i].position.y = vertexPos.x * sin + vertexPos.y * cos;
+    }
+    int numberOfVerticesOfE1InsideE2 = CheckHowManyVerticesOfE1IsInE2(e1, e2, e1VertexData, e2VertexData, centerOfVerticesInsideE2, collInfo);
+    int numberOfVerticesOfE2InsideE1 = CheckHowManyVerticesOfE1IsInE2(e2, e1, e2VertexData, e1VertexData, centerOfVerticesInsideE1, collInfo);
     //come up with something for the name
     int divisionNumber = 0;
 
@@ -734,10 +783,11 @@ Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2, float vertexOutsi
 		forceApplicationPoint.y = (centerOfVerticesInsideE2.y + centerOfVerticesInsideE1.y) / divisionNumber;
     }
 
+    RetractTemporarySize(gameState, (e1NumOfVertices + e2NumOfVertices) * sizeof(VertexData));
     return forceApplicationPoint;
 }
 
-unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& weightedCenterOfInsiderPointsPositions, CollisionInfo collInfo) {
+unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, VertexData* e1RotatedVertexData, VertexData* e2RotatedVertexData, Vector2& weightedCenterOfInsiderPointsPositions, CollisionInfo collInfo) {
     //calculates the weighted center of the points of e1 thats inside e2
 	Vector2 centerOfVerticesInsideE2 = { 0, 0 };
 	int numberOfVerticesInsideE2 = 0;
@@ -748,11 +798,12 @@ unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& wei
 
     for (int i = 0; i < e1->vertexDataEnd - e1->vertexData; i++) {
 		Vector2 vertexPos;
-        vertexPos = e1->vertexData[i].position;
+        vertexPos = e1RotatedVertexData[i].position;
         vertexPos.x += e1->centerPosition.x;
         vertexPos.y += e1->centerPosition.y;
-        if (CheckIfAPointIsInsideAnEntity(vertexPos, e2)) {
-            float distanceOfVertexFromCenter = DotProduct(collInfo.normalizedOverlapLine, vertexPos);
+        if (CheckIfAPointIsInsideAnEntity(vertexPos, e2, e2RotatedVertexData)) {
+            //we take the distance of the relative vertex position because
+            float distanceOfVertexFromCenter = abs(DotProduct(collInfo.normalizedOverlapLine, e1RotatedVertexData[i].position));
             if (distanceOfTheDeepestPointFromTheCenter < distanceOfVertexFromCenter) {
                 distanceOfTheDeepestPointFromTheCenter = distanceOfVertexFromCenter;
             }
@@ -763,12 +814,12 @@ unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& wei
 
     for (int i = 0; i < e1->vertexDataEnd - e1->vertexData; i++) {
 		Vector2 vertexPos;
-        vertexPos = e1->vertexData[i].position;
+        vertexPos = e1RotatedVertexData[i].position;
 
         vertexPos.x += e1->centerPosition.x;
         vertexPos.y += e1->centerPosition.y;
-        if (CheckIfAPointIsInsideAnEntity(vertexPos, e2)) {
-			float projectionOfVertexToOverlapLine = DotProduct(collInfo.normalizedOverlapLine, vertexPos);
+        if (CheckIfAPointIsInsideAnEntity(vertexPos, e2, e2RotatedVertexData)) {
+            float projectionOfVertexToOverlapLine = abs(DotProduct(collInfo.normalizedOverlapLine, e1RotatedVertexData[i].position));
             float distanceFromEdge = projectionOfVertexToOverlapLine - edgeDistanceFromTheCenter;
 
 			float weight = abs(distanceFromEdge*distanceFromEdge);
@@ -779,8 +830,8 @@ unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& wei
 		}
 	}
     if (sumOfWeights > 0) {
-		weightedCenterOfInsiderPointsPositions.x = centerOfVerticesInsideE2.x / sumOfWeights;
-		weightedCenterOfInsiderPointsPositions.y = centerOfVerticesInsideE2.y / sumOfWeights;
+        weightedCenterOfInsiderPointsPositions.x = centerOfVerticesInsideE2.x / sumOfWeights;
+        weightedCenterOfInsiderPointsPositions.y = centerOfVerticesInsideE2.y / sumOfWeights;
     }
 
     return numberOfVerticesInsideE2;

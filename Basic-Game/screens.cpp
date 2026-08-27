@@ -70,14 +70,6 @@ void ResetChosenEntityAndGameplayStateIntoCuttingOrChoosingState(GameState* game
 		gameState->chosenPiece->temporaryPositionChange.x = -100;
 		gameState->chosenPiece->physicsVelocity = { 0, 0 };
 		gameState->chosenPiece->flags = BEING_CHOSEN_FLAG | IS_A_BUILDING_BLOCK_FLAG;
-		float reverseAngle = -gameState->chosenPiece->angle;
-		float sin = sinf(reverseAngle);
-		float cos = cosf(reverseAngle);
-		for (int i = 0; i < gameState->chosenPiece->vertexDataEnd - gameState->chosenPiece->vertexData; i++) {
-			Vector2 vertexPos = gameState->chosenPiece->vertexData[i].position;
-			gameState->chosenPiece->vertexData[i].position.x = vertexPos.x * cos - vertexPos.y * sin;
-			gameState->chosenPiece->vertexData[i].position.y = vertexPos.x * sin + vertexPos.y * cos;
-		}
 		gameState->chosenPiece->angle = 0;
 
 		gameState->entityBeingCut->centerPosition.x += 100;
@@ -193,7 +185,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 				bool selectedAnEntity = false;
 				for (int i = 0; i < numOfCloseEntities; i++) {
 					Entity* clickedEntity = relevantEntities[i];
-					bool pointIsInsideEntity = CheckIfAPointIsInsideAnEntity(mousePos, clickedEntity);
+					bool pointIsInsideEntity = CheckIfAPointIsInsideAnEntity(mousePos, clickedEntity, clickedEntity->vertexData);
 
 					if (pointIsInsideEntity) {
 						if (clickedEntity->flags & BEING_CHOSEN_FLAG && gameState->chosenPiece == nullptr) {
@@ -283,7 +275,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 					if ((relevantEntity->flags & PHYSICS_FLAG) == 0) {
 						continue;
 					}
-					CollisionInfo collInfo = DetectCollisionWithEntity(entity, relevantEntity);
+					CollisionInfo collInfo = DetectCollisionWithEntity(gameState, entity, relevantEntity);
 					float totalMass = entity->mass + relevantEntity->mass;
 
 					if (collInfo.minOverlap > FLT_EPSILON) {
@@ -293,7 +285,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 						if (relevantEntity->flags & NOT_IN_FREE_FALL_FLAG) {
 							relevantEntity->flags &= ~NOT_IN_FREE_FALL_FLAG;
 						}
-						Vector2 forceApplicationPoint = CalculateForceApplicationPoint(entity, relevantEntity, 0, collInfo);
+						Vector2 forceApplicationPoint = CalculateForceApplicationPoint(gameState, entity, relevantEntity, 0, collInfo);
 						if (forceApplicationPoint.x == 0 && forceApplicationPoint.y == 0) {
 							forceApplicationPoint = entity->centerPosition;
 						}
@@ -395,11 +387,11 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 					if ((relevantEntity->flags & PHYSICS_FLAG) == 0) {
 						continue;
 					}
-					CollisionInfo collInfo = DetectCollisionWithEntity(entity, relevantEntity);
+					CollisionInfo collInfo = DetectCollisionWithEntity(gameState, entity, relevantEntity);
 					float totalMass = entity->mass + relevantEntity->mass;
 
 					if (collInfo.minOverlap > FLT_EPSILON) {
-						Vector2 forceApplicationPoint = CalculateForceApplicationPoint(entity, relevantEntity, 0, collInfo);
+						Vector2 forceApplicationPoint = CalculateForceApplicationPoint(gameState, entity, relevantEntity, 0, collInfo);
 						if (forceApplicationPoint.x == 0 && forceApplicationPoint.y == 0) {
 							forceApplicationPoint = entity->centerPosition;
 						}
@@ -454,7 +446,7 @@ void UpdateMainMenu(GameState* gameState, InputInfo inputInfo) {
 			bool selectedAnEntity = false;
 			for (int i = 0; i < numOfCloseEntities; i++) {
 				Entity* entity = relevantEntities[i];
-				bool pointIsInsideEntity = CheckIfAPointIsInsideAnEntity(mousePos, entity);
+				bool pointIsInsideEntity = CheckIfAPointIsInsideAnEntity(mousePos, entity, entity->vertexData);
 				if (pointIsInsideEntity && (entity->flags & BUTTON_FLAG)) {
 					entity->buttonFunction(gameState, GAMEPLAY_SCREEN);
 				}
@@ -558,7 +550,7 @@ void UpdateEndScreen(GameState* gameState, InputInfo inputInfo) {
 			bool selectedAnEntity = false;
 			for (int i = 0; i < numOfCloseEntities; i++) {
 				Entity* entity = relevantEntities[i];
-				bool pointIsInsideEntity = CheckIfAPointIsInsideAnEntity(mousePos, entity);
+				bool pointIsInsideEntity = CheckIfAPointIsInsideAnEntity(mousePos, entity, entity->vertexData);
 				if (pointIsInsideEntity && (entity->flags & BUTTON_FLAG)) {
 					entity->buttonFunction(gameState, MAIN_SCREEN);
 					return;

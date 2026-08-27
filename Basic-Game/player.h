@@ -120,7 +120,7 @@ float distance(Vector2 v1, Vector2 v2);
 
 float magnitude(Vector2 v);
 
-bool CheckIfAPointIsInsideAnEntity(Vector2 positionOfPoint, Entity* entity);
+bool CheckIfAPointIsInsideAnEntity(Vector2 positionOfPoint, Entity* entity, VertexData* entityRotatedVertexData);
 
 int MakeAnArrayFullOfUniqueItems(GameState* gameState, char* arrayStart, char* arrayEnd, uint32_t numOfElements, uint32_t typeSize);
 
@@ -152,9 +152,9 @@ int CalculateRelevantEntitiesForEntity(GameState* gameState, Entity* entity, Ent
 
 int CalculateRelevantEntitiesForPosition(GameState* gameState, Vector2 position, Entity** relevanEntities);
 
-CollisionInfo DetectCollisionWithEntity(Entity* e1, Entity* e2);
+CollisionInfo DetectCollisionWithEntity(GameState* gameState, Entity* e1, Entity* e2);
 
-Vector2 CalculateForceApplicationPoint(Entity* e1, Entity* e2, float vertexOutsidePush, CollisionInfo collInfo);
+Vector2 CalculateForceApplicationPoint(GameState* gameState, Entity* e1, Entity* e2, float vertexOutsidePush, CollisionInfo collInfo);
 
 void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo collInfo, Vector2& impulse, Vector2& relativeVelocity, Vector2 forceApplicationPoint, float deltaTime);
 
@@ -162,7 +162,7 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
 
 void ApplyGravityCalculatePhysicsAndMoveEntity(GameState* gameState, Entity* entity);
 
-unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, Vector2& sumOfInsiderVerticesPositions, CollisionInfo collInfo);
+unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, VertexData* e1RotatedVertexData, VertexData* e2RotatedVertexData, Vector2& sumOfInsiderVerticesPositions, CollisionInfo collInfo);
 
 void ApplyFrictionToEntity(Entity* e, Vector3 normalizedFrictionAxis, float frictionMagnitude, int frictionDirection, float deltaTime, Vector2 &relativeVelocity, Vector2 forceApplicationPoint);
 
