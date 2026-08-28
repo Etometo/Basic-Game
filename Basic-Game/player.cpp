@@ -845,24 +845,35 @@ unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, VertexData* 
         }
 
     }
+    if (distanceOfTheDeepestPointFromTheCenter == 0) { return 0; }
     float edgeDistanceFromTheCenter = distanceOfTheDeepestPointFromTheCenter - collInfo.minOverlap;
-
+    int numOfPointsPerEdge = 20;
     for (int i = 0; i < e1->vertexDataEnd - e1->vertexData; i++) {
-		Vector2 vertexPos;
-        vertexPos = e1RotatedVertexData[i].position;
+        Vector2 vertex1Pos = e1->vertexData[i].position;
+        Vector2 vertex2Pos = (i + 1) >= e1->vertexDataEnd - e1->vertexData ? e1->vertexData[0].position : e1->vertexData[i + 1].position;
+        Vector2 positionalChangePerStep = { vertex2Pos.x - vertex1Pos.x, vertex2Pos.y - vertex1Pos.y };
+        positionalChangePerStep.x /= numOfPointsPerEdge;
+        positionalChangePerStep.y /= numOfPointsPerEdge;
 
-        vertexPos.x += e1->centerPosition.x;
-        vertexPos.y += e1->centerPosition.y;
-        if (CheckIfAPointIsInsideAnEntity(vertexPos, e2, e2RotatedVertexData)) {
-            float projectionOfVertexToOverlapLine = abs(DotProduct(collInfo.normalizedOverlapLine, e1RotatedVertexData[i].position));
-            float distanceFromEdge = projectionOfVertexToOverlapLine - edgeDistanceFromTheCenter;
+        for (int j = 0; j <= numOfPointsPerEdge; j++) {
+			Vector2 relativeVertexPos = vertex1Pos;
+            relativeVertexPos.x += positionalChangePerStep.x * j;
+            relativeVertexPos.y += positionalChangePerStep.y * j;
 
-			float weight = abs(distanceFromEdge*distanceFromEdge);
-            centerOfVerticesInsideE2.x += vertexPos.x * weight;
-            centerOfVerticesInsideE2.y += vertexPos.y * weight;
-			numberOfVerticesInsideE2++;
-			sumOfWeights += weight;
-		}
+            Vector2 absoluteVertexPos = relativeVertexPos;
+			absoluteVertexPos.x += e1->centerPosition.x;
+			absoluteVertexPos.y += e1->centerPosition.y;
+			if (CheckIfAPointIsInsideAnEntity(absoluteVertexPos, e2, e2RotatedVertexData)) {
+				float projectionOfVertexToOverlapLine = abs(DotProduct(collInfo.normalizedOverlapLine, relativeVertexPos));
+				float distanceFromEdge = projectionOfVertexToOverlapLine - edgeDistanceFromTheCenter;
+
+				float weight = distanceFromEdge*distanceFromEdge;
+				centerOfVerticesInsideE2.x += absoluteVertexPos.x * weight;
+				centerOfVerticesInsideE2.y += absoluteVertexPos.y * weight;
+				numberOfVerticesInsideE2++;
+				sumOfWeights += weight;
+			}
+        }
 	}
     if (sumOfWeights > 0) {
         weightedCenterOfInsiderPointsPositions.x = centerOfVerticesInsideE2.x / sumOfWeights;
@@ -948,11 +959,9 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
 
     if (e1->flags & IN_CONTACT_WITH_GROUND_FLAG) {
         ApplyForceToEntitiesVelocityImmediately(e2, { -penetrationSolverForce.x, -penetrationSolverForce.y }, deltaTime, forceApplicationPoint);
-        e2->flags |= IN_CONTACT_WITH_GROUND_FLAG;
     }
     else if (e2->flags & IN_CONTACT_WITH_GROUND_FLAG) {
         ApplyForceToEntitiesVelocityImmediately(e1,penetrationSolverForce, deltaTime, forceApplicationPoint);
-        e1->flags |= IN_CONTACT_WITH_GROUND_FLAG;
     }
     else {
 		if (!(e1->flags & NON_MOVING_FLAG)) {

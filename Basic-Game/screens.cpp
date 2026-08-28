@@ -286,6 +286,9 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 							CalculateAndApplyImpulse(gameState, entity, relevantEntity, collInfo, impulse, relativeVelocityOfForceApplicationPoint, forceApplicationPoint, solverIterationTimeStep);
 							HandleFriction(gameState, entity, relevantEntity, collInfo, impulse, relativeVelocityOfForceApplicationPoint, forceApplicationPoint, solverIterationTimeStep);
 						}
+						if (entity->flags & IN_CONTACT_WITH_GROUND_FLAG) {
+							relevantEntity->flags |= IN_CONTACT_WITH_GROUND_FLAG;
+						}
 					}
 
 				}
@@ -396,6 +399,9 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 							Vector2 impulse = { 0, 0 }, relativeVelocityOfForceApplicationPoint = { 0, 0 };
 							CalculateAndApplyImpulse(gameState, entity, relevantEntity, collInfo, impulse, relativeVelocityOfForceApplicationPoint, forceApplicationPoint, solverIterationTimeStep);
 							HandleFriction(gameState, entity, relevantEntity, collInfo, impulse, relativeVelocityOfForceApplicationPoint, forceApplicationPoint, solverIterationTimeStep);
+						}
+						if (entity->flags & IN_CONTACT_WITH_GROUND_FLAG) {
+							relevantEntity->flags |= IN_CONTACT_WITH_GROUND_FLAG;
 						}
 					}
 				}
