@@ -75,6 +75,17 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
     return returnPointer;
 } 
 
+float EntityArea(Entity* entity) {
+    float shapeArea = 0;
+	for (int j = 0; j < entity->triangulationIndicesEnd - entity->triangulationIndices; j += 3) {
+		Vector2 v1 = entity->vertexData[entity->triangulationIndices[j]].position;
+		Vector2 v2 = entity->vertexData[entity->triangulationIndices[j+1]].position;
+		Vector2 v3 = entity->vertexData[entity->triangulationIndices[j+2]].position;
+		shapeArea += triangleArea(v1, v2, v3);
+	}
+    return shapeArea;
+}
+
 int CutEntityIntoTwoPiecesByALine(GameState* gameState, Entity* entity, Vector2 cutStart, Vector2 cutEnd, uint32_t entityFlags, Entity* &newE1, Entity* &newE2) {
 	uint16_t vertexCount = entity->vertexDataEnd - entity->vertexData;
 	bool cutIsVertical = false, edgeIsVertical = false;
@@ -201,8 +212,14 @@ int CutEntityIntoTwoPiecesByALine(GameState* gameState, Entity* entity, Vector2 
         vertexData2center.x += entity->centerPosition.x;
         vertexData2center.y += entity->centerPosition.y;
 
+        float formerEntityMass = entity->mass;
         newE1 = (Entity*)InitializeAndPushEntity(gameState, vertexData1, vertexData1End, 10, entityFlags, vertexData1center, GAMEPLAY_SCREEN);
         newE2 = (Entity*)InitializeAndPushEntity(gameState, vertexData2, vertexData2End, 10, entityFlags, vertexData2center, GAMEPLAY_SCREEN);
+        float e1Area = EntityArea(newE1);
+        float e2Area = EntityArea(newE2);
+
+        newE1->mass = formerEntityMass * e1Area / (e1Area + e2Area);
+        newE2->mass = formerEntityMass * e2Area / (e1Area + e2Area);
 
         RetractTemporarySize(gameState, totalAllocatedTemporarySize);
         return ENTITY_WAS_CUT;
@@ -934,28 +951,30 @@ void CalculateAndApplyImpulse(GameState* gameState, Entity* e1, Entity* e2, Coll
 		return;
 	}
 
-    float j = (-(1.0 + e) * velAlongNormal);
-    if (j > EPSILON) {
-        j = 0;
-    }
-    j /= sumOfInverseMasses;
-
-    impulse.x += j * collInfo.normalizedOverlapLine.x;
-    impulse.y += j * collInfo.normalizedOverlapLine.y;
-
     if (collInfo.minOverlap > PENETRATION_SLOP) {
         if ((e1->flags | e2->flags) & IN_CONTACT_WITH_GROUND_FLAG) {
-			penetrationCorrectionAmount = ((BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP)) / (GetFrameTime() * gameState->SOLVER_ITERATIONS);
+			penetrationCorrectionAmount = (BAUMGARTE_BETA * (collInfo.minOverlap - PENETRATION_SLOP)) / (GetFrameTime() * gameState->SOLVER_ITERATIONS);
         }
         else {
-			penetrationCorrectionAmount = ((BAUMGARTE_BETA * 1) * (collInfo.minOverlap - PENETRATION_SLOP)) / (GetFrameTime() * gameState->SOLVER_ITERATIONS);
+			penetrationCorrectionAmount = (BAUMGARTE_BETA * (collInfo.minOverlap - PENETRATION_SLOP)) / (GetFrameTime() * gameState->SOLVER_ITERATIONS);
         }
     }
     
     float jPenetration = -penetrationCorrectionAmount;
+
+    float j = (-(1.0 + e) * velAlongNormal);
+    if (j > 0) {
+		j = 0;
+		jPenetration = 0;
+    }
+    j /= sumOfInverseMasses;
     jPenetration /= sumOfInverseMasses;
     Vector2 penetrationSolverImpulse = {jPenetration * collInfo.normalizedOverlapLine.x, jPenetration * collInfo.normalizedOverlapLine.y};
     Vector2 penetrationSolverForce = { penetrationSolverImpulse.x / deltaTime, penetrationSolverImpulse.y / deltaTime };
+
+    impulse.x += j * collInfo.normalizedOverlapLine.x;
+    impulse.y += j * collInfo.normalizedOverlapLine.y;
+
 
     if (e1->flags & IN_CONTACT_WITH_GROUND_FLAG) {
         ApplyForceToEntitiesVelocityImmediately(e2, { -penetrationSolverForce.x, -penetrationSolverForce.y }, deltaTime, forceApplicationPoint);

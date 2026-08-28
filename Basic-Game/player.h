@@ -6,7 +6,7 @@
 #include "raylib.h"
 #include "screens.h"
 
-constexpr float INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD = 4.8;
+constexpr float INSIGNIFICANT_NORMAL_VELOCITY_THRESHOLD = 12;
 constexpr float INSIGNIFICANT_ANGULAR_VELOCITY_THRESHOLD = 1.5;
 
 constexpr float INSIGNIFICANT_DISPLACEMENT_THRESHOLD = 20;
@@ -127,6 +127,8 @@ bool CheckIfAPointIsInsideAnEntity(Vector2 positionOfPoint, Entity* entity, Vert
 int MakeAnArrayFullOfUniqueItems(GameState* gameState, char* arrayStart, char* arrayEnd, uint32_t numOfElements, uint32_t typeSize);
 
 Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, VertexData* vertexDataEnd, float mass, uint32_t flags, Vector2 centerPos, SCREEN_CODES screenCode);
+
+float EntityArea(Entity* entity);
 
 int CutEntityIntoTwoPiecesByALine(GameState* gameState, Entity* entity, Vector2 cutStart, Vector2 cutEnd, uint32_t entityFlags, Entity* &newE1, Entity* &newE2);
 

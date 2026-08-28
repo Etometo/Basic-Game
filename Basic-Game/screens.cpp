@@ -498,13 +498,7 @@ void InitializeEndScreen(GameState* gameState) {
 		if (entity->id == 0 || entity->screenCode != GAMEPLAY_SCREEN || !(entity->flags & IS_A_BUILDING_BLOCK_FLAG)) {
 			continue;
 		}
-		for (int j = 0; j < entity->triangulationIndicesEnd - entity->triangulationIndices; j += 3) {
-			Vector2 v1 = entity->vertexData[entity->triangulationIndices[j]].position;
-			Vector2 v2 = entity->vertexData[entity->triangulationIndices[j+1]].position;
-			Vector2 v3 = entity->vertexData[entity->triangulationIndices[j+2]].position;
-			shapeArea += triangleArea(v1, v2, v3);
-		}
-
+		shapeArea = EntityArea(entity);
 		score += sqrtf(pow(entity->centerPosition.y - floorsCeiling, 4) * shapeArea);
 	}
 	score /= 10000;
