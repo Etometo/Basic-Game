@@ -56,7 +56,7 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
     for (int i = 0; i < vertexCount; i++) {
         returnPointer->inertia += massPerVertex * (pow(vertexData[i].position.x - centerOfTheShape.x, 2) + pow(vertexData[i].position.y - centerOfTheShape.y, 2));
     }
-    inertia /= 10;
+    inertia /= 1000;
     returnPointer->angularDamping = 5;
     returnPointer->linearDamping = 1;
 
@@ -847,7 +847,7 @@ unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, VertexData* 
     }
     if (distanceOfTheDeepestPointFromTheCenter == 0) { return 0; }
     float edgeDistanceFromTheCenter = distanceOfTheDeepestPointFromTheCenter - collInfo.minOverlap;
-    int numOfPointsPerEdge = 20;
+    int numOfPointsPerEdge = 30;
     for (int i = 0; i < e1->vertexDataEnd - e1->vertexData; i++) {
         Vector2 vertex1Pos = e1RotatedVertexData[i].position;
         Vector2 vertex2Pos = (i + 1) >= e1->vertexDataEnd - e1->vertexData ? e1RotatedVertexData[0].position : e1RotatedVertexData[i + 1].position;
@@ -867,7 +867,7 @@ unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, VertexData* 
 				float projectionOfVertexToOverlapLine = abs(DotProduct(collInfo.normalizedOverlapLine, relativeVertexPos));
 				float distanceFromEdge = projectionOfVertexToOverlapLine - edgeDistanceFromTheCenter;
 
-				float weight = distanceFromEdge*distanceFromEdge;
+				float weight = abs(distanceFromEdge*distanceFromEdge*distanceFromEdge);
 				centerOfVerticesInsideE2.x += absoluteVertexPos.x * weight;
 				centerOfVerticesInsideE2.y += absoluteVertexPos.y * weight;
 				numberOfVerticesInsideE2++;
