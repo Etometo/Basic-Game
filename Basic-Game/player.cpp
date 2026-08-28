@@ -849,8 +849,8 @@ unsigned int CheckHowManyVerticesOfE1IsInE2(Entity* e1, Entity* e2, VertexData* 
     float edgeDistanceFromTheCenter = distanceOfTheDeepestPointFromTheCenter - collInfo.minOverlap;
     int numOfPointsPerEdge = 20;
     for (int i = 0; i < e1->vertexDataEnd - e1->vertexData; i++) {
-        Vector2 vertex1Pos = e1->vertexData[i].position;
-        Vector2 vertex2Pos = (i + 1) >= e1->vertexDataEnd - e1->vertexData ? e1->vertexData[0].position : e1->vertexData[i + 1].position;
+        Vector2 vertex1Pos = e1RotatedVertexData[i].position;
+        Vector2 vertex2Pos = (i + 1) >= e1->vertexDataEnd - e1->vertexData ? e1RotatedVertexData[0].position : e1RotatedVertexData[i + 1].position;
         Vector2 positionalChangePerStep = { vertex2Pos.x - vertex1Pos.x, vertex2Pos.y - vertex1Pos.y };
         positionalChangePerStep.x /= numOfPointsPerEdge;
         positionalChangePerStep.y /= numOfPointsPerEdge;
