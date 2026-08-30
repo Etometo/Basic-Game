@@ -71,6 +71,8 @@ void ResetChosenEntityAndGameplayStateIntoCuttingOrChoosingState(GameState* game
 		gameState->chosenPiece->physicsVelocity = { 0, 0 };
 		gameState->chosenPiece->flags = BEING_CHOSEN_FLAG | IS_A_BUILDING_BLOCK_FLAG;
 		gameState->chosenPiece->angle = 0;
+		gameState->chosenPiece->rotationalVelocity = 0;
+		gameState->chosenPiece->physicsVelocity = { 0, 0 };
 
 		gameState->entityBeingCut->centerPosition.x += 100;
 		gameState->entityBeingCut->temporaryPositionChange.x = 100;
@@ -94,6 +96,8 @@ void ResetChosenEntityAndGameplayStateIntoCuttingOrChoosingState(GameState* game
 		gameState->chosenPiece->flags |= BEING_CUT_FLAG | BEING_CHOSEN_FLAG;
 		gameState->chosenPiece->flags &= ~(PHYSICS_FLAG | GRAVITY_FLAG | GROUND_COLLISION_FLAG | NOT_IN_FREE_FALL_FLAG);
 		gameState->chosenPiece->angle = 0;
+		gameState->chosenPiece->rotationalVelocity = 0;
+		gameState->chosenPiece->physicsVelocity = { 0, 0 };
 		gameState->entityBeingCut = gameState->chosenPiece;
 		gameState->chosenPiece = nullptr;
 		gameState->gameplayState = CUTTING_OR_CHOOSING_AN_ENTITY;

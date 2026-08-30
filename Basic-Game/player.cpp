@@ -56,9 +56,11 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
     for (int i = 0; i < vertexCount; i++) {
         returnPointer->inertia += massPerVertex * (pow(vertexData[i].position.x - centerOfTheShape.x, 2) + pow(vertexData[i].position.y - centerOfTheShape.y, 2));
     }
-    inertia /= 1000;
+    inertia /= 100000;
     returnPointer->angularDamping = 5;
     returnPointer->linearDamping = 1;
+
+    returnPointer->frictionCons = 100;
 
 	return returnPointer;
 }
@@ -341,7 +343,7 @@ void DrawEntityOutline(Entity* entity) {
 void DrawEntityForceLine(Entity* entity) {
     Color colorOfTheLine = {0, 00, 255, 255};
     int drawingMultiplier = 1;
-    DrawLine(entity->centerPosition.x, entity->centerPosition.y, entity->centerPosition.x + entity->forcesMultipliedByAppliedTime.x * drawingMultiplier, entity->centerPosition.y + entity->forcesMultipliedByAppliedTime.y * drawingMultiplier, colorOfTheLine);
+    //DrawLine(entity->centerPosition.x, entity->centerPosition.y, entity->centerPosition.x + entity->forcesMultipliedByAppliedTime.x * drawingMultiplier, entity->centerPosition.y + entity->forcesMultipliedByAppliedTime.y * drawingMultiplier, colorOfTheLine);
 }
 
 bool IsCounterClockwise(Vector2 v1, Vector2 v2, Vector2 v3) {
@@ -392,6 +394,31 @@ void RotateEntity(Entity* entity, float deltaTime) {
 }
 
 void MoveAndRotateEntity(Entity* player, float deltaTime) {
+    Vector2 potentialFrictionSpeedChange = player->potentialFrictionImpulseOnAxes;
+    potentialFrictionSpeedChange.x /= player->mass;
+    potentialFrictionSpeedChange.y /= player->mass;
+    int speedDirOnX = 0;
+    int speedDirOnY = 0;
+    if (player->physicsVelocity.x != 0) {
+        speedDirOnX = player->physicsVelocity.x / abs(player->physicsVelocity.x);
+		if (abs(player->physicsVelocity.x) > potentialFrictionSpeedChange.x) {
+            player->physicsVelocity.x = speedDirOnX * (abs(player->physicsVelocity.x) - potentialFrictionSpeedChange.x);
+        }
+        else {
+            player->physicsVelocity.x = 0;
+        }
+		player->potentialFrictionImpulseOnAxes.x = 0;
+    }
+    if (player->physicsVelocity.y != 0) {
+        speedDirOnY = player->physicsVelocity.y / abs(player->physicsVelocity.y);
+		if (abs(player->physicsVelocity.y) > potentialFrictionSpeedChange.y) {
+            player->physicsVelocity.y = speedDirOnX * (abs(player->physicsVelocity.y) - potentialFrictionSpeedChange.y);
+        }
+        else {
+            player->physicsVelocity.y = 0;
+        }
+		player->potentialFrictionImpulseOnAxes.y = 0;
+    }
     player->physicsVelocity.x -= player->velocityAppliedToThePosition.x;
     player->physicsVelocity.y -= player->velocityAppliedToThePosition.y;
     player->physicsVelocity.x *= 1 / (1 + player->linearDamping * deltaTime);
@@ -405,6 +432,7 @@ void MoveAndRotateEntity(Entity* player, float deltaTime) {
     player->physicsVelocity.x += player->velocityAppliedToThePosition.x;
     player->physicsVelocity.y += player->velocityAppliedToThePosition.y;
     player->velocityAppliedToThePosition = { 0, 0 };
+    player->potentialFrictionImpulseOnAxes = { 0, 0 };
 
 	RotateEntity(player, deltaTime);
 }
@@ -423,6 +451,8 @@ void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, floa
     float torque;
     forceApplicationPointFromTheCenter.x = forceApplicationPoint.x - entity->centerPosition.x;
     forceApplicationPointFromTheCenter.y = forceApplicationPoint.y - entity->centerPosition.y;
+
+
     if (abs(forceApplicationPointFromTheCenter.x) < EPSILON && abs(forceApplicationPointFromTheCenter.y) < EPSILON) {
         torque = 0;
     }
@@ -442,8 +472,6 @@ void ApplyForceToEntitiesVelocityImmediately(Entity* entity, Vector2 force, floa
     entity->rotationalAcceleration = torque / entity->inertia;
     entity->rotationalVelocity += entity->rotationalAcceleration * deltaTime;
 
-    entity->forcesMultipliedByAppliedTime.x += force.x * deltaTime;
-    entity->forcesMultipliedByAppliedTime.y += force.y * deltaTime;
 }
 
 void ApplyForceToEntitiesPositionImmediately(Entity* entity, Vector2 force, float deltaTime, Vector2 forceApplicationPoint) {
@@ -1009,20 +1037,22 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
     Vector3 rotationalVelocityOfE1 = { 0, 0, e1->rotationalVelocity }, rotationalVelocityOfE2 = { 0, 0, e2->rotationalVelocity };
     CrossProduct(rotationalVelocityOfE1, distanceOfForceApplicationPointFromE1Center, velocityOfE1CausedByRotationalVelocity);
     CrossProduct(rotationalVelocityOfE2, distanceOfForceApplicationPointFromE2Center, velocityOfE2CausedByRotationalVelocity);
+    Vector2 velOfE1OnForceApplicationPoint, velOfE2OnForceApplicationPoint;
+
+	velOfE1OnForceApplicationPoint.x = (e1->physicsVelocity.x) + (velocityOfE1CausedByRotationalVelocity.x);
+	velOfE1OnForceApplicationPoint.y = (e1->physicsVelocity.y) + (velocityOfE1CausedByRotationalVelocity.y);
 
     if (e2->gravityApplied == false && ((e2->flags & NON_MOVING_FLAG) == 0)) {
         float speedChangeInY = gameState->gravityConstant * deltaTime;
-        relativeVelocityOfForceApplicationPoint.x = (e1->physicsVelocity.x) - (e2->physicsVelocity.x);
-        relativeVelocityOfForceApplicationPoint.y = (e1->physicsVelocity.y) - (e2->physicsVelocity.y + speedChangeInY);
-        relativeVelocityOfForceApplicationPoint.x += (velocityOfE1CausedByRotationalVelocity.x - velocityOfE2CausedByRotationalVelocity.x);
-        relativeVelocityOfForceApplicationPoint.y += (velocityOfE1CausedByRotationalVelocity.y - velocityOfE2CausedByRotationalVelocity.y);
+        velOfE2OnForceApplicationPoint.x = e2->physicsVelocity.x + velocityOfE2CausedByRotationalVelocity.x;
+        velOfE2OnForceApplicationPoint.y = e2->physicsVelocity.y + speedChangeInY + velocityOfE2CausedByRotationalVelocity.y;
     }
     else{
-        relativeVelocityOfForceApplicationPoint.x = (e1->physicsVelocity.x) - (e2->physicsVelocity.x);
-        relativeVelocityOfForceApplicationPoint.y = (e1->physicsVelocity.y) - (e2->physicsVelocity.y);
-        relativeVelocityOfForceApplicationPoint.x += (velocityOfE1CausedByRotationalVelocity.x - velocityOfE2CausedByRotationalVelocity.x);
-        relativeVelocityOfForceApplicationPoint.y += (velocityOfE1CausedByRotationalVelocity.y - velocityOfE2CausedByRotationalVelocity.y);
+        velOfE2OnForceApplicationPoint.x = e2->physicsVelocity.x + velocityOfE2CausedByRotationalVelocity.x;
+        velOfE2OnForceApplicationPoint.y = e2->physicsVelocity.y + velocityOfE2CausedByRotationalVelocity.y;
     }
+    relativeVelocityOfForceApplicationPoint.x = velOfE1OnForceApplicationPoint.x - velOfE2OnForceApplicationPoint.y;
+    relativeVelocityOfForceApplicationPoint.y = velOfE1OnForceApplicationPoint.y - velOfE2OnForceApplicationPoint.y;
 
     Vector3 k = { 0, 0, 1 };
     Vector3 frictionAxis;
@@ -1046,29 +1076,59 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
     
     //throw std::runtime_error("make maxFriction stop objects when you try making a tower they slide off");
     if (sumOfInverseMassesT > EPSILON && abs(relativeVelOnFrictionAxis) > EPSILON) {
+        float velOfE1OnFrictionAxis = DotProduct(frictionAxis, velOfE1OnForceApplicationPoint);
+        float velOfE2OnFrictionAxis = DotProduct(frictionAxis, velOfE2OnForceApplicationPoint);
+
         float frictionConst = e1->frictionCons > e2->frictionCons ? e1->frictionCons : e2->frictionCons;
         float impulseMagnitude = sqrt(pow(impulse.x, 2) + pow(impulse.y, 2));
         float maxFriction = frictionConst * impulseMagnitude;
         float frictionToStopTheEntities = abs(relativeVelOnFrictionAxis) / sumOfInverseMassesT;
+        float frictionToStopE1 = abs(velOfE1OnFrictionAxis) / (inv1mass + rotationalMass1T);
+        float frictionToStopE2 = abs(velOfE2OnFrictionAxis) / (inv2mass + rotationalMass2T);
         float friction = 0;
 
-        if (frictionToStopTheEntities > maxFriction) {
-            friction = maxFriction;
+        float frictionForE1 = maxFriction;
+        float frictionForE2 = maxFriction;
+        if (frictionForE1 > frictionToStopE1) {
+            frictionForE1 = frictionToStopE1;
         }
-        else {
-            friction = frictionToStopTheEntities;
+        if (frictionForE2 > frictionToStopE2) {
+            frictionForE2 = frictionToStopE2;
         }
+        if (frictionForE2 > frictionForE1) {
+            frictionForE1 = frictionForE2;
+        }
+        else if (frictionForE2 < frictionForE1) {
+            frictionForE2 = frictionForE1;
+        }
+        float wastedFriction = maxFriction - frictionForE1;
+		Vector2 wastedFrictionImpulse = { abs(wastedFriction * frictionAxis.x * deltaTime), abs(wastedFriction * frictionAxis.y * deltaTime) };
+		e1->potentialFrictionImpulseOnAxes.x += wastedFrictionImpulse.x;
+		e1->potentialFrictionImpulseOnAxes.y += wastedFrictionImpulse.y;
+		e2->potentialFrictionImpulseOnAxes.x += wastedFrictionImpulse.x;
+		e2->potentialFrictionImpulseOnAxes.y += wastedFrictionImpulse.y;
 
         int frictionDir = -relativeVelOnFrictionAxis / abs(relativeVelOnFrictionAxis);
 
-        Vector2 frictionImpulseForce = { friction * frictionAxis.x * frictionDir , friction * frictionAxis.y * frictionDir };
+        Vector2 frictionImpulseForceForE1 = { frictionForE1 * frictionAxis.x * frictionDir , frictionForE1 * frictionAxis.y * frictionDir };
+        Vector2 frictionImpulseForceForE2 = { frictionForE2 * frictionAxis.x * -frictionDir , frictionForE2 * frictionAxis.y * -frictionDir };
 
-        if (!(e1->flags & NON_MOVING_FLAG)) {
-			ApplyForceToEntitiesVelocityImmediately(e1, frictionImpulseForce, deltaTime, forceApplicationPoint);
+        if (!(e1->flags & NON_MOVING_FLAG)){
+			ApplyForceToEntitiesVelocityImmediately(e1, frictionImpulseForceForE1, deltaTime, forceApplicationPoint);
         }
-        if (!(e2->flags & NON_MOVING_FLAG)) {
-			ApplyForceToEntitiesVelocityImmediately(e2, { -frictionImpulseForce.x, -frictionImpulseForce.y }, deltaTime, forceApplicationPoint);
+        if (!(e2->flags & NON_MOVING_FLAG)){
+			ApplyForceToEntitiesVelocityImmediately(e2, frictionImpulseForceForE2, deltaTime, forceApplicationPoint);
         }
+    }
+    else if (abs(relativeVelOnFrictionAxis) <= EPSILON) {
+        float frictionConst = e1->frictionCons > e2->frictionCons ? e1->frictionCons : e2->frictionCons;
+        float impulseMagnitude = sqrt(pow(impulse.x, 2) + pow(impulse.y, 2));
+        float wastedFriction = frictionConst * impulseMagnitude;
+		Vector2 wastedFrictionImpulse = { abs(wastedFriction * frictionAxis.x * deltaTime), abs(wastedFriction * frictionAxis.y * deltaTime) };
+		e1->potentialFrictionImpulseOnAxes.x += wastedFrictionImpulse.x;
+		e1->potentialFrictionImpulseOnAxes.y += wastedFrictionImpulse.y;
+		e2->potentialFrictionImpulseOnAxes.x += wastedFrictionImpulse.x;
+		e2->potentialFrictionImpulseOnAxes.y += wastedFrictionImpulse.y;
     }
     //throw std::runtime_error("look at the videos for the jumping bug");
     return;

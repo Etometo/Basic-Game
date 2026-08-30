@@ -57,16 +57,14 @@ typedef struct Entity {
 
 	uint32_t id;
 	uint32_t flags;
-	uint8_t screenCode;
 
 	uint64_t frameCount;
-	uint16_t averageFPS;
 
 	float elasticity;
 	float mass;
 	//this is zeroed in the first time it is used.
 	Vector2 penetrationResolveForce;
-	Vector2 forcesMultipliedByAppliedTime;
+	Vector2 potentialFrictionImpulseOnAxes;
 	Vector2 velocityAppliedToThePosition;
 	Vector2 netForce;
 	Vector2 acceleration;
@@ -86,15 +84,17 @@ typedef struct Entity {
 	float angle;
 	float angularDamping;
 
-	uint8_t framesWithConsequentialInsignificantMovement;
 	Vector2 positionWhenMovementBecameInsignificant;
 	float angleWhenMovementBecameInsignificant;
+	uint8_t screenCode;
+	uint16_t averageFPS;
 
 	//two dimentional, contains pair elements the first one being the row index the second one being the column index
 	uint32_t* gridPositionsOfVertices; 
 	uint32_t gridPositionOfVerticesSize;
 
 	bool gravityApplied;
+	uint8_t framesWithConsequentialInsignificantMovement;
 
 	void(*buttonFunction)(GameState* gameState, SCREEN_CODES screenCode);
 
