@@ -56,11 +56,11 @@ Entity* InitializeAndPushEntity(GameState* gameState, VertexData* vertexData, Ve
     for (int i = 0; i < vertexCount; i++) {
         returnPointer->inertia += massPerVertex * (pow(vertexData[i].position.x - centerOfTheShape.x, 2) + pow(vertexData[i].position.y - centerOfTheShape.y, 2));
     }
-    inertia /= 100000;
+    inertia /= 10000000;
     returnPointer->angularDamping = 5;
     returnPointer->linearDamping = 1;
 
-    returnPointer->frictionCons = 100;
+    returnPointer->frictionCons = 30;
 
 	return returnPointer;
 }
@@ -313,9 +313,9 @@ void DrawEntity(Entity* player) {
     }
     else {
         
-		char idStr[10];
-		snprintf(idStr, sizeof(idStr), "%d", player->id);
-		DrawText(idStr, player->centerPosition.x, player->centerPosition.y, 20, BLACK);
+		//char idStr[10];
+		//snprintf(idStr, sizeof(idStr), "%d", player->id);
+		//DrawText(idStr, player->centerPosition.x, player->centerPosition.y, 20, BLACK);
 
     }
 }
