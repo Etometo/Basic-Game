@@ -412,7 +412,7 @@ void MoveAndRotateEntity(Entity* player, float deltaTime) {
     if (player->physicsVelocity.y != 0) {
         speedDirOnY = player->physicsVelocity.y / abs(player->physicsVelocity.y);
 		if (abs(player->physicsVelocity.y) > potentialFrictionSpeedChange.y) {
-            player->physicsVelocity.y = speedDirOnX * (abs(player->physicsVelocity.y) - potentialFrictionSpeedChange.y);
+            player->physicsVelocity.y = speedDirOnY * (abs(player->physicsVelocity.y) - potentialFrictionSpeedChange.y);
         }
         else {
             player->physicsVelocity.y = 0;
@@ -1039,19 +1039,19 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
     CrossProduct(rotationalVelocityOfE2, distanceOfForceApplicationPointFromE2Center, velocityOfE2CausedByRotationalVelocity);
     Vector2 velOfE1OnForceApplicationPoint, velOfE2OnForceApplicationPoint;
 
-	velOfE1OnForceApplicationPoint.x = (e1->physicsVelocity.x) + (velocityOfE1CausedByRotationalVelocity.x);
-	velOfE1OnForceApplicationPoint.y = (e1->physicsVelocity.y) + (velocityOfE1CausedByRotationalVelocity.y);
+    velOfE1OnForceApplicationPoint.x = (e1->physicsVelocity.x);// +(velocityOfE1CausedByRotationalVelocity.x);
+	velOfE1OnForceApplicationPoint.y = (e1->physicsVelocity.y);// + (velocityOfE1CausedByRotationalVelocity.y);
 
     if (e2->gravityApplied == false && ((e2->flags & NON_MOVING_FLAG) == 0)) {
         float speedChangeInY = gameState->gravityConstant * deltaTime;
-        velOfE2OnForceApplicationPoint.x = e2->physicsVelocity.x + velocityOfE2CausedByRotationalVelocity.x;
-        velOfE2OnForceApplicationPoint.y = e2->physicsVelocity.y + speedChangeInY + velocityOfE2CausedByRotationalVelocity.y;
+        velOfE2OnForceApplicationPoint.x = e2->physicsVelocity.x;// + velocityOfE2CausedByRotationalVelocity.x;
+        velOfE2OnForceApplicationPoint.y = e2->physicsVelocity.y;// + speedChangeInY + velocityOfE2CausedByRotationalVelocity.y;
     }
     else{
-        velOfE2OnForceApplicationPoint.x = e2->physicsVelocity.x + velocityOfE2CausedByRotationalVelocity.x;
-        velOfE2OnForceApplicationPoint.y = e2->physicsVelocity.y + velocityOfE2CausedByRotationalVelocity.y;
+        velOfE2OnForceApplicationPoint.x = e2->physicsVelocity.x;// + velocityOfE2CausedByRotationalVelocity.x;
+        velOfE2OnForceApplicationPoint.y = e2->physicsVelocity.y;// + velocityOfE2CausedByRotationalVelocity.y;
     }
-    relativeVelocityOfForceApplicationPoint.x = velOfE1OnForceApplicationPoint.x - velOfE2OnForceApplicationPoint.y;
+    relativeVelocityOfForceApplicationPoint.x = velOfE1OnForceApplicationPoint.x - velOfE2OnForceApplicationPoint.x;
     relativeVelocityOfForceApplicationPoint.y = velOfE1OnForceApplicationPoint.y - velOfE2OnForceApplicationPoint.y;
 
     Vector3 k = { 0, 0, 1 };
@@ -1072,7 +1072,7 @@ void HandleFriction(GameState* gameState, Entity* e1, Entity* e2, CollisionInfo 
 
     float rotationalMass1T = (r1CrossT * r1CrossT) * inv1Inertia;
     float rotationalMass2T = (r2CrossT * r2CrossT) * inv2Inertia;
-    float sumOfInverseMassesT = inv1mass + inv2mass + rotationalMass1T + rotationalMass2T;
+    float sumOfInverseMassesT = inv1mass + inv2mass;// + rotationalMass1T + rotationalMass2T;
     
     //throw std::runtime_error("make maxFriction stop objects when you try making a tower they slide off");
     if (sumOfInverseMassesT > EPSILON && abs(relativeVelOnFrictionAxis) > EPSILON) {
