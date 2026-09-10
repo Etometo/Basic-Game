@@ -36,11 +36,11 @@ void InitializeGameplayScreen(GameState* gameState) {
 
 	VertexData* floorRectData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 6);
 	VertexData* floorRectDataEnd = floorRectData;
-	*(floorRectDataEnd++) = VertexData{ 399, 50 };
-	*(floorRectDataEnd++) = VertexData{ 399, -50 };
+	*(floorRectDataEnd++) = VertexData{ 400, 50 };
+	*(floorRectDataEnd++) = VertexData{ 400, -50 };
 	*(floorRectDataEnd++) = VertexData{ 0, -50 };
-	*(floorRectDataEnd++) = VertexData{ -399, -50 };
-	*(floorRectDataEnd++) = VertexData{ -399, 50 };
+	*(floorRectDataEnd++) = VertexData{ -400, -50 };
+	*(floorRectDataEnd++) = VertexData{ -400, 50 };
 	*(floorRectDataEnd++) = VertexData{ 0, 50 };
 
 	VertexData* triData = (VertexData*)PushSize(gameState, sizeof(VertexData) * 3);
@@ -126,7 +126,7 @@ void UpdateGameplayScreen(GameState* gameState, InputInfo inputInfo) {
 
 				uint32_t entityFlags = BEING_CUT_FLAG | BEING_CHOSEN_FLAG | IS_A_BUILDING_BLOCK_FLAG;
 				gameState->entityBeingCut = (Entity*)InitializeAndPushEntity(gameState, newVertexData, newVertexData + 4, 10, entityFlags, gameState->newEntitySpawnPoint, GAMEPLAY_SCREEN);
-				gameState->entityBeingCut->frictionCons = 200;
+				gameState->entityBeingCut->frictionCons = 50;
 				gameState->readyForNewEntityInitialization = false;
 				gameState->entityInitialized = true;
 				gameState->numOfEntitiesSpawnedAndUsed++;

@@ -8,12 +8,12 @@ x64/
 x86/
 bin/
 obj/
-*.exe
+
 *.pdb
 *.ilk
 *.obj
 
-*.exe
+
 *.pdb
 *.ilk
 *.obj
